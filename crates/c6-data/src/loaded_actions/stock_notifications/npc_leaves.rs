@@ -191,13 +191,29 @@ fn empty_congress_choices<P>(
     }
     Ok(())
 }
-pub struct Leaves<'i> {
+/// Same-owner camp composition, invoked only after the real automatic research
+/// grants. It must perform CreateCamps, current tribe activation, then Clans.
+pub trait Camps<P> {
+    fn visibility(&self) -> &crate::unit_sight_state::Runtime;
+    fn run(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+        runtime: &mut c6_core::loaded_state::game_update::Runtime,
+        owner: i32,
+    ) -> Result<(), Error>;
+}
+enum Visibility<'i, P> {
+    Borrowed(&'i crate::unit_sight_state::Runtime),
+    Camps(&'i mut dyn Camps<P>),
+}
+pub struct Leaves<'i, P = c6_core::unit::OperationParameters> {
     inputs: &'i Inputs,
     definitions: &'i maintenance::Definitions,
-    visibility: &'i crate::unit_sight_state::Runtime,
+    visibility: Visibility<'i, P>,
     off_turn: Option<&'i mut inactive_control::Inputs>,
 }
-impl<'i> Leaves<'i> {
+impl<'i, P> Leaves<'i, P> {
     pub fn new(
         inputs: &'i Inputs,
         definitions: &'i maintenance::Definitions,
@@ -206,8 +222,26 @@ impl<'i> Leaves<'i> {
         Self {
             inputs,
             definitions,
-            visibility,
+            visibility: Visibility::Borrowed(visibility),
             off_turn: None,
+        }
+    }
+    pub fn new_with_camps(
+        inputs: &'i Inputs,
+        definitions: &'i maintenance::Definitions,
+        camps: &'i mut dyn Camps<P>,
+    ) -> Self {
+        Self {
+            inputs,
+            definitions,
+            visibility: Visibility::Camps(camps),
+            off_turn: None,
+        }
+    }
+    fn visibility(&self) -> &crate::unit_sight_state::Runtime {
+        match &self.visibility {
+            Visibility::Borrowed(value) => value,
+            Visibility::Camps(camps) => camps.visibility(),
         }
     }
     /// Reuse the initialized off-turn owner across policy pauses. This is the
@@ -218,7 +252,7 @@ impl<'i> Leaves<'i> {
         self
     }
 }
-impl<P> npc_activation::Leaves<P> for Leaves<'_> {
+impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
     fn callbacks(&self) -> &[Kind] {
         &self.inputs.callbacks
     }
@@ -234,12 +268,15 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_> {
         &mut self,
         state: &mut LoadedState,
         backend: &mut Runtime<'_, P>,
-        _: &mut c6_core::loaded_state::game_update::Runtime,
+        runtime: &mut c6_core::loaded_state::game_update::Runtime,
         owner: i32,
     ) -> Result<(), Error> {
         let manager = &state.retained().barbarian;
         if manager.player_ordinal != owner {
             return Err(Error::Unsupported("NPC Barbarian current owner"));
+        }
+        if let Visibility::Camps(camps) = &mut self.visibility {
+            return camps.run(state, backend, runtime, owner);
         }
         if manager.improvement_hash != u32::MAX && manager.value_e0 < manager.value_c8 {
             return Err(Error::Unsupported("NPC Barbarian CreateCamps"));
@@ -368,7 +405,7 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_> {
                     state,
                     owner,
                     self.definitions.maintenance.unit_registry(),
-                    self.visibility,
+                    self.visibility(),
                 )?;
                 state
                     .combat_ai_targets_mut(owner)

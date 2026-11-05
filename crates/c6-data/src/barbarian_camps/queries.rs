@@ -205,6 +205,16 @@ impl Definitions {
     pub fn improvement(&self) -> i32 {
         self.improvement
     }
+    pub fn water(
+        &self,
+        state: &LoadedState,
+        index: usize,
+    ) -> Result<bool, Error<std::convert::Infallible>> {
+        if state.binding() != &self.binding {
+            return Err(Error::Missing("camp Terrain binding"));
+        }
+        Ok(self.terrain(plot(state, index)?)?.water)
+    }
     fn terrain<E>(&self, plot: &Plot) -> Result<Terrain, Error<E>> {
         self.terrains
             .iter()
@@ -236,6 +246,22 @@ pub struct Queries<'a, P> {
     pub definitions: &'a Definitions,
     pub inputs: Inputs<'a>,
     pub placement: &'a mut P,
+}
+/// Linux GetAdjacentPlot direction order, with the same range-before-wrap
+/// coordinate conversion used by existing founding and movement queries.
+pub fn adjacent(
+    state: &LoadedState,
+    at: PlotCoord,
+    direction: usize,
+) -> Result<Option<usize>, Error<std::convert::Infallible>> {
+    const X: [i32; 6] = [0, 1, 1, 0, -1, -1];
+    const Y: [i32; 6] = [1, 0, -1, -1, 0, 1];
+    let (&x, &y) = X
+        .get(direction)
+        .zip(Y.get(direction))
+        .ok_or(Error::Missing("camp adjacent direction"))?;
+    c6_core::found_city::placement::plot_from_delta(state.world().map(), at, x, y, 1)
+        .map_err(|_| Error::Missing("camp adjacent plot"))
 }
 fn plot<E>(state: &LoadedState, index: usize) -> Result<&Plot, Error<E>> {
     state
