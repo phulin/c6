@@ -28,6 +28,7 @@ pub struct Definitions {
     chronology: Vec<i32>,
     moments: Vec<Definition>,
     water: Vec<(u32, bool)>,
+    combat_support_abilities: [Option<usize>; 3],
 }
 #[derive(Debug)]
 pub enum DefinitionError {
@@ -119,7 +120,20 @@ impl Definitions {
                 ))
             })
             .collect::<Result<_, _>>()?;
+        let abilities = crate::unit_initialization_definitions::collection(
+            rules,
+            "UnitAbilities",
+            "UnitAbilityType",
+        )
+        .map_err(DefinitionError::Definitions)?;
+        let combat_support_abilities = [
+            b"ABILITY_GREAT_ADMIRAL_STRENGTH".as_slice(),
+            b"ABILITY_GREAT_GENERAL_STRENGTH".as_slice(),
+            b"ABILITY_COMANDANTE_AOE_STRENGTH".as_slice(),
+        ]
+        .map(|name| abilities.find_index(linux_type_hash(name)));
         Ok(Self {
+            combat_support_abilities,
             binding: state.binding().clone(),
             eras,
             chronology,
@@ -204,6 +218,7 @@ pub enum Error<E> {
     History(c6_core::loaded_state::game_history::AccessError),
     Eras(c6_core::loaded_state::game_eras::AccessError),
     Actor(crate::melee_attack::Error),
+    State(c6_core::loaded_state::Error),
     World(c6_core::world::MissingInput),
     Missing(&'static str),
     SpecializedCombatMoment,
@@ -343,7 +358,7 @@ pub fn handle_moment<E: Effects>(
     }
     Ok(Some(id))
 }
-/// Typed ordinary land branch. Defeated-defender special moments and naval
+/// Typed ordinary land branch. Positive defeated-defender special moments and naval
 /// kill moments remain explicit rather than being silently omitted.
 pub fn on_combat<E: Effects>(
     state: &mut LoadedState,
@@ -364,7 +379,27 @@ pub fn on_combat<E: Effects>(
         return Ok(None);
     }
     if members.damage.defender_final_damage >= 100 {
-        return Err(Error::SpecializedCombatMoment);
+        // Native29e939c checks formation disadvantage and a two-level XP
+        // disadvantage before current support abilities. Equal ordinary Units
+        // reach no specialized moment and still record the general battle.
+        let a = crate::melee_attack::actor(state, members.damage.attacker).map_err(Error::Actor)?;
+        let d = crate::melee_attack::actor(state, members.damage.defender).map_err(Error::Actor)?;
+        if a.e_military_formation != -1
+            && d.e_military_formation != -1
+            && ((a.e_military_formation == 0 && d.e_military_formation != 0)
+                || (a.e_military_formation == 1 && d.e_military_formation == 2))
+            || a.k_experience.i_level.wrapping_add(2) <= d.k_experience.i_level
+        {
+            return Err(Error::SpecializedCombatMoment);
+        }
+        if c6_core::geometry::plot_valid(a.k_location.x, a.k_location.y) {
+            let runtime = state.unit_runtime(a.e_owner, a.id).map_err(Error::State)?;
+            for index in defs.combat_support_abilities.into_iter().flatten() {
+                if runtime.abilities.get(index).copied().unwrap_or(0) > 0 {
+                    return Err(Error::SpecializedCombatMoment);
+                }
+            }
+        }
     }
     let plot = c6_core::movement_world::plot_at(state.world().map(), members.location)
         .map_err(|_| Error::Missing("combat history location"))?
