@@ -12,6 +12,22 @@ use c6_core::{
 pub struct Parameters {
     pub boldness_per_turn: i32,
 }
+impl Parameters {
+    /// Cache the current admitted rules value once; missing input is not a
+    /// zero-boldness update.
+    pub fn from_rules(rules: &crate::Rules) -> Result<Self, &'static str> {
+        let boldness_per_turn = rules
+            .gameplay()
+            .table("GlobalParameters")
+            .ok_or("GlobalParameters")?
+            .rows()
+            .find(|row| row.text("Name").ok() == Some("BARBARIAN_BOLDNESS_PER_TURN"))
+            .and_then(|row| row.get("Value").ok())
+            .and_then(crate::game_parameters::sql_integer)
+            .ok_or("BARBARIAN_BOLDNESS_PER_TURN")?;
+        Ok(Self { boldness_per_turn })
+    }
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UnitKind {
     Melee,
