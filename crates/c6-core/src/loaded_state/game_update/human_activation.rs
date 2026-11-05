@@ -50,6 +50,11 @@ pub trait Effects {
 pub fn current_priority(state: &LoadedState, owner: i32) -> Result<i32, Error> {
     Ok(control(state, owner)?.priority)
 }
+/// Stored completion predicate used by the native control scheduler. Values
+/// below -1 are not the completed sentinel either.
+pub fn is_done_turn(state: &LoadedState, owner: i32) -> Result<bool, Error> {
+    Ok(control(state, owner)?.priority == -1)
+}
 /// FAutoVariable priority assignment only archives the scalar. It does not
 /// synchronously emit the distinct Player.Signals control-priority signal.
 pub fn set_priority(state: &mut LoadedState, owner: i32, value: i32) -> Result<(), Error> {

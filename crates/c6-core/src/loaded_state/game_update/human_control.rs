@@ -1,5 +1,6 @@
 //! Human deactivation effects of the stock AI.Control callbacks. Native
-//! planning tables/priority bookkeeping are outside the external-policy arena.
+//! planning tables are outside the external-policy arena. Completion priority
+//! remains canonical because turn scheduling reads it directly.
 //! Executable behavior trees and war-operation dispatch are not discarded.
 use crate::{game_update::Error, loaded_state::LoadedState};
 
@@ -54,6 +55,16 @@ pub fn deactivate(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
     {
         return Err(Error::Unsupported("existing executable behavior trees"));
     }
+    // The supported human callbacks above have no executable work remaining.
+    // Native DoTurnDeactivate drains each completed priority before DoTurnEnd;
+    // IsDoneTurn reads the stored -1, so this is scheduling state, not a score.
+    super::human_activation::set_priority(state, owner, -1)?;
+    let player = state
+        .retained
+        .players
+        .iter()
+        .find(|p| p.requested_owner == owner)
+        .ok_or(Error::Unsupported("current player control components"))?;
     let homeland = player
         .ai_homeland
         .as_ref()
@@ -113,6 +124,72 @@ fn release_controller(state: &mut LoadedState, owner: i32, controller: u32) -> R
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn completed_human_deactivation_keeps_done_priority_in_canonical_owner() {
+        let mut state = crate::loaded_state::tests::state();
+        let owner = state.world().players()[0].owner();
+        let mut mapping = [-1; 65];
+        mapping[owner as usize] = 0;
+        let mut slots = [false; 65];
+        slots[owner as usize] = true;
+        state
+            .bind_controls(crate::loaded_state::ControlInputs {
+                binding: state.binding().clone(),
+                player_mapping: mapping,
+                player_slots: slots,
+                players: vec![crate::loaded_state::PlayerControls {
+                    owner,
+                    slot_status: 3,
+                    team: owner,
+                    is_alive: true,
+                    turn_active: false,
+                }],
+                processing_automation: Some(-1),
+                pause_storage: Some(0),
+            })
+            .unwrap();
+        let ids = state
+            .world()
+            .player(owner)
+            .unwrap()
+            .unit_records()
+            .unwrap()
+            .iter()
+            .map(|r| r.value.id)
+            .collect::<Vec<_>>();
+        for id in ids {
+            state.unit_mut(owner, id).unwrap().ai_controller = u32::MAX;
+        }
+        let player = &mut state.retained.players[0];
+        let control = player.ai_control.as_mut().unwrap();
+        control.player_id = owner;
+        control.priority = 4;
+        player.ai_targets.as_mut().unwrap().new_war_started.0 = 0;
+        player
+            .ai_behavior_tree
+            .as_mut()
+            .unwrap()
+            .behavior_trees
+            .entries
+            .clear();
+        player.ai_homeland.as_mut().unwrap().control_instance_id = u32::MAX;
+        player.ai_tactical.as_mut().unwrap().control_instance_id = u32::MAX;
+        assert!(!super::super::human_activation::is_done_turn(&state, owner).unwrap());
+        deactivate(&mut state, owner).unwrap();
+        assert!(super::super::human_activation::is_done_turn(&state, owner).unwrap());
+        assert_eq!(
+            super::super::human_activation::current_priority(&state, owner).unwrap(),
+            -1
+        );
+        assert_eq!(
+            state.retained.players[0]
+                .ai_control
+                .as_ref()
+                .unwrap()
+                .priority,
+            -1
+        );
+    }
     #[test]
     fn release_resolves_current_units_and_only_changes_matching_controller() {
         let mut state = crate::loaded_state::tests::state();
