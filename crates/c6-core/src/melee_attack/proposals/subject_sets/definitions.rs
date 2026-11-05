@@ -50,6 +50,9 @@ impl Runtime {
                 self.requirement_definitions.push(value.clone());
             }
         }
+        for id in &source.constant_any {
+            self.install_constant_any(id)?;
+        }
         Ok(())
     }
 }

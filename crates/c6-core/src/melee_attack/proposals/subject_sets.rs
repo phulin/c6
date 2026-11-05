@@ -115,6 +115,7 @@ pub struct Runtime {
     // None means proven absent in the complete current definition collection.
     set_definitions: Vec<(Vec<u8>, Option<SetDefinition>)>,
     requirement_definitions: Vec<RequirementDefinition>,
+    constant_any: Vec<Vec<u8>>,
     requirements: Vec<Requirement>,
     sets: Vec<Set>,
 }
@@ -141,9 +142,33 @@ impl Runtime {
             next_label: 1 << 63,
             set_definitions,
             requirement_definitions,
+            constant_any: vec![],
             requirements: vec![],
             sets: vec![],
         })
+    }
+    /// TestAny2337b60 for constant opponent-tag requirements. These predicates
+    /// produce terminal state2/3, so native Test removes every child and no
+    /// dynamic child-change continuation is needed for this concrete family.
+    pub fn install_constant_any(&mut self, id: &[u8]) -> Result<(), &'static str> {
+        let definition = self
+            .set_definitions
+            .iter()
+            .find(|row| row.0 == id)
+            .and_then(|row| row.1.as_ref())
+            .ok_or("missing constant ANY definition")?;
+        if definition.requirements.iter().any(|id| {
+            !self
+                .requirement_definitions
+                .iter()
+                .any(|r| r.id == *id && matches!(r.predicate, Predicate::OpponentTag { .. }))
+        }) {
+            return Err("unsupported non-tag constant ANY requirement");
+        }
+        if !self.constant_any.iter().any(|name| name == id) {
+            self.constant_any.push(id.to_vec());
+        }
+        Ok(())
     }
     pub fn next_native_id(&self) -> u32 {
         self.next_native_id
@@ -603,7 +628,13 @@ pub fn get_or_create_subject<C: SubjectContext>(
         label,
         _error: std::marker::PhantomData,
     };
-    let state = all::test_all(&mut initial).map_err(|e| match e {
+    let is_any = initial.runtime.constant_any.iter().any(|name| name == id);
+    let tested = if is_any {
+        test_constant_any(&mut initial)
+    } else {
+        all::test_all(&mut initial)
+    };
+    let state = tested.map_err(|e| match e {
         all::Error::Context(e) => e,
         all::Error::Allocation => Error::Allocation,
     })?;
@@ -625,6 +656,33 @@ pub fn get_or_create_subject<C: SubjectContext>(
     let token = s.changed.subscribe(listener).map_err(Error::Ring)?;
     s.subscribers.push((listener, token));
     Ok(Some(label))
+}
+fn test_constant_any<E>(initial: &mut Initial<'_, E>) -> Result<i32, all::Error<Error<E>>> {
+    use all::Context;
+    let children = initial.children().map_err(all::Error::Context)?.to_vec();
+    if children.is_empty() {
+        return Ok(1);
+    }
+    for child in &children {
+        match initial.child_state(*child).map_err(all::Error::Context)? {
+            2 => {
+                initial.remove_all_children().map_err(all::Error::Context)?;
+                return Ok(2);
+            }
+            3 => {}
+            _ => {
+                return Err(all::Error::Context(Error::CurrentInput(
+                    "nonterminal constant ANY child",
+                )))
+            }
+        }
+    }
+    // Native does a second scan, collects state3 children, then removes each
+    // in original order; requirement IDs were assigned before this pruning.
+    for child in children {
+        initial.remove_child(child).map_err(all::Error::Context)?;
+    }
+    Ok(3)
 }
 struct Initial<'a, E> {
     runtime: &'a mut Runtime,
@@ -729,6 +787,13 @@ mod tests {
                 Predicate::AllianceWar => 3,
                 Predicate::CombatVersus { .. } => 2,
                 Predicate::AllianceReligion => 0,
+                Predicate::OpponentTag { expected } => {
+                    if expected == b"yes" {
+                        2
+                    } else {
+                        3
+                    }
+                }
                 _ => return Err("unsupported concrete predicate"),
             })
         }
@@ -784,6 +849,27 @@ mod tests {
         Fixture {
             runtime: Runtime::from_initial(100, sets, defs).unwrap(),
             calls: vec![],
+        }
+    }
+    #[test]
+    fn constant_tag_any_initializes_all_children_then_prunes_in_native_order() {
+        for hit in [false, true] {
+            let mut f = fixture(&[b"war", b"versus"], false);
+            f.runtime.requirement_definitions[0].predicate = Predicate::OpponentTag {
+                expected: b"no".to_vec(),
+            };
+            f.runtime.requirement_definitions[1].predicate = Predicate::OpponentTag {
+                expected: if hit { b"yes".to_vec() } else { b"no".to_vec() },
+            };
+            f.runtime.install_constant_any(b"set").unwrap();
+            let id = get_or_create(&mut f, 7, 9, subject(), b"set")
+                .unwrap()
+                .unwrap();
+            assert_eq!(f.calls.len(), 2);
+            assert_eq!(f.runtime.native_set_id(id), Some(102));
+            assert_eq!(f.runtime.state(id), Some(if hit { 2 } else { 3 }));
+            assert!(f.runtime.children(id).unwrap().is_empty());
+            assert!(f.runtime.requirements.iter().all(|r| r.references == 0));
         }
     }
     #[test]
