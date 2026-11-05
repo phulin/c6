@@ -287,15 +287,15 @@ impl<'a, P> Runtime<'a, P> {
     ) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("NPC deactivation backend binding"))?;
-        if inputs.binding != *state.binding()
-            || self
-                .npc_deactivation
-                .as_ref()
-                .is_some_and(|b| !b.frame.is_complete())
-        {
-            return Err(Error::Unsupported(
-                "NPC deactivation inputs already bound/differ",
-            ));
+        if inputs.binding != *state.binding() {
+            return Err(Error::Unsupported("NPC deactivation input binding differs"));
+        }
+        let existing = self
+            .npc_deactivation
+            .iter()
+            .position(|b| b.inputs.owner == inputs.owner);
+        if existing.is_some_and(|at| !self.npc_deactivation[at].frame.is_complete()) {
+            return Err(Error::Unsupported("NPC deactivation owner already pending"));
         }
         let frame = Frame::new(
             state,
@@ -305,7 +305,12 @@ impl<'a, P> Runtime<'a, P> {
             inputs.priorities.clone(),
             inputs.end.clone(),
         )?;
-        self.npc_deactivation = Some(State { inputs, frame });
+        let bound = State { inputs, frame };
+        if let Some(at) = existing {
+            self.npc_deactivation[at] = bound;
+        } else {
+            self.npc_deactivation.push(bound);
+        }
         Ok(())
     }
     pub fn deactivate_npc_control(
@@ -318,14 +323,16 @@ impl<'a, P> Runtime<'a, P> {
     ) -> Result<Progress, Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("NPC deactivation backend binding"))?;
-        let mut owned = self
+        let at = self
             .npc_deactivation
-            .take()
-            .ok_or(Error::Unsupported("current NPC deactivation bindings"))?;
-        if owned.inputs.owner != owner {
-            self.npc_deactivation = Some(owned);
-            return Err(Error::Unsupported("NPC deactivation current owner differs"));
-        }
+            .iter()
+            .position(|b| b.inputs.owner == owner)
+            .ok_or(Error::Unsupported(
+                "current NPC deactivation owner bindings",
+            ))?;
+        // Lease exactly this owner's real frame; other owners and their order
+        // stay intact throughout the callback pass, including an error/pause.
+        let mut owned = self.npc_deactivation.remove(at);
         let result = owned.frame.advance(
             state,
             runtime,
@@ -336,7 +343,7 @@ impl<'a, P> Runtime<'a, P> {
                 units,
             },
         );
-        self.npc_deactivation = Some(owned);
+        self.npc_deactivation.insert(at, owned);
         result
     }
 }
