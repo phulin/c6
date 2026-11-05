@@ -17,6 +17,8 @@ pub mod unit_creation;
 pub mod city_queries;
 #[path = "stock_resource_revelation.rs"]
 pub mod resource_revelation;
+#[path = "stock_sight_discovery.rs"]
+pub mod sight_discovery;
 pub mod cityless_managers;
 pub mod deactivation;
 #[path = "stock_notifications_game_update.rs"]

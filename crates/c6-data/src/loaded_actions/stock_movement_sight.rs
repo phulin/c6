@@ -148,7 +148,7 @@ impl<'d, P> sight::Effects for Runtime<'d, P> {
         runtime: &mut sight::Runtime,
         event: PlotVisibilityChanged,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight plot_visibility_changed"))
+        self.on_plot_visibility_changed(state, event)
     }
     fn signal_unit_plot(
         &mut self,
@@ -157,6 +157,6 @@ impl<'d, P> sight::Effects for Runtime<'d, P> {
         actor: (i32, u32),
         plot: u32,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight signal_unit_plot"))
+        self.dispatch_unit_plot_visibility(state, actor, plot)
     }
 }

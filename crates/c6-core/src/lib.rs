@@ -494,3 +494,5 @@ pub mod city_territory;
 pub mod influence_map_update;
 
 pub mod unit_creation;
+
+pub mod geographic_names;

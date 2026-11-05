@@ -18,6 +18,7 @@ pub mod formation_move_to;
 pub mod formation_path_state;
 pub mod game_relations;
 pub mod game_parameters;
+pub mod geographic_names;
 pub mod loaded_actions;
 pub mod loaded_upkeep;
 pub mod melee_attack;
@@ -872,3 +873,4 @@ pub mod barbarian_camp_placement;
 pub mod barbarian_camp_units;
 
 pub mod ranged_attack;
+

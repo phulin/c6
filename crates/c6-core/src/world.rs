@@ -385,6 +385,11 @@ impl World {
     pub fn map(&self) -> &Map {
         &self.map
     }
+    /// Geographic managers do not contain the unit-grid/entity indexes.
+    pub fn geographic_components_mut(&mut self) -> &mut [crate::map::Component] {
+        &mut self.map.components
+    }
+
     /// Canonical area count edits performed by improvement construction.
     pub fn area_mut(&mut self, id: i32) -> Option<&mut crate::map::Area> {
         self.map.areas.entries.iter_mut().find(|a| a.value.id == id).map(|a| &mut a.value)

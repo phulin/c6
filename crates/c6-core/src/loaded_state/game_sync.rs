@@ -123,52 +123,31 @@ impl LoadedState {
     /// Linux Game.GetRandNum: edit the existing sync variable before every
     /// draw, including bound zero. No replacement stream or seed is created.
     pub fn game_sync_rand(&mut self, bound: u16) -> Result<u16, AccessError> {
-        let runtime = self
-            .game_sync_runtime
-            .as_ref()
-            .ok_or(AccessError::Missing)?;
-        if !matches!(
-            runtime.logging,
-            Some(LoggingScope::MissingChannel | LoggingScope::StockFileSink)
-        ) {
-            return Err(AccessError::UnsupportedLogging);
-        }
-        if runtime
-            .archive
-            .changed_keys
-            .windows(2)
-            .any(|p| p[0] >= p[1])
-        {
-            return Err(AccessError::InvalidArchive);
-        }
-        let next = self
+        draw_fields(
+            &mut self.retained.random.record,
+            self.game_sync_runtime.as_mut(),
+            &mut self.revision,
+            bound,
+        )
+    }
+    /// Borrow geographic managers and the SAME sync stream for source-ordered
+    /// name discovery. The callback cannot substitute a second map/RNG owner.
+    pub fn with_geographic_components<T>(
+        &mut self,
+        operation: impl FnOnce(
+            &mut [crate::map::Component],
+            &mut dyn FnMut(u16) -> Result<u16, AccessError>,
+        ) -> T,
+    ) -> Result<T, AccessError> {
+        self.revision = self
             .revision
             .checked_add(1)
             .ok_or(AccessError::State(Error::ResourceLimit))?;
-        self.revision = next;
-        let runtime = self.game_sync_runtime.as_mut().expect("checked");
-        if let Err(at) = runtime
-            .archive
-            .changed_keys
-            .binary_search(&runtime.archive.sync_variable_key)
-        {
-            runtime
-                .archive
-                .changed_keys
-                .insert(at, runtime.archive.sync_variable_key);
-        }
         let record = &mut self.retained.random.record;
-        let mut logical = crate::rng::RandomState {
-            seed: record.seed,
-            calls: record.calls,
-            resets: record.resets,
-            lock_count: runtime.lock_count,
-            synchronous: record.synchronous_byte != 0,
-        };
-        let draw = logical.draw(bound);
-        record.seed = logical.seed;
-        record.calls = logical.calls;
-        Ok(draw)
+        let runtime = &mut self.game_sync_runtime;
+        let revision = &mut self.revision;
+        let mut draw = |bound| draw_fields(record, runtime.as_mut(), revision, bound);
+        Ok(operation(self.world.geographic_components_mut(), &mut draw))
     }
     /// Existing Linux-validated damage arithmetic/draw implementation, borrowing
     /// the retained record directly. Locks and raw synchronous byte survive.
@@ -319,4 +298,52 @@ mod tests {
         assert_eq!(current.archive.changed_keys, [ArchiveOrderKey(1)]);
         assert_eq!(state.retained().random.record, *current.record);
     }
+}
+
+fn draw_fields(
+    record: &mut SerializedRandomRecord,
+    runtime: Option<&mut Runtime>,
+    revision: &mut u64,
+    bound: u16,
+) -> Result<u16, AccessError> {
+    let runtime = runtime.ok_or(AccessError::Missing)?;
+    if !matches!(
+        runtime.logging,
+        Some(LoggingScope::MissingChannel | LoggingScope::StockFileSink)
+    ) {
+        return Err(AccessError::UnsupportedLogging);
+    }
+    if runtime
+        .archive
+        .changed_keys
+        .windows(2)
+        .any(|p| p[0] >= p[1])
+    {
+        return Err(AccessError::InvalidArchive);
+    }
+    let next = revision
+        .checked_add(1)
+        .ok_or(AccessError::State(Error::ResourceLimit))?;
+    *revision = next;
+    if let Err(at) = runtime
+        .archive
+        .changed_keys
+        .binary_search(&runtime.archive.sync_variable_key)
+    {
+        runtime
+            .archive
+            .changed_keys
+            .insert(at, runtime.archive.sync_variable_key);
+    }
+    let mut logical = crate::rng::RandomState {
+        seed: record.seed,
+        calls: record.calls,
+        resets: record.resets,
+        lock_count: runtime.lock_count,
+        synchronous: record.synchronous_byte != 0,
+    };
+    let draw = logical.draw(bound);
+    record.seed = logical.seed;
+    record.calls = logical.calls;
+    Ok(draw)
 }

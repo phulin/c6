@@ -18,6 +18,12 @@ pub struct Report {
     pub resource: i32,
     pub revealed_state: i32,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UnitPlotSubscriber {
+    Targets { owner: i32 },
+    Barbarian { owner: i32 },
+    Unavailable { receiver: u64 },
+}
 pub struct State {
     definitions: resources::Definitions,
     resources: LinuxDefinitionRegistry,
@@ -28,9 +34,12 @@ pub struct State {
     pub(super) natural_wonders: Vec<u32>,
     pub(super) continents: LinuxDefinitionRegistry,
     pub(super) goody_notify: Vec<u32>,
+    pub(super) geography: Option<super::sight_discovery::Geography>,
     pub propagation: Vec<c6_core::visibility_change::Propagation>,
     pub visibility_blocks: Vec<u32>,
     pub unit_visibility: Vec<c6_core::visibility_propagation::UnitVisibilityChanged>,
+    unit_plot_subscribers: Option<Vec<UnitPlotSubscriber>>,
+    pub unit_plot_dispatches: Vec<((i32, u32), u32)>,
 }
 impl<P> Runtime<'_, P> {
     /// `subscribers` is the complete current GameSignals+12c0 registration
@@ -104,10 +113,118 @@ impl<P> Runtime<'_, P> {
             continents: collection(rules, "Continents", "ContinentType")
                 .map_err(|e| Error::Requirement(format!("{e:?}")))?,
             goody_notify,
+            geography: None,
             propagation: Vec::new(),
             visibility_blocks: Vec::new(),
             unit_visibility: Vec::new(),
+            unit_plot_subscribers: None,
+            unit_plot_dispatches: Vec::new(),
         });
+        Ok(())
+    }
+    /// Complete current GameSignals+10c8 order, supplied from the same initial
+    /// runtime. Unknown nonempty consumers fail at their actual dispatch.
+    pub fn bind_unit_plot_visibility_signal(
+        &mut self,
+        state: &LoadedState,
+        subscribers: Vec<UnitPlotSubscriber>,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("unit plot signal identity"))?;
+        let current = self
+            .resource_revelation
+            .as_mut()
+            .ok_or(Error::Missing("sight discovery services"))?;
+        if current.unit_plot_subscribers.is_some() {
+            return Err(Error::Missing("unit plot signal already bound"));
+        }
+        current.unit_plot_subscribers = Some(subscribers);
+        Ok(())
+    }
+    pub fn unit_plot_visibility_dispatches(&self) -> &[((i32, u32), u32)] {
+        self.resource_revelation
+            .as_ref()
+            .map_or(&[], |v| &v.unit_plot_dispatches)
+    }
+    pub(super) fn dispatch_unit_plot_visibility(
+        &mut self,
+        state: &LoadedState,
+        actor: (i32, u32),
+        plot: u32,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("unit plot signal identity"))?;
+        let unit = state
+            .world()
+            .player(actor.0)
+            .map_err(Error::World)?
+            .unit(actor.1)
+            .map_err(Error::World)?
+            .ok_or(Error::Missing("unit plot signal actor"))?
+            .record;
+        let actor_owner = unit.e_owner;
+        let tribe = unit.i_barbarian_tribe_index;
+        state
+            .world()
+            .map()
+            .plot_by_index(plot)
+            .ok_or(Error::Missing("unit plot signal plot"))?;
+        let current = self
+            .resource_revelation
+            .as_mut()
+            .ok_or(Error::Missing("sight discovery services"))?;
+        let subscribers = current
+            .unit_plot_subscribers
+            .as_ref()
+            .ok_or(Error::Missing("current unit plot signal registry"))?;
+        current.unit_plot_dispatches.push((actor, plot));
+        for route in subscribers {
+            match *route {
+                UnitPlotSubscriber::Targets { owner } => {
+                    if owner != actor_owner {
+                        continue;
+                    }
+                    let attrs = state
+                        .world()
+                        .map()
+                        .plot_by_index(plot)
+                        .ok_or(Error::Missing("unit plot signal plot"))?
+                        .city_attributes
+                        .as_ref();
+                    if attrs.is_some_and(|v| v.district != u32::MAX) {
+                        return Err(Error::Missing(
+                            "current Targets.UpdateCity knowledge continuation",
+                        ));
+                    }
+                }
+                UnitPlotSubscriber::Barbarian { owner } => {
+                    if owner != actor_owner {
+                        continue;
+                    }
+                    if tribe < 0
+                        || state
+                            .world()
+                            .map()
+                            .plot_by_index(plot)
+                            .ok_or(Error::Missing("unit plot signal plot"))?
+                            .city_attributes
+                            .as_ref()
+                            .map_or(-1, |v| i32::from(v.player))
+                            == -1
+                    {
+                        continue;
+                    }
+                    return Err(Error::Missing(
+                        "current Barbarian.OnCitySpotted continuation",
+                    ));
+                }
+                UnitPlotSubscriber::Unavailable { receiver } => {
+                    return Err(Error::Requirement(format!(
+                        "UnitPlotVisibility subscriber {receiver}"
+                    )))
+                }
+            }
+        }
         Ok(())
     }
     pub fn resource_revelation_dispatches(&self) -> &[(i32, i32)] {
