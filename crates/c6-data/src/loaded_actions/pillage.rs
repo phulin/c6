@@ -15,6 +15,7 @@ use c6_core::{
 pub mod current;
 pub mod notification;
 pub mod plunder;
+pub mod reporting;
 
 pub mod stock;
 

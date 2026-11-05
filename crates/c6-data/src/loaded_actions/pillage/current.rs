@@ -188,6 +188,26 @@ impl<P> Effects for Current<'_, '_, '_, '_, '_, P> {
                 },
             )
             .map_err(|e| error("operation report", e))?;
+        } else if let Report::ImprovementChanged { plot } = r {
+            let query = self
+                .backend
+                .city_query_inputs()
+                .ok_or_else(|| error("Pillage improvement report", "current city query owner"))?;
+            let mut territory = query
+                .current
+                .territory
+                .write()
+                .map_err(|e| error("Pillage improvement report mutable territory", e))?;
+            super::reporting::improvement_changed(
+                s,
+                &mut territory,
+                self.dispatcher.inputs.definitions,
+                plot,
+            )
+            .map_err(|e| error("Pillage improvement report effects", e))?;
+            if !self.dispatcher.inputs.presentation_reports_qualified {
+                return Err(error("Pillage reports", "unqualified current recipients"));
+            }
         } else if !self.dispatcher.inputs.presentation_reports_qualified {
             return Err(error("Pillage reports", "unqualified current recipients"));
         }
