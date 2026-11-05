@@ -1,6 +1,6 @@
-//! Current ordinary civilian Unit eligibility and external queue selection.
+//! Current ordinary civilian and land military Unit eligibility and external queue selection.
 //! CanTrain2851040 is queried from live state; native legality answers are never
-//! inputs. Military, hero, religious and resource-dependent branches are explicit.
+//! inputs. Specialist districts, corps/armies, religion and resource branches stay explicit.
 use super::Error;
 use crate::{
     game_parameters::sql_integer, registry::linux_type_hash, unit_creation::signals::BuildMaps,
@@ -22,7 +22,9 @@ struct Unit {
     major_only: bool,
     prerequisites: [Option<usize>; 2],
     obsolete: [Option<usize>; 4],
-    upgrades: bool,
+    upgrades: Vec<u32>,
+    replacements: Vec<u32>,
+    ordinary_land: bool,
     buildings: bool,
     hero: bool,
     religion: bool,
@@ -40,6 +42,8 @@ pub struct Definitions {
     inputs: InputIdentities,
     units: Vec<Unit>,
     center_train_contaminated: bool,
+    production_yield: i32,
+    center_no_military_domain: bool,
     government_bonuses: crate::registry::LinuxDefinitionRegistry,
 }
 /// Retained mutable replacement owner and actual Fallout current values. These
@@ -84,9 +88,22 @@ impl Definitions {
                     major_only = number(xp, "MajorCivOnly")? != 0;
                 }
             }
-            let mut upgrades = false;
+            let mut upgrades = Vec::new();
             for r in table("UnitUpgrades")?.rows() {
-                upgrades |= r.text("Unit").map_err(Error::Rules)? == name;
+                if r.text("Unit").map_err(Error::Rules)? == name {
+                    upgrades.push(
+                        reference(r, "UpgradeUnit")?.ok_or(Error::Unsupported("upgrade Unit"))?,
+                    );
+                }
+            }
+            let mut replacements = Vec::new();
+            for r in table("UnitReplaces")?.rows() {
+                if r.text("ReplacesUnitType").map_err(Error::Rules)? == name {
+                    replacements.push(
+                        reference(r, "CivUniqueUnitType")?
+                            .ok_or(Error::Unsupported("replacement Unit"))?,
+                    );
+                }
             }
             let mut buildings = false;
             for r in table("Unit_BuildingPrereqs")?.rows() {
@@ -122,6 +139,10 @@ impl Definitions {
                     cr("ObsoleteCivic")?,
                 ],
                 upgrades,
+                replacements,
+                ordinary_land: row.text("Domain").map_err(Error::Rules)? == "DOMAIN_LAND"
+                    && row.text("FormationClass").map_err(Error::Rules)?
+                        == "FORMATION_CLASS_LAND_COMBAT",
                 buildings,
                 hero,
                 religion: number(row, "EnabledByReligion")? != 0,
@@ -145,6 +166,18 @@ impl Definitions {
         Ok(Self {
             inputs: state.binding().inputs.clone(),
             units: values,
+            center_no_military_domain: table("Districts")?
+                .rows()
+                .find(|row| row.text("DistrictType").ok() == Some("DISTRICT_CITY_CENTER"))
+                .ok_or(Error::Unsupported("CityCenter definition"))?
+                .text("MilitaryDomain")
+                .map_err(Error::Rules)?
+                == "NO_DOMAIN",
+            production_yield: collection(rules, "Yields", "YieldType")
+                .map_err(Error::Definitions)?
+                .find_index(linux_type_hash(b"YIELD_PRODUCTION"))
+                .ok_or(Error::Unsupported("Production Yield definition"))?
+                as i32,
             government_bonuses: collection(rules, "GovernmentBonusNames", "GovernmentBonusType")
                 .map_err(Error::Definitions)?,
             center_train_contaminated: parameter
@@ -237,6 +270,91 @@ fn center_status(
     }
     Ok((all_pillaged, contamination))
 }
+// GetUnitProductionCost2855466..28554f6 subtracts the integer part of
+// modifier * FixedPoint(cost). Keep both native low-word Q8 wrapping steps.
+fn favored_cost(cost: i32, civilian: bool, production_favored: bool, modifier: i32) -> i32 {
+    if cost <= 0 || civilian || !production_favored || modifier == 0 {
+        return cost;
+    }
+    cost.wrapping_sub(
+        c6_core::city_production::execution::multiply(modifier, cost.wrapping_shl(8)) >> 8,
+    )
+}
+fn build_mapping(current: &Current<'_>, owner: i32, index: usize) -> Result<i32, Error> {
+    current
+        .build_maps
+        .players
+        .iter()
+        .find(|p| p.0 == owner)
+        .and_then(|p| p.1.get(index))
+        .copied()
+        .ok_or(Error::Unsupported("current Unit build replacement cell"))
+}
+fn prerequisites_met(state: &LoadedState, owner: i32, unit: &Unit) -> Result<bool, Error> {
+    let mut met = true;
+    for (i, reference) in unit.prerequisites.iter().enumerate() {
+        if let Some(index) = reference {
+            met &= acquired(state, owner, *index, i == 1)?;
+        }
+    }
+    Ok(met)
+}
+fn available_upgrade(
+    state: &LoadedState,
+    owner: i32,
+    unit: &Unit,
+    defs: &Definitions,
+    current: &Current<'_>,
+) -> Result<bool, Error> {
+    //285122d..285139b: resolve each upgrade's first trainable replacement,
+    // then inspect prerequisite masks and CanEverTrain. Unreached resource
+    // branches must not reject an ordinary ancient-era Scout or Warrior.
+    for hash in &unit.upgrades {
+        let original = defs
+            .units
+            .iter()
+            .find(|u| u.hash == *hash)
+            .ok_or(Error::Unsupported("upgrade Unit definition"))?;
+        let mut candidate = original;
+        for replacement in &original.replacements {
+            let replacement = defs
+                .units
+                .iter()
+                .find(|u| u.hash == *replacement)
+                .ok_or(Error::Unsupported("replacement Unit definition"))?;
+            if build_mapping(current, owner, replacement.index)? == replacement.index as i32 {
+                //2bf46e2 chooses the first CanEverTrain replacement; a
+                // missing prerequisite returns -1, rather than trying more.
+                if prerequisites_met(state, owner, replacement)? {
+                    candidate = replacement;
+                }
+                break;
+            }
+        }
+        if !prerequisites_met(state, owner, candidate)?
+            || build_mapping(current, owner, candidate.index)? != candidate.index as i32
+        {
+            continue;
+        }
+        let major = current
+            .civilization_levels
+            .iter()
+            .find(|p| p.0 == owner)
+            .ok_or(Error::Unsupported("current Train civilization level"))?
+            .1
+            == linux_type_hash(b"CIVILIZATION_LEVEL_FULL_CIV");
+        if !major {
+            continue;
+        }
+        if candidate.strategic {
+            return Err(Error::Unsupported(
+                "available upgrade strategic-resource amount",
+            ));
+        }
+        return Ok(true);
+    }
+    Ok(false)
+}
 fn required_population(prerequisite: Option<i32>, cost: Option<i32>) -> i32 {
     let mut minimum = prerequisite.unwrap_or(0);
     if let Some(cost) = cost {
@@ -250,7 +368,7 @@ fn civilian_center_allowed(pillaged: bool, contaminated: bool, charges: i32) -> 
     (charges > 0 || !contaminated) && (contaminated || !pillaged)
 }
 /// Native ordinary query flags: visible=false, prerequisites not ignored, no
-/// diagnostic DTO. Formation -1/0 are legal for noncombat Units; others false.
+/// diagnostic DTO. Ordinary single formations use -1/0; corps/armies remain explicit.
 pub fn can_train(
     state: &LoadedState,
     owner: i32,
@@ -333,8 +451,8 @@ fn can_train_inner(
             }
         }
     }
-    if d.upgrades {
-        return Err(Error::Unsupported("available Unit upgrade selection"));
+    if available_upgrade(state, owner, d, defs, current)? {
+        return Ok(false);
     }
     if d.buildings {
         return Err(Error::Unsupported(
@@ -359,9 +477,24 @@ fn can_train_inner(
     let (pillaged, contaminated) = center_status(state, owner, city, current)?;
     let contaminated = contaminated && !defs.center_train_contaminated;
     if d.combat {
-        return Err(Error::Unsupported(
-            "military Unit district/formation eligibility",
-        ));
+        if !d.ordinary_land || !defs.center_no_military_domain {
+            return Err(Error::Unsupported("non-land military Unit eligibility"));
+        }
+        //285199f..2851e1f: CITY_CENTER has NO_DOMAIN, so a city with
+        // only its center takes the center fallback, as noncombat units do.
+        // Other districts may supply military domains and enemy occupation.
+        for id in &c.districts.district_ids {
+            let district = find_district(state, owner, *id)?
+                .ok_or(Error::Unsupported("current military district"))?;
+            if district.district_hash != linux_type_hash(b"DISTRICT_CITY_CENTER") {
+                return Err(Error::Unsupported(
+                    "military Unit specialist district eligibility",
+                ));
+            }
+        }
+        if !matches!(formation, -1 | 0) {
+            return Err(Error::Unsupported("military Unit corps/army eligibility"));
+        }
     }
     if !civilian_center_allowed(pillaged, contaminated, d.charges) {
         return Ok(false);
@@ -395,7 +528,7 @@ pub fn append_unit(
     super::append_selected(state, owner, city, QueueEntry::train_request(unit), effects)
 }
 /// Current required cost28553d0 and UpdateUnitProgress284f8c0 factors for
-/// ordinary civilian single formations. Cost is the player's canonical cached
+/// ordinary civilian and land combat single formations. Cost is the player's canonical cached
 /// integer; no native threshold or static hardcoded Unit cost is accepted.
 pub fn current_build(
     state: &LoadedState,
@@ -422,8 +555,8 @@ pub fn current_build(
         .iter()
         .find(|d| d.hash == unit_hash)
         .ok_or(Error::Unsupported("current Unit definition"))?;
-    if !definition.civilian {
-        return Err(Error::Unsupported("favored production Unit cost modifier"));
+    if !definition.civilian && !definition.ordinary_land {
+        return Err(Error::Unsupported("nonordinary Unit production cost"));
     }
     let player = player(state, owner)?;
     let queue = &state.city(owner, city)?.build_queue;
@@ -435,7 +568,12 @@ pub fn current_build(
             .map(|v| v.value)
             .ok_or(Error::Unsupported("current Unit production array cell"))
     };
-    let cost = cell(&player.units.current_unit_cost, unit_hash)?;
+    let cost = favored_cost(
+        cell(&player.units.current_unit_cost, unit_hash)?,
+        definition.civilian,
+        player.units.favored_production_yield == definitions.production_yield,
+        player.units.favored_production_modifier_q8,
+    );
     let multiplier = cell(&player.units.unit_production_multiplier_q8, unit_hash)?
         .wrapping_add(cell(&queue.unit_production_multiplier, unit_hash)?);
     let bonus = |hash| -> Result<i32, Error> {
@@ -576,5 +714,17 @@ mod tests {
         assert!(!civilian_center_allowed(false, true, 0));
         assert!(civilian_center_allowed(false, true, 3));
         assert!(civilian_center_allowed(true, true, 3));
+    }
+    #[test]
+    fn military_favored_cost_preserves_q8_fraction_and_native_overflow() {
+        assert_eq!(favored_cost(30, false, true, 64), 23);
+        assert_eq!(favored_cost(30, false, true, -64), 38);
+        assert_eq!(favored_cost(30, true, true, 64), 30);
+        assert_eq!(favored_cost(30, false, false, 64), 30);
+        assert_eq!(favored_cost(-1, false, true, 64), -1);
+        // FixedPoint(int) wraps before multiplication, and the final Q8
+        // product wraps before AsInt. These are not a wide integer percent.
+        assert_eq!(favored_cost(8_388_608, false, true, 64), 10_485_760);
+        assert_eq!(favored_cost(30, false, true, 0), 30);
     }
 }
