@@ -23,6 +23,7 @@ pub struct Runtime {
     combat_bonuses: Option<Vec<CombatBonuses>>,
     current_scores: Option<Vec<Vec<i32>>>,
     pride: Option<(Vec<i32>, Vec<i32>)>,
+    construction_rates: Option<Vec<[i32; 4]>>,
 }
 impl Runtime {
     pub fn golden_ages_raw(&self) -> Option<&[u8]> {
@@ -98,6 +99,7 @@ impl LoadedState {
             combat_bonuses: None,
             current_scores: None,
             pride: None,
+            construction_rates: None,
         });
         Ok(())
     }

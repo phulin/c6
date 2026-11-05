@@ -256,6 +256,23 @@ impl Definitions {
         self.validate(state)?;
         Ok(self.building(building_hash)?.known_era_score_noop)
     }
+    /// Same subscriber with actual current PlayerScores rates. Static yield or
+    /// prerequisite presence alone does not establish a positive era reward.
+    /// All four zero rates prove every reached ChangeEraScore arm absent.
+    pub fn building_era_score_noop_current(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        building_hash: u32,
+    ) -> Result<bool, Error> {
+        if self.building_era_score_noop(state, building_hash)? {
+            return Ok(true);
+        }
+        let rates = state
+            .game_era_construction_rates(owner)
+            .map_err(|_| Error::Unsupported("current Era construction rates"))?;
+        Ok(rates.is_none_or(|values| values.iter().all(|&value| value == 0)))
+    }
     /// First-progress resource path284ff30 for a building with no resolved
     /// strategic-resource rows. Such a definition reaches no reservation,
     /// resource-stockpile or climate mutation. Resource-bearing definitions
