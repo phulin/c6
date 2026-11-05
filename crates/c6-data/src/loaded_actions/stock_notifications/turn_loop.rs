@@ -71,6 +71,7 @@ fn update<'b, P, E>(
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
         &mut crate::research::Runtime,
+        &crate::game_update_state::deactivation::VisibilityHistory,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -127,15 +128,21 @@ fn update<'b, P, E>(
             let Some(next) = next else { break };
             match next {
                 c6_core::game_update::PlayerEffect::Activation { player, first } => {
-                    match context.notifications.backend.with_era_gossip_history(&visibility.history, |backend| activation(
-                        context.notifications.state,
-                        backend,
-                        runtime,
-                        research_runtime,
-                        player,
-                        first,
-                    ))
-                    .map_err(Error::Activation)?
+                    match context
+                        .notifications
+                        .backend
+                        .with_era_gossip_history(&visibility.history, |backend| {
+                            activation(
+                                context.notifications.state,
+                                backend,
+                                runtime,
+                                research_runtime,
+                                visibility,
+                                player,
+                                first,
+                            )
+                        })
+                        .map_err(Error::Activation)?
                     {
                         ActivationOutcome::Choice(choice) => return Ok(Some(choice)),
                         ActivationOutcome::Complete => {}
@@ -222,6 +229,7 @@ fn drive<'b, P, E>(
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
         &mut crate::research::Runtime,
+        &crate::game_update_state::deactivation::VisibilityHistory,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -385,6 +393,7 @@ pub fn execute<'b, P, E>(
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
         &mut crate::research::Runtime,
+        &crate::game_update_state::deactivation::VisibilityHistory,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -458,6 +467,7 @@ pub fn resume_end_turn<'b, P, E>(
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
         &mut crate::research::Runtime,
+        &crate::game_update_state::deactivation::VisibilityHistory,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -568,6 +578,7 @@ pub fn resume_research<'b, P, E>(
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
         &mut crate::research::Runtime,
+        &crate::game_update_state::deactivation::VisibilityHistory,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -661,7 +672,10 @@ pub fn resume_research<'b, P, E>(
             return Err(Error::Policy("research request did not select the choice"));
         }
     }
-    context.notifications.backend.resolve_research_choice(choice.player,kind);
+    context
+        .notifications
+        .backend
+        .resolve_research_choice(choice.player, kind);
     let mut progress = context
         .notifications
         .backend

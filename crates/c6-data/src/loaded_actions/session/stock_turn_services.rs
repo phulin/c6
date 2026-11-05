@@ -2,6 +2,7 @@
 //!
 //! This binds existing bounded upkeep implementations; unsupported reached
 //! branches remain errors. Every player policy choice is returned to Session.
+mod production_dispatch;
 use super::advance::TurnServices;
 use crate::game_update_state::{
     self as data,
@@ -39,6 +40,8 @@ pub struct City<'s> {
     pub levels: &'s [(i32, u32)],
     pub fallout: &'s [i32],
     pub loyalty_subscribers: Option<usize>,
+    /// Current district completion services for naturally accrued production.
+    pub district: Option<&'s crate::district_actions::stock::Inputs<'s>>,
 }
 /// Camp factories and subscribers are retained, including their unsaved state.
 pub struct Camp<'s, 'd, 'r> {
@@ -109,6 +112,7 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
         backend: &mut stock::Runtime<'a>,
         game_update: &mut loaded::Runtime,
         research_runtime: &mut crate::research::Runtime,
+        history: &crate::game_update_state::deactivation::VisibilityHistory,
         owner: i32,
         first: bool,
     ) -> Result<upkeep::ActivationOutcome> {
@@ -292,6 +296,7 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                 c6_core::unit::OperationParameters,
             >,
              requirements: &mut data::activation::requirement_changes::Runtime,
+             research_runtime: &mut crate::research::Runtime,
              player,
              city| {
                 use crate::city_turn::{self, current_upkeep};
@@ -303,12 +308,41 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                 let current = q.current;
                 backend
                     .with_modifier_requirement_sets(requirements.sets_mut(), |backend| {
-                        let mut production = city_production::Effects::new(
+                        let building = city_production::Effects::new(
                             backend,
                             &q.definitions.buildings,
                             q.appeal,
                             city_production::Scope::StockPlainHeadlessNoAddedConsumers,
                         );
+                        let mut production = match state
+                            .city(player, city)
+                            .map_err(|_| {
+                                city_turn::Error::Unsupported("current City production owner")
+                            })?
+                            .build_queue
+                            .entries
+                            .first()
+                            .map(|e| e.order)
+                        {
+                            Some(c6_core::city_production::Order::Zone { .. }) => {
+                                let district =
+                                    q.district.as_ref().ok_or(city_turn::Error::Unsupported(
+                                        "current district production services",
+                                    ))?;
+                                drop(building);
+                                production_dispatch::Effects::District(
+                                    crate::district_actions::stock::Effects {
+                                        backend,
+                                        research_runtime,
+                                        inputs: district,
+                                        gossip_history: &history.history,
+                                        reports: vec![],
+                                        workers: vec![],
+                                    },
+                                )
+                            }
+                            _ => production_dispatch::Effects::Building(building),
+                        };
                         let outcome = {
                             let mut effects = current_upkeep::Context {
                                 production: &mut production,
@@ -333,7 +367,9 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                             };
                             effects.activate(state, player, city)
                         };
-                        self.city_reports.append(&mut production.reports);
+                        if let production_dispatch::Effects::Building(effects) = &mut production {
+                            self.city_reports.append(&mut effects.reports);
+                        }
                         drop(production);
                         let outcome = outcome?;
                         if matches!(

@@ -13,12 +13,14 @@ use std::cell::RefCell;
 
 pub trait TurnServices<'a, P = c6_core::unit::OperationParameters> {
     type Error: std::fmt::Debug;
+    #[allow(clippy::too_many_arguments)]
     fn activate(
         &mut self,
         state: &mut LoadedState,
         backend: &mut stock_notifications::Runtime<'a, P>,
         update: &mut game_update::Runtime,
         research: &mut crate::research::Runtime,
+        visibility: &crate::game_update_state::deactivation::VisibilityHistory,
         owner: i32,
         first: bool,
     ) -> Result<ActivationOutcome, Self::Error>;
@@ -60,6 +62,7 @@ where
         &mut stock_notifications::Runtime<'a, P>,
         &mut game_update::Runtime,
         &mut crate::research::Runtime,
+        &crate::game_update_state::deactivation::VisibilityHistory,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -84,10 +87,11 @@ where
         b: &mut stock_notifications::Runtime<'a, P>,
         u: &mut game_update::Runtime,
         r: &mut crate::research::Runtime,
+        v: &crate::game_update_state::deactivation::VisibilityHistory,
         p: i32,
         f: bool,
     ) -> Result<ActivationOutcome, E> {
-        (self.activation)(s, b, u, r, p, f)
+        (self.activation)(s, b, u, r, v, p, f)
     }
     fn inactive(
         &mut self,
@@ -154,8 +158,9 @@ impl<'a, P> Session<'_, 'a, P> {
              b: &mut stock_notifications::Runtime<'a, P>,
              u: &mut game_update::Runtime,
              r: &mut crate::research::Runtime,
+             v: &crate::game_update_state::deactivation::VisibilityHistory,
              p,
-             f| services.borrow_mut().activate(s, b, u, r, p, f);
+             f| services.borrow_mut().activate(s, b, u, r, v, p, f);
         let inactive = |s: &mut LoadedState, b: &mut stock_notifications::Runtime<'a, P>, p| {
             services.borrow_mut().inactive(s, b, p)
         };
@@ -198,7 +203,7 @@ impl<'a, P> Session<'_, 'a, P> {
             choices,
             culture,
             index,
-            |s, b, u, r, p, f| services.borrow_mut().activate(s, b, u, r, p, f),
+            |s, b, u, r, v, p, f| services.borrow_mut().activate(s, b, u, r, v, p, f),
             |s, b, p| services.borrow_mut().inactive(s, b, p),
             |s, b, u, p| services.borrow_mut().active(s, b, u, p),
         )

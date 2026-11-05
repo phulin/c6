@@ -112,6 +112,7 @@ pub type CityActivation<'s, 'a, P> = dyn FnMut(
         &mut LoadedState,
         &mut stock_notifications::Runtime<'a, P>,
         &mut super::requirement_changes::Runtime,
+        &mut research::Runtime,
         i32,
         u32,
     ) -> Result<crate::city_production_turn::Outcome, crate::city_turn::Error>
@@ -338,8 +339,15 @@ impl<P> Context<'_, '_, P> {
                 .cities
                 .as_mut()
                 .ok_or_else(|| failure("city activation", "current city services"))?;
-            let outcome = (services.activate)(self.state, self.backend, requirements, owner, city)
-                .map_err(|e| failure("city activation", e))?;
+            let outcome = (services.activate)(
+                self.state,
+                self.backend,
+                requirements,
+                self.research,
+                owner,
+                city,
+            )
+            .map_err(|e| failure("city activation", e))?;
             services.outcomes.push((owner, city, outcome));
         }
         // 2ba0e92..2ba0ec6 has a second IsBarbarian guard: resource
