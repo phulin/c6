@@ -7,16 +7,19 @@ rules and upkeep between them.
 **A bounded early-game gameplay slice is implemented; the complete headless engine
 is not.** The Rust Session supports consecutive actions including founding,
 movement, improvements, production, research, purchases and representative combat,
-plus bounded turn progression. Existing Linux comparisons include an early-game
-full round and a two-round sequence. Coverage remains specific to supported
-states, rules and effects; it is not ready for complete-game AI evaluation.
+plus bounded turn progression. A Linux comparison now follows one Session from
+pre-founding state through research and production choices, Fortify, and three
+ordinary rounds with explicit decisions for every player. Coverage remains
+specific to supported states, rules and effects; it is not ready for complete-game
+AI evaluation.
 See [current coverage and limits](docs/status.md).
 
 Use `c6_data::loaded_actions::session::Session::from_initialized` with
 caller-supplied initialized typed state, matching rules and required services.
 The [typed early-game example](crates/c6-data/examples/early_game_session.rs)
 caches rule definitions, selects research and city production, and advances the
-same Session. Pending decisions and partial errors remain visible. The example
+same Session. See the [full retained sequence and decision contract](docs/linux-found-city.md).
+Pending decisions and partial errors remain visible. The example
 does not create an initialized game; run
 `cargo run -p c6-data --example early_game_session` for its input contract.
 General `Engine::apply` and C ABI gameplay actions, including EndTurn, remain

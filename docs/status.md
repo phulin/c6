@@ -24,7 +24,7 @@ does not initialize a new Civ VI game. See the
 | Research and government | Technology/civic selection and progress; explicit government and policy choices | Bounded definitions, effects and decision paths |
 | Combat and unit progression | Ranged attacks; melee with surviving and killed defenders; promotions and upgrades | Representative Linux cases, including persistent Session melee; not all combat types, modifiers or aftermath branches |
 | Diplomacy | Direct surprise-war declaration | Bounded cityless case; not complete diplomacy or war consequences in arbitrary worlds |
-| Turns and decisions | EndTurn/resume on the same Session with stock services; one early-game full round and a two-round sequence compared against Linux captures | Captured gameplay state and tracked RNG match within those cases; not arbitrary long-game turn equivalence or a complete RNG inventory |
+| Turns and decisions | FoundCity → explicit research/Monument choices → Fortify → three ordinary rounds on one Session, with human and NPC decisions supplied externally | Compared gameplay state, core processors, global religion, represented requirements and known RNG match; raw annotations/reference differences and incomplete RNG/runtime coverage remain explicit |
 | Supporting components | Explicit RNG records/streams, numerical helpers, typed wire codecs, owned component state and registered SQLite rules profiles | Schema/profile-specific; wire transport is distinct from complete save import or live-world reconstruction |
 | Small `Engine` / C ABI | Snapshot transport, RNG actions and coordinate helpers | General gameplay actions and EndTurn remain unsupported here; use the Rust Session for the supported gameplay slice |
 
