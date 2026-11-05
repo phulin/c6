@@ -105,6 +105,13 @@ impl<'a, P> Session<'_, 'a, P> {
         reports: &mut Vec<stock::Report>,
     ) -> Result<purchase_actions::buildings::Outcome, Error<purchase_actions::Error<String>>> {
         self.ordinary_player_action(owner)?;
+        // This is the Session's sole live Gossip history owner, including
+        // records written by prior turns/actions on the same Session.
+        let completion =
+            crate::loaded_actions::stock_notifications::city_production::completion::Services {
+                gossip_history: &self.visibility.history,
+                ..completion
+            };
         let mut effects = stock::BuildingCurrent {
             backend: &mut self.context.notifications.backend,
             definitions: construction,
