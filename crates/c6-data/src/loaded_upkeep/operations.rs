@@ -351,7 +351,10 @@ pub fn pop_front_operation<E: OperationReports>(
                 set_activity(state, actor, effects, unit_operations_clear::ACTIVITY_AWAKE)?;
             }
         }
-        SKIP_TURN_HASH | FORTIFY_HASH | c6_core::unit::RANGE_ATTACK_HASH => {}
+        // XP2 BuildImprovement's Deactivate slot3b033a8 binds the same
+        // BaseHandler::Deactivate2d964c0; it has no derived prelude.
+        SKIP_TURN_HASH | FORTIFY_HASH | c6_core::unit::RANGE_ATTACK_HASH
+        | c6_core::unit::BUILD_IMPROVEMENT_HASH => {}
         MOVE_TO_HASH => {
             complete_unit_movement(state, owner, id, effects)?;
         }
