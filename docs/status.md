@@ -1,65 +1,61 @@
 # Implementation status
 
-**The complete headless state/action/turn engine is not implemented.** The public
-library contains reusable numerical, state, codec and rules components. It is
-not yet usable for complete-game AI evaluation.
+**The Rust library supports a growing slice of early-game play on one persistent
+Session, but the complete headless Civ VI engine is not implemented.** Supported
+actions and bounded turn progression go beyond numerical primitives: representative
+Linux fixtures exercise city founding, development, research, combat and consecutive
+rounds. This is not yet a complete-game AI arena, and there is no meaningful
+percentage of the whole game established by the current comparisons.
 
-| Boundary | Available components | Remaining limits |
+The gameplay entry point is
+[`c6_data::loaded_actions::session::Session`](../crates/c6-data/src/loaded_actions/session.rs).
+It retains typed state and callback owners across requests. Callers supply
+initialized state, matching rules and required services; `Session::from_initialized`
+does not initialize a new Civ VI game. See the
+[early-game example](../crates/c6-data/examples/early_game_session.rs) and
+[stock turn services](../crates/c6-data/src/loaded_actions/session/stock_turn_services.rs).
+
+| Area | Supported scope | Qualification |
 | --- | --- | --- |
-| Numerical functions | Explicit RNG records/streams, coordinate helpers, bounded combat/movement/yield arithmetic | Complete gameplay RNG ownership and integration, combat execution and movement actions |
-| Typed wire data | Map, Player, Unit/Formation, City/District and other supported component schemas; bounded Core prefixes | Unsupported versions/branches, complete import, runtime fixups and unsaved state |
-| Owned state | Ordered World records, lookups, retained owners and bounded initialization/query APIs | Complete coupled owner updates and live-world reconstruction |
-| Rules/registries | Immutable registered SQLite profiles, explicit row/hash/index identities and ordered definitions | Complete rules providers, arbitrary configuration/content combinations and gameplay integration |
-| Action components | Profile-qualified loaded-state actions, founding, callbacks and aftermath with explicit dependencies | Arbitrary states/content, unsupported effect branches and complete gameplay RNG ownership |
-| Public `Engine` / C ABI | Small snapshot envelope, RNG actions, coordinate helpers and transport | General Game actions, EndTurn and complete World API remain unsupported |
-| Turn progression | Reusable internal components | Complete upkeep, every-player decision boundaries and full turn execution |
+| Founding and unit orders | FoundCity; MoveTo, SkipTurn, Fortify and healing | Supported initialized states, movement rules and callbacks; not arbitrary terrain, units or effect branches |
+| Development and economy | Farm/Mine construction and builder charges; city yields and growth; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported |
+| Production and districts | Natural Scout, Warrior and Monument completion; Campus placement and completion through explicit production progress | Natural Campus completion through turn progression is under validation |
+| Research and government | Technology/civic selection and progress; explicit government and policy choices | Bounded definitions, effects and decision paths |
+| Combat and unit progression | Ranged attacks; melee with surviving and killed defenders; promotions and upgrades | Representative Linux cases, including persistent Session melee; not all combat types, modifiers or aftermath branches |
+| Diplomacy | Direct surprise-war declaration | Bounded cityless case; not complete diplomacy or war consequences in arbitrary worlds |
+| Turns and decisions | EndTurn/resume on the same Session with stock services; one early-game full round and a two-round sequence compared against Linux captures | Captured gameplay state and tracked RNG match within those cases; not arbitrary long-game turn equivalence or a complete RNG inventory |
+| Supporting components | Explicit RNG records/streams, numerical helpers, typed wire codecs, owned component state and registered SQLite rules profiles | Schema/profile-specific; wire transport is distinct from complete save import or live-world reconstruction |
+| Small `Engine` / C ABI | Snapshot transport, RNG actions and coordinate helpers | General gameplay actions and EndTurn remain unsupported here; use the Rust Session for the supported gameplay slice |
 
-Supported wire import can represent complete saved Player rosters for particular
-admitted schemas. This does not reproduce every initialization side effect,
-validate all runtime authority or restore complete gameplay state. Separately
-owned later components do not establish complete continuous Core import.
+These are bounded capabilities, not declarations that each named subsystem is
+complete. Representative native comparisons cover their recorded affected gameplay
+state, callbacks and tracked RNG. They do not establish every reachable branch,
+every RNG stream, arbitrary rules/DLC/mod combinations or unrestricted action
+sequences. Historical Windows results do not count as Linux support.
 
-The qualified Linux loaded-state SkipTurn path uses
-`c6_data::loaded_actions::transition::prepare_with_auto_notification_queries`
-then `PreparedSkipTurn::commit`; successful `AppliedSkipTurn.boundary` reaches
-`HeadlessMessagesProcessed` with HOLD and an empty queue. Its typed current
-state, rules and profile inputs do not require native per-step answers. One
-native loaded initial fixture comparison matches the affected actor/Formation,
-actual actor report prefix, serialized complement and captured runtime subset;
-complete gameplay state and RNG parity remain unproven.
+Pillage, physical trade-route movement and natural Campus turn completion are
+active work, not completed native-validated coverage in the table above.
 
-The qualified initialized-state FoundCity composition executes City/District
-allocation and placement, territory acquisition, population/religion, capital
-and Palace, center-road construction, settler cleanup and stock aftermath. Its
-representative Linux comparison matches the complete captured Map, City,
-Units/Formations, Player gameplay fields and core processors, plus the captured
-RNG endpoints and matched libc state. Native CityBuild planning data is
-source-qualified external-policy output. The District writer omits its appeal
-yield vector; comparison-only native memory confirms the constructed empty
-vector. Raw transport availability differences remain recorded. This is one
-qualified transition, not complete gameplay or RNG parity, and does not yet
-validate founding followed by a whole round on the same state.
+The main remaining gap is generality and integration across a whole game: complete
+initialized gameplay state, all reached action effects and upkeep, full gameplay
+RNG ownership, and long sequences of decisions across supported content. Complete
+live initialization and arbitrary Civ VI save loading are unavailable. Save import
+is optional fixture functionality rather than a prerequisite for action delivery.
+The standalone Rust production library does not run the original game engine.
 
-This finite headless projection excludes source-proven presentation work.
-Unknown callbacks or queries return `Unsupported` without mutation; modeled
-native rejection can commit its known prefix. Other actions and EndTurn remain
-unsupported through the general gameplay API.
+Every player decision belongs to the external policy. Session exposes pending
+semantic decisions and resumes supported upkeep after an explicit choice; it must
+not silently choose native AI policy or end a player's turn. Current decision
+exposure is not a complete legal-action enumeration for the whole game.
 
-The small `Engine::apply` rejects unsupported gameplay actions without mutation.
-Some lower-level diagnostic phases preserve completed work on provider errors;
-callers must inspect the specific API contract rather than assume rollback or
-treat a partial trace as a successful action.
+Unsupported branches remain explicit. Some lower-level and Session errors retain
+the completed transition prefix and prevent further actions; inspect the API's
+failure and pending-decision state instead of treating a partial trace as success
+or assuming rollback. The small `Engine::apply` rejects unsupported gameplay
+requests without mutation.
 
-Synthetic tests and source/build/interface checks establish only their declared
-boundaries. Numerical parity for one function or records for one profile do not
-establish a complete subsystem, full RNG inventory or a legal complete action.
-Unknown state remains required until its gameplay role is resolved; it cannot be
-filled with defaults or excluded by a class name.
-
-Completion still requires full state and initialization, exact action validation
-and mandatory effects, deterministic branching, and complete rules/upkeep until
-the next externally supplied decision. Every player decision belongs to the
-external policy; the simulator must not silently make native AI choices.
-
-See [architecture/API](architecture.md), [rules inputs](rules-data.md),
-[target and decision policy](targets.md) and [performance scope](performance.md).
+Synthetic tests and public build/interface checks establish only their declared
+boundaries. Public builds require no private repository or game installation;
+matching rules inputs are supplied separately. See [architecture/API](architecture.md),
+[rules inputs](rules-data.md), [target and decision policy](targets.md) and
+[performance scope](performance.md).

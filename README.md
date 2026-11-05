@@ -4,35 +4,24 @@ Rust components for an exact, deterministic, headless Civilization VI simulator.
 The intended engine accepts externally chosen player decisions and executes the
 rules and upkeep between them.
 
-**Complete gameplay state, action execution and turns are not implemented.** The
-library currently provides reusable numerical functions, typed wire codecs,
-owned state components, rules/registry inputs and bounded action phases. General
-`Engine::apply` gameplay requests and EndTurn return unsupported errors. It is
-not ready for complete-game AI evaluation. See [current limits](docs/status.md).
+**A bounded early-game gameplay slice is implemented; the complete headless engine
+is not.** The Rust Session supports consecutive actions including founding,
+movement, improvements, production, research, purchases and representative combat,
+plus bounded turn progression. Existing Linux comparisons include an early-game
+full round and a two-round sequence. Coverage remains specific to supported
+states, rules and effects; it is not ready for complete-game AI evaluation.
+See [current coverage and limits](docs/status.md).
 
-A finite Linux loaded-state SkipTurn path is available through
-`c6_data::loaded_actions::transition::prepare_with_auto_notification_queries`
-and `PreparedSkipTurn::commit`, reaching `HeadlessMessagesProcessed` for its
-qualified inputs. It takes typed current state, rules and profile inputs;
-complete gameplay state and RNG parity remain unproven.
-
-A qualified Linux initialized-state FoundCity composition also reaches
-`HeadlessMessagesProcessed`, including City and District creation, territory,
-population, capital and Palace, settler consumption, and an external production
-decision. Its representative native comparison matches the captured gameplay
-components and RNG endpoints. Source-qualified planning output is omitted;
-complete RNG ownership and arbitrary-state/configuration parity remain unproven.
-These lower-level Rust APIs require explicit current owners and providers; they
-do not enable general `Engine::apply` or C ABI gameplay requests.
-
-For consecutive supported actions, use
-`c6_data::loaded_actions::session::Session::from_initialized` with caller-supplied
-initialized state, rules and stock services. The [typed early-game example](crates/c6-data/examples/early_game_session.rs)
+Use `c6_data::loaded_actions::session::Session::from_initialized` with
+caller-supplied initialized typed state, matching rules and required services.
+The [typed early-game example](crates/c6-data/examples/early_game_session.rs)
 caches rule definitions, selects research and city production, and advances the
-same Session using required turn services. Pending decisions and partial errors
-remain visible. The example does not create an initialized game or supply missing
-gameplay services; run `cargo run -p c6-data --example early_game_session` for its
-input contract.
+same Session. Pending decisions and partial errors remain visible. The example
+does not create an initialized game; run
+`cargo run -p c6-data --example early_game_session` for its input contract.
+General `Engine::apply` and C ABI gameplay actions, including EndTurn, remain
+unsupported. Complete gameplay state and RNG ownership, arbitrary configurations
+and long-game integration remain unfinished.
 
 The active compatibility target is the supplied Linux XP2 profile. Historical
 Windows data does not establish Linux coverage. Supported operations retain
@@ -80,8 +69,8 @@ fn main() -> Result<(), c6_core::Error> {
 ```
 
 This operates on the small `Engine` envelope. Cloning it does not clone a fully
-initialized Civ VI game. Complete live-world reconstruction and decision-to-
-decision progression remain separate work.
+initialized Civ VI game. Complete live-world reconstruction remains unfinished;
+supported decision-to-decision progression uses the Rust Session described above.
 
 ## Attribution
 
