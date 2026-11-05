@@ -1,6 +1,7 @@
 //! Live Linux delayed Unit death and Placement.Remove. Reached unsupported
 //! synchronous consumers retain their native state prefix and return an error.
 pub mod effects;
+pub mod immediate;
 pub mod objects;
 pub mod stock;
 
@@ -20,6 +21,7 @@ pub enum Error<E, P = E> {
     ObjectCleanup(Box<c6_core::unit_kill::objects::Error<Error<E, P>>>),
     CommonEffect(crate::unit_modifier_effect::Error),
     State(c6_core::loaded_state::Error),
+    Roster(c6_core::loaded_state::unit_removal::RemovalError),
     World(c6_core::world::MissingInput),
     Occupancy(c6_core::unit_occupancy::OccupancyError),
     Sight(c6_core::unit_sight::SightError<sight::Error<P>>),

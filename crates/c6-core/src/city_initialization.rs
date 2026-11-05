@@ -64,6 +64,31 @@ pub fn allocate<T>(records: &mut Recycled<T>) -> Result<Option<Allocation>, Erro
     }))
 }
 
+/// Native Unit Remove2baa8e0/Formation Remove: destructors run BEFORE this
+/// storage step. Freed indices are PREPENDED to the free list; generation
+/// bits remain unchanged until the next Add. Callers preserve destructor order.
+pub fn release_slot<T>(records: &mut Recycled<T>, slot: u32) -> Result<Option<T>, Error> {
+    validate(records)?;
+    let Some(at) = records
+        .entries
+        .iter()
+        .position(|row| row.index as u32 == slot)
+    else {
+        return Ok(None);
+    };
+    records
+        .free_links
+        .try_reserve(1)
+        .map_err(|_| Error::ResourceLimit)?;
+    let value = records.entries.remove(at).value;
+    records.free_links.insert(0, slot);
+    records.free_head = slot;
+    if records.free_tail == u32::MAX {
+        records.free_tail = slot;
+    }
+    Ok(Some(value))
+}
+
 impl Allocation {
     pub fn insert<T>(self, records: &mut Recycled<T>, value: T) -> Result<(), Error> {
         if self.slot >= records.capacity
@@ -261,4 +286,58 @@ pub fn create<C: Context>(
     current.turn_city_founded = founded_turn;
     current.header.last_warmonger_penalty.fill(0);
     Ok(Some(city))
+}
+
+#[cfg(test)]
+mod release_tests {
+    use super::*;
+    #[test]
+    fn release_prepends_free_slots_and_preserves_generation_until_add() {
+        let mut records = Recycled {
+            capacity: 8,
+            entries: vec![
+                Slot {
+                    index: 0,
+                    value: 10,
+                },
+                Slot {
+                    index: 1,
+                    value: 11,
+                },
+            ],
+            current_id_bits: 0x20000,
+            free_head: 2,
+            free_tail: 7,
+            free_links: (2..8).collect(),
+        };
+        assert_eq!(release_slot(&mut records, 0).unwrap(), Some(10));
+        assert_eq!(release_slot(&mut records, 1).unwrap(), Some(11));
+        assert_eq!(records.free_links, vec![1, 0, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(
+            (
+                records.free_head,
+                records.free_tail,
+                records.current_id_bits
+            ),
+            (1, 7, 0x20000)
+        );
+        let next = allocate(&mut records).unwrap().unwrap();
+        assert_eq!((next.slot, next.id), (1, 0x30001));
+    }
+    #[test]
+    fn releasing_last_allocated_slot_into_empty_free_list_sets_both_ends() {
+        let mut records = Recycled {
+            capacity: 8,
+            entries: (0..8).map(|i| Slot { index: i, value: i }).collect(),
+            current_id_bits: 0x80000,
+            free_head: u32::MAX,
+            free_tail: u32::MAX,
+            free_links: vec![],
+        };
+        assert_eq!(release_slot(&mut records, 3).unwrap(), Some(3));
+        assert_eq!((records.free_head, records.free_tail), (3, 3));
+        let before = records.clone();
+        assert_eq!(release_slot(&mut records, 3).unwrap(), None);
+        assert_eq!(records, before);
+    }
 }

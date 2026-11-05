@@ -5491,4 +5491,5 @@ pub mod city_build_initialization;
 mod object_pairing_current;
 
 pub mod unit_creation;
+pub mod unit_removal;
 pub mod unit_arrays;

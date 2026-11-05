@@ -1206,3 +1206,4 @@ pub(crate) mod tests {
 }
 
 pub mod unit_creation;
+pub mod unit_removal;

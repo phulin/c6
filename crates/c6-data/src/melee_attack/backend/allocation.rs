@@ -266,4 +266,158 @@ impl EffectRuntime {
             },
         )
     }
+    /// Unit.~Instance first assigns its normal modifier-object shared pointer
+    /// empty. The supported stock path has already delivered UnitRemoved and
+    /// cleared every logical owned/affected/tracked reference. Do not erase a
+    /// live graph or silently substitute empty cleanup metadata.
+    pub fn release_destroyed_unit_wrapper(
+        &mut self,
+        state: &LoadedState,
+        unit: UnitReference,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        let matching = self
+            .objects
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.1.kind == ContextObject::Unit(unit))
+            .map(|(i, _)| i)
+            .collect::<Vec<_>>();
+        if matching.is_empty() {
+            if self
+                .allocations
+                .absent_unit_wrappers
+                .contains(&(unit, [0, 0]))
+            {
+                return Ok(());
+            }
+            return Err(QueryError::Missing("current Unit normal-wrapper cache"));
+        }
+        if matching.len() != 1 || self.objects[matching[0]].1.unit_sort_suffix != Some([0, 0]) {
+            return Err(QueryError::Unsupported(
+                "Unit destructor additional ability-wrapper references",
+            ));
+        }
+        let at = matching[0];
+        let (handle, object) = &self.objects[at];
+        let modifiers = self
+            .unit_modifiers
+            .as_ref()
+            .ok_or(QueryError::Missing("Unit destructor modifier graph"))?;
+        ensure_releasable_unit_object(*handle, object, modifiers)?;
+        // Stock destruction callbacks capture raw receiver/member pointers.
+        // Signal destruction clears these subscriptions without dispatch.
+        self.objects[at]
+            .1
+            .unit_lifecycle
+            .as_mut()
+            .expect("checked")
+            .destroyed
+            .clear_subscriptions()
+            .map_err(|_| {
+                QueryError::Unsupported("Unit destructor held destruction subscriptions")
+            })?;
+        self.objects.remove(at);
+        if !self
+            .allocations
+            .absent_unit_wrappers
+            .contains(&(unit, [0, 0]))
+        {
+            self.allocations.absent_unit_wrappers.push((unit, [0, 0]));
+        }
+        // Neither source instance counter rewinds when an object is released.
+        Ok(())
+    }
+}
+
+fn ensure_releasable_unit_object(
+    handle: u64,
+    object: &Object,
+    modifiers: &[c6_core::unit_kill::objects::Modifier],
+) -> Result<(), QueryError> {
+    let life = object
+        .unit_lifecycle
+        .as_ref()
+        .ok_or(QueryError::Missing("Unit destructor object lifecycle"))?;
+    if !life.owned_modifiers.is_empty() || !life.affected.entries().is_empty() {
+        return Err(QueryError::Unsupported(
+            "Unit destructor before owned/affected cleanup",
+        ));
+    }
+    if modifiers.iter().any(|m| {
+        m.context == handle
+            || m.applied.contains(&handle)
+            || m.tracked.iter().any(|t| t.object == handle)
+    }) {
+        return Err(QueryError::Unsupported(
+            "Unit destructor surviving modifier references",
+        ));
+    }
+    Ok(())
+}
+#[cfg(test)]
+mod destruction_tests {
+    use super::*;
+    use c6_core::{
+        unit_kill::objects as k,
+        unit_moved_signal::{modifiers as m, ListenerRing},
+    };
+    fn object() -> Object {
+        Object {
+            kind: ContextObject::Unit(UnitReference { owner: 0, id: 7 }),
+            instance_id: 11,
+            unit_sort_suffix: Some([0, 0]),
+            unit_lifecycle: Some(k::Object {
+                pool_ordinal: 0,
+                owned_modifiers: vec![],
+                affected: m::AffectedModifiers::from_sorted(vec![]).unwrap(),
+                destroyed: ListenerRing::from_ordered(&[]).unwrap(),
+            }),
+        }
+    }
+    #[test]
+    fn owned_modifiers_must_be_really_destroyed_before_cache_release() {
+        let mut object = object();
+        assert!(ensure_releasable_unit_object(1, &object, &[]).is_ok());
+        object
+            .unit_lifecycle
+            .as_mut()
+            .unwrap()
+            .owned_modifiers
+            .push(19);
+        assert!(ensure_releasable_unit_object(1, &object, &[]).is_err());
+        assert_eq!(
+            object.unit_lifecycle.as_ref().unwrap().owned_modifiers,
+            [19]
+        );
+    }
+    #[test]
+    fn a_tracked_reference_blocks_release_even_if_affected_list_is_empty() {
+        let object = object();
+        let modifier = k::Modifier {
+            receiver: 2,
+            context: 3,
+            instance: 4,
+            control: m::Modifier {
+                enabled: true,
+                suppressed: false,
+                owner_requirement_set: None,
+            },
+            permanent: false,
+            definition: vec![],
+            stack_limit: 0,
+            effect: 5,
+            tracked: vec![k::Tracked {
+                object: 1,
+                state: m::TrackedSubject {
+                    requirement_set: None,
+                    applied: 1,
+                    removed: false,
+                },
+                destruction_subscription: None,
+            }],
+            applied: vec![],
+        };
+        assert!(ensure_releasable_unit_object(1, &object, &[modifier]).is_err());
+    }
 }
