@@ -18,6 +18,10 @@ pub struct Definitions {
     maintenance: Vec<i32>,
     corps_q8: i32,
     army_q8: i32,
+    gold_index: i32,
+    park_gold: i32,
+    buildings: Vec<(u32, i32, bool)>,
+    districts: Vec<(u32, i32)>,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
@@ -67,9 +71,74 @@ impl Definitions {
             let whole = value.floor();
             Ok((whole as i32).wrapping_shl(8) | (((value - whole) * 256.) as i32 & 255))
         };
+        let integer = |row: crate::Row<'_>, column: &'static str| {
+            row.get(column)
+                .ok()
+                .and_then(sql_integer)
+                .ok_or(Error::Unsupported("tax city maintenance definition"))
+        };
+        let mut buildings = Vec::new();
+        let building_registry = collection(rules, "Buildings", "BuildingType")
+            .map_err(|_| Error::Unsupported("tax Buildings"))?;
+        let building_table = rules
+            .gameplay()
+            .table("Buildings")
+            .ok_or(Error::Unsupported("tax Buildings"))?;
+        let xp = rules
+            .gameplay()
+            .table("Buildings_XP2")
+            .ok_or(Error::Unsupported("tax Buildings_XP2"))?;
+        for entry in building_registry.entries() {
+            let row = building_table
+                .row_by_id(entry.database_rowid)
+                .ok_or(Error::Unsupported("tax Building row"))?;
+            let hash = crate::registry::linux_type_hash(&entry.type_name);
+            let mut climate = false;
+            if let Some(row) = xp.rows().find(|r| {
+                r.text("BuildingType")
+                    .ok()
+                    .map(|v| crate::registry::linux_type_hash(v.as_bytes()))
+                    == Some(hash)
+            }) {
+                climate = integer(row, "CostMultiplierPerTile")? > 0
+                    && integer(row, "CostMultiplierPerSeaLevel")? > 0;
+            }
+            buildings.push((hash, integer(row, "Maintenance")?, climate));
+        }
+        let district_registry = collection(rules, "Districts", "DistrictType")
+            .map_err(|_| Error::Unsupported("tax Districts"))?;
+        let district_table = rules
+            .gameplay()
+            .table("Districts")
+            .ok_or(Error::Unsupported("tax Districts"))?;
+        let districts = district_registry
+            .entries()
+            .iter()
+            .map(|e| {
+                let row = district_table
+                    .row_by_id(e.database_rowid)
+                    .ok_or(Error::Unsupported("tax District row"))?;
+                Ok((
+                    crate::registry::linux_type_hash(&e.type_name),
+                    integer(row, "Maintenance")?,
+                ))
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
+        let yields = collection(rules, "Yields", "YieldType")
+            .map_err(|_| Error::Unsupported("tax Yields"))?;
+        let gold_index = yields
+            .entries()
+            .iter()
+            .position(|e| e.type_name == b"YIELD_GOLD")
+            .and_then(|v| i32::try_from(v).ok())
+            .ok_or(Error::Unsupported("tax gold yield index"))?;
         Ok(Self {
             binding: state.binding().clone(),
             units,
+            gold_index,
+            park_gold: parameter("NATIONAL_PARK_GOLD_YIELD_PER_TOURISM")? >> 8,
+            buildings,
+            districts,
             maintenance,
             corps_q8: parameter("UNIT_CORPS_COST_MODIFIER")?,
             army_q8: parameter("UNIT_ARMY_COST_MODIFIER")?,
@@ -140,6 +209,8 @@ impl CurrentDeals {
 }
 pub struct Queries<'a> {
     pub capabilities: &'a Membership,
+    pub cities: Option<crate::loaded_actions::stock_notifications::city_queries::Inputs<'a>>,
+    pub city_order: Option<&'a [u32]>,
 }
 pub trait Effects {
     /// Source SetGoldBalance: report20f2116e THEN GameSignals+9f0. The stored
@@ -168,13 +239,22 @@ fn treasury(
 }
 /// Current source no-city contributor path; checks other gameplay contributors
 /// independently, including Economic.IsActive's actual capability gate.
-pub fn gold_yield(state: &LoadedState, queries: &Queries<'_>, owner: i32) -> Result<i32, Error> {
+pub fn gold_yield(
+    state: &LoadedState,
+    defs: &Definitions,
+    queries: &Queries<'_>,
+    owner: i32,
+) -> Result<i32, Error> {
     let p = player(state, owner)?;
     if p.culture.anarchy_end_turn >= 0 {
         return Ok(0);
     }
-    if !p.cities.records.entries.is_empty() {
-        return Err(Error::Unsupported("City gold and park yields"));
+    let mut total = 0i32;
+    for &city in ordered_cities(state, queries, owner)? {
+        total = total.wrapping_add(city_gold(state, defs, queries, owner, city)?);
+    }
+    if defs.park_gold > 0 && !p.cities.records.entries.is_empty() {
+        return Err(Error::Unsupported("current national park gold tourism"));
     }
     if p.religion.belief_yields.iter().any(|r| r.amount != 0) {
         return Err(Error::Unsupported("gold belief contributors"));
@@ -212,17 +292,115 @@ pub fn gold_yield(state: &LoadedState, queries: &Queries<'_>, owner: i32) -> Res
     {
         return Err(Error::Unsupported("gold tributary/GP yield modifiers"));
     }
-    Ok(p.treasury.gold_rate_change_q8)
+    Ok(total.wrapping_add(p.treasury.gold_rate_change_q8))
+}
+fn ordered_cities<'a>(
+    state: &LoadedState,
+    queries: &Queries<'a>,
+    owner: i32,
+) -> Result<&'a [u32], Error> {
+    let p = player(state, owner)?;
+    if p.cities.records.entries.is_empty() {
+        return Ok(&[]);
+    }
+    let order = queries
+        .city_order
+        .ok_or(Error::Unsupported("tax current City order"))?;
+    if order.len() != p.cities.records.entries.len()
+        || order.iter().enumerate().any(|(i, id)| {
+            order[..i].contains(id)
+                || !p
+                    .cities
+                    .records
+                    .entries
+                    .iter()
+                    .any(|e| e.value.header.id == *id)
+        })
+    {
+        return Err(Error::Unsupported("tax current City order membership"));
+    }
+    Ok(order)
+}
+fn city_gold(
+    state: &LoadedState,
+    defs: &Definitions,
+    queries: &Queries<'_>,
+    owner: i32,
+    city: u32,
+) -> Result<i32, Error> {
+    let input = queries
+        .cities
+        .ok_or(Error::Unsupported("tax current City yield services"))?;
+    input
+        .current
+        .calculate(state, owner, city, defs.gold_index, 0, input.definitions)
+        .map_err(|_| Error::Unsupported("tax current City gold yield"))
+}
+fn city_maintenance(
+    state: &LoadedState,
+    defs: &Definitions,
+    queries: &Queries<'_>,
+    owner: i32,
+) -> Result<i32, Error> {
+    let p = player(state, owner)?;
+    let mut total = 0i32;
+    for &id in ordered_cities(state, queries, owner)? {
+        let city = state
+            .city(owner, id)
+            .map_err(|_| Error::Unsupported("tax maintenance City"))?;
+        for &(hash, base, climate) in &defs.buildings {
+            let location = city
+                .buildings
+                .building_locations
+                .iter()
+                .rfind(|r| r.definition_hash == hash)
+                .ok_or(Error::Unsupported("tax current building location"))?
+                .value;
+            if location < 0 {
+                continue;
+            }
+            let pillaged = city
+                .buildings
+                .pillaged
+                .iter()
+                .rfind(|r| r.definition_hash == hash)
+                .ok_or(Error::Unsupported("tax current building pillage"))?
+                .value;
+            if pillaged {
+                continue;
+            }
+            if climate {
+                return Err(Error::Unsupported("current flood-barrier maintenance"));
+            }
+            total = total.wrapping_add(base.wrapping_shl(8));
+        }
+        for &(hash, base) in &defs.districts {
+            let instances = p
+                .districts
+                .records
+                .entries
+                .iter()
+                .map(|e| &e.value)
+                .filter(|d| d.city_id == id && d.district_hash == hash);
+            if instances.clone().any(|d| d.is_complete) && instances.clone().any(|d| !d.pillaged) {
+                total = total.wrapping_add(base.wrapping_shl(8));
+            }
+        }
+    }
+    Ok(total)
 }
 fn formation_cost(maintenance: i32, multiplier: i32) -> i32 {
     let q8 = c6_core::city_production::execution::multiply(maintenance.wrapping_shl(8), multiplier);
     (q8 >> 8).wrapping_add(((q8 as u32 >> 7) & 1) as i32)
 }
-fn maintenance(state: &LoadedState, defs: &Definitions, owner: i32) -> Result<i32, Error> {
+fn maintenance(
+    state: &LoadedState,
+    defs: &Definitions,
+    queries: &Queries<'_>,
+    owner: i32,
+) -> Result<i32, Error> {
     let p = player(state, owner)?;
-    if !p.cities.records.entries.is_empty() {
-        return Err(Error::Unsupported("City maintenance"));
-    }
+    let city_total = city_maintenance(state, defs, queries, owner)?;
     let discount = p.treasury.maintenance_discount_per_unit;
     let units = state
         .world()
@@ -230,7 +408,7 @@ fn maintenance(state: &LoadedState, defs: &Definitions, owner: i32) -> Result<i3
         .map_err(|_| Error::Unsupported("maintenance owner"))?
         .unit_records()
         .map_err(|_| Error::Unsupported("maintenance current units"))?;
-    let mut total = 0i32;
+    let mut total = city_total;
     for (index, &base) in defs.maintenance.iter().enumerate() {
         if base <= 0 {
             continue;
@@ -279,6 +457,15 @@ fn maintenance(state: &LoadedState, defs: &Definitions, owner: i32) -> Result<i3
     }
     Ok(total)
 }
+fn siphon_amount<E>(
+    stored: i32,
+    current_yield: impl FnOnce() -> Result<i32, E>,
+) -> Result<Option<i32>, E> {
+    if stored <= 0 {
+        return Ok(None);
+    }
+    Ok(Some(stored.min(current_yield()? >> 8)))
+}
 fn set_balance(
     state: &mut LoadedState,
     effects: &mut impl Effects,
@@ -302,21 +489,35 @@ pub fn tax(
     if !queries.capabilities.has(0x798f719c) {
         return Ok(());
     }
-    let gold = gold_yield(state, queries, owner)?;
+    let gold = gold_yield(state, defs, queries, owner)?;
     treasury(state, owner)?.cached_net_income_q8 = gold;
-    // ApplySiphonLosses traverses current cities and mutates their siphoned gold.
-    if !player(state, owner)?.cities.records.entries.is_empty() {
-        return Err(Error::Unsupported("City siphon losses"));
+    let mut siphoned = 0i32;
+    for index in 0..ordered_cities(state, queries, owner)?.len() {
+        let city = ordered_cities(state, queries, owner)?[index];
+        let current = state
+            .city(owner, city)
+            .map_err(|_| Error::Unsupported("tax current siphon City"))?
+            .gold
+            .siphoned_gold;
+        let Some(loss) = siphon_amount(current, || city_gold(state, defs, queries, owner, city))?
+        else {
+            continue;
+        };
+        siphoned = siphoned.wrapping_add(loss.wrapping_shl(8));
+        let gold = &mut state
+            .city_mut(owner, city)
+            .map_err(|_| Error::Unsupported("tax current siphon store"))?
+            .gold;
+        gold.siphoned_gold = gold.siphoned_gold.wrapping_sub(loss);
     }
-    // Source still assigns cached net on the empty siphon result.
-    treasury(state, owner)?.cached_net_income_q8 = gold;
-    let cost = maintenance(state, defs, owner)?;
+    treasury(state, owner)?.cached_net_income_q8 = gold.wrapping_sub(siphoned);
+    let cost = maintenance(state, defs, queries, owner)?;
     let net = player(state, owner)?
         .treasury
         .cached_net_income_q8
         .wrapping_sub(cost);
     treasury(state, owner)?.cached_net_income_q8 = net;
-    let excluding = gold_yield(state, queries, owner)?; // source fresh query, not net
+    let excluding = gold_yield(state, defs, queries, owner)?; // source fresh query, not net
     treasury(state, owner)?.cached_net_income_excluding_trade_q8 = excluding;
     let balance = player(state, owner)?
         .treasury
@@ -349,6 +550,14 @@ mod tests {
         assert_eq!(formation_cost(3, 384), 5);
         assert_eq!(formation_cost(1, 383), 1);
         assert_eq!(formation_cost(i32::MAX, 256), -1);
+    }
+    #[test]
+    fn siphon_skips_unneeded_yield_and_caps_to_whole_current_gold() {
+        assert_eq!(siphon_amount(0, || Err::<i32, _>("not reached")), Ok(None));
+        assert_eq!(siphon_amount(-1, || Err::<i32, _>("not reached")), Ok(None));
+        assert_eq!(siphon_amount(5, || Ok::<_, ()>(2 * 256 + 255)), Ok(Some(2)));
+        assert_eq!(siphon_amount(1, || Ok::<_, ()>(3 * 256)), Ok(Some(1)));
+        assert_eq!(siphon_amount(1, || Ok::<_, ()>(-1)), Ok(Some(-1)));
     }
     #[test]
     fn clamped_balance_differs_from_wrapping_income() {
