@@ -178,8 +178,19 @@ pub fn recheck<E>(
         let active = match source.active {
             Active::Dynamic => dynamic().next().is_some(),
             Active::Trader => {
+                // CountOutgoingRoutesTo walks source Cities, then the viewed
+                // player's Cities. Either empty current roster returns zero
+                // before any Graph/route getter, even when the viewer has a City.
                 if !player.cities.records.entries.is_empty() {
-                    return Err(Error::Missing("current outgoing trade routes"));
+                    let viewed = state
+                        .retained()
+                        .players
+                        .iter()
+                        .find(|p| p.header.owner == other)
+                        .ok_or(Error::Missing("viewed trade-route player"))?;
+                    if !viewed.cities.records.entries.is_empty() {
+                        return Err(Error::Missing("current outgoing trade routes"));
+                    }
                 }
                 false
             }
