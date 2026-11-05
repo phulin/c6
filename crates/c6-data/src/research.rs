@@ -14,6 +14,7 @@ use c6_core::{
     relic_creation::boost, research_acquisition as acquisition, research_turn,
 };
 pub use research_turn::{InsertMode, Kind};
+pub mod barbarian;
 mod culture_turn;
 pub mod diplomacy;
 pub mod districts;
@@ -34,6 +35,12 @@ pub enum Error<E> {
     Binding,
     IllegalTechnology(i32),
     IllegalCivic(i32),
+    /// An acquisition callback reached an external choice. The preceding
+    /// acquisition prefix remains applied; this error is not a resume token.
+    TechnologyChoiceDuringAcquisition {
+        player: i32,
+        legal_indices: Vec<i32>,
+    },
     Missing(&'static str),
     Effect(E),
     Kernel(Box<boost::Error<Error<E>>>),
@@ -174,6 +181,7 @@ pub struct Definitions {
     civic_random_agendas: Vec<u32>,
     civic_obsolete_actions: Vec<u32>,
     resource_tech_prerequisites: Vec<u32>,
+    barbarian: barbarian::Definitions,
     district_costs: districts::Definitions,
     diplomatic_visibility: diplomacy::Definitions,
     chronology: Vec<i32>,
@@ -447,6 +455,7 @@ impl Definitions {
             districts::Definitions::from_rules(rules, bound, unit_costs.economic())
                 .map_err(Error::DistrictCosts)?;
         Ok(Self {
+            barbarian: barbarian::Definitions::from_rules(rules)?,
             binding: bound.destination_binding().clone(),
             route_prerequisites,
             technology_modifiers,
@@ -938,7 +947,16 @@ impl<E: Effects> Context<'_, E> {
             .map_err(Error::State)?
             != 3
         {
-            return Err(Error::Missing("external technology choice continuation"));
+            let legal_indices = self.technology_choices(player)?;
+            if !legal_indices.is_empty() {
+                return Err(Error::TechnologyChoiceDuringAcquisition {
+                    player,
+                    legal_indices,
+                });
+            }
+            // QueueNextTech's positive-candidate scan and fallback weighted
+            // vector cannot select or draw when CanResearch is false for all
+            // definitions. This leaves automatic acquisition free to finish.
         }
         Ok(())
     }
