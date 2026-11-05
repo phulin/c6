@@ -15,6 +15,11 @@ pub enum Progress {
     PlayerUpdates,
     Returned,
 }
+#[derive(Clone, Copy)]
+pub(crate) enum TurnMessage {
+    PlayerComplete { player: i32, reason: u32 },
+    GameComplete { player: i32 },
+}
 /// The bound service borrows current rule/query owners. It receives the same
 /// backend and update runtime for every call, including later rounds.
 pub trait Services<P> {
@@ -29,6 +34,17 @@ pub trait Services<P> {
     ) -> Result<Progress, Error>;
 }
 impl<'a, P> Runtime<'a, P> {
+    /// Player.Processor.EndTurn broadcasts this message. Its Execute is drained
+    /// only after the current parent message returns, using the same FIFO as
+    /// externally queued NPC completions.
+    pub fn broadcast_game_turn_complete(&mut self, state: &LoadedState) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Unsupported("GameTurnComplete queue binding"))?;
+        self.turn_messages.push_back(TurnMessage::GameComplete {
+            player: state.retained().core.local_player,
+        });
+        Ok(())
+    }
     pub fn bind_round_services(
         &mut self,
         state: &LoadedState,

@@ -22,6 +22,44 @@ pub fn configured_game_end_turn(start: i32, max_turns: i32, limit_type: Option<u
     }
 }
 
+/// GameTurnComplete.Execute2d232b0 prefix. `true` owes one mandatory Update
+/// followed by a second only if this player remains active. Unlike ordinary
+/// PlayerTurnComplete there is no initial active-player/completed guard.
+pub fn game_turn_complete_prefix(state: &mut LoadedState, owner: i32) -> Result<bool, Error> {
+    if state.retained.core.game_processor.advance_turn || owner as u32 > 63 {
+        return Ok(false);
+    }
+    state.world.player(owner).map_err(super::missing)?;
+    changed(state)?;
+    state.retained.core.player_processor.game_complete[owner as usize] = true;
+    Ok(true)
+}
+
+/// Autoplay.EndTurn2824910 inactive branch still sets EndTurnSignaled=true.
+pub fn inactive_autoplay_end(runtime: &mut Runtime) -> Result<(), Error> {
+    match runtime.inputs.autoplay.active {
+        Some(false) => { runtime.inputs.autoplay.end_turn_signaled = Some(true); Ok(()) },
+        Some(true) => Err(Error::Unsupported("active Autoplay.EndTurn counters/script")),
+        None => Err(Error::Unsupported("current Autoplay active state")),
+    }
+}
+
+/// Game.DoAutomation2a0cae0 over already-processed players. Unprocessed
+/// players require the existing unit-automation continuation before proceeding.
+pub fn processed_automation_pass(state: &LoadedState, mut mode: impl FnMut(&LoadedState)->Result<u32,Error>) -> Result<(), Error> {
+    for &owner in &state.retained.core.game_processor.turn_order {
+        if !state.world.player_is_valid(owner).map_err(super::missing)? { continue; }
+        let index = usize::try_from(owner).ok().filter(|&v|v<64)
+            .ok_or(Error::Unsupported("automation current player index"))?;
+        if !state.retained.core.player_processor.automation_processed[index] {
+            return Err(Error::Unsupported("phase unprocessed player automation"));
+        }
+        if !super::activation::is_simultaneous(state, owner, &mut mode)?
+            && state.turn_active(owner).map_err(super::missing)? { break; }
+    }
+    Ok(())
+}
+
 /// Final Player.TurnManager.DoEndTurn leaf, after Units and Cities complete.
 /// Culture.DoEndTurn2a736c0 clears only the civic-completed boolean (FAV+458,
 /// value+468; getter27cb5b0). The recorded civic hash and government flag stay.
@@ -277,6 +315,17 @@ pub fn unprocessed_automation(state: &LoadedState, alive: &[i32]) -> Result<i32,
     Ok(count)
 }
 
+/// SetTurnSegmentDisabled2a55380 ignores INVALID, index zero and indices past
+/// the current list. The admitted registry supplies the actual native index.
+pub fn set_segment_disabled(state: &mut LoadedState, hash: u32, native_index: i32, disabled: bool) -> Result<(), Error> {
+    if native_index <= 0 || native_index as usize >= state.retained.core.phase_processor.turn_segments.len() { return Ok(()); }
+    let index = state.retained.core.phase_processor.turn_segments.iter().position(|s|s.hash == hash)
+        .ok_or(Error::Unsupported("current phase segment remap"))?;
+    changed(state)?;
+    state.retained.core.phase_processor.turn_segments[index].disabled = disabled;
+    Ok(())
+}
+
 pub trait PhaseEffects {
     fn allow_tactical(&mut self, state: &LoadedState) -> Result<bool, Error>;
     fn automation(&mut self, state: &mut LoadedState) -> Result<(), Error>;
@@ -435,6 +484,28 @@ pub fn xp2_begin_world(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn round_queue_game_completion_preserves_advance_guard_and_inactive_player_path() {
+        let (mut state, _, owner) = crate::loaded_state::tests::current_update_player_fixture();
+        state.retained.core.game_processor.advance_turn = true;
+        let revision = state.revision;
+        assert!(!super::game_turn_complete_prefix(&mut state, -1).unwrap());
+        assert_eq!(state.revision, revision);
+        state.retained.core.game_processor.advance_turn = false;
+        state.controls.as_mut().unwrap().players[0].turn_active = Some(false);
+        state.retained.core.player_processor.game_complete[owner as usize] = false;
+        assert!(super::game_turn_complete_prefix(&mut state, owner).unwrap());
+        assert!(state.retained.core.player_processor.game_complete[owner as usize]);
+        assert!(!state.turn_active(owner).unwrap());
+    }
+    #[test]
+    fn round_queue_inactive_autoplay_still_signals_end_turn() {
+        let (_, mut runtime, _) = crate::loaded_state::tests::current_update_player_fixture();
+        runtime.inputs.autoplay.active = Some(false);
+        runtime.inputs.autoplay.end_turn_signaled = Some(false);
+        super::inactive_autoplay_end(&mut runtime).unwrap();
+        assert_eq!(runtime.inputs.autoplay.end_turn_signaled, Some(true));
+    }
     #[test]
     fn culture_end_turn_clears_completion_without_rewriting_hash_or_government() {
         let mut state = crate::loaded_state::tests::state();

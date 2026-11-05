@@ -90,6 +90,7 @@ pub trait Backend: lifecycle::Backend {
 }
 /// These are admitted immutable definitions/source projections, never scalar
 /// precomputed IsNeeded answers. They are built once before the first action.
+#[derive(Clone, Copy)]
 pub struct Inputs<'a> {
     pub definitions: &'a Definitions,
     pub configuration: &'a configuration::Configuration<'a>,

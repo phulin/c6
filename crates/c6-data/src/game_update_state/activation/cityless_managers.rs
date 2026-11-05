@@ -252,9 +252,16 @@ pub struct Runtime {
     pub climate: Vec<ClimateConsumption>,
     pub parks: Vec<c6_core::game_national_parks::ParkData>,
     congress: Option<CongressInputs>,
+    pub(crate) congress_round: Option<crate::game_update_state::round_congress::Current>,
     emergency_signals: Option<Vec<c6_core::game_emergency::Signal>>,
 }
 impl Runtime {
+    pub fn initialize_congress_round(&mut self, state: &LoadedState, current: crate::game_update_state::round_congress::Current) -> Result<(), Error> {
+        self.validate(state)?;
+        if self.congress_round.is_some() { return Err(missing("Congress round already initialized")); }
+        self.congress_round = Some(current);
+        Ok(())
+    }
     pub fn congress(&self, state: &LoadedState) -> Result<&CongressInputs, Error> {
         self.validate(state)?;
         self.congress
@@ -301,6 +308,7 @@ impl Runtime {
             climate,
             parks,
             congress: None,
+            congress_round: None,
             emergency_signals: None,
         }
     }

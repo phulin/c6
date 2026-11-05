@@ -51,7 +51,6 @@ pub(crate) struct Progress {
     updates: usize,
     in_progress: bool,
     choice: Option<PolicyChoice>,
-    queued_completion: Option<(i32, u32)>,
 }
 impl<P> Runtime<'_, P> {
     pub fn pending_policy_choice(&self) -> Option<&PolicyChoice> {
@@ -215,7 +214,7 @@ fn drive<'b, P, E>(
         i32,
     ) -> Result<ActivationOutcome, E>,
 ) -> Result<Outcome, Error<E>> {
-    loop {
+    'drive: loop {
         if !progress.in_progress {
             match progress.phase {
                 Phase::ConditionalSecond => {
@@ -236,7 +235,19 @@ fn drive<'b, P, E>(
                     // Ordinary begins after the parent Complete.Execute has
                     // returned. Only now may ProcessMessages drain a command
                     // queued by its suspended active-control callback.
-                    if let Some((player, reason)) = progress.queued_completion.take() {
+                    while let Some(message) = context.notifications.backend.turn_messages.pop_front() {
+                        let (player, reason) = match message {
+                            super::round_dispatch::TurnMessage::PlayerComplete { player, reason } => (player, reason),
+                            super::round_dispatch::TurnMessage::GameComplete { player } => {
+                                if loaded::round::game_turn_complete_prefix(context.notifications.state, player)
+                                    .map_err(Error::Completion)? {
+                                    progress.issuer = player;
+                                    progress.phase = Phase::MandatoryFirst;
+                                    continue 'drive;
+                                }
+                                continue;
+                            }
+                        };
                         let prefix = (turn_completion::Context {
                             state: context.notifications.state,
                             effects: &mut context.notifications.backend,
@@ -248,7 +259,7 @@ fn drive<'b, P, E>(
                                 context.notifications.backend.completion_inflight = Some(player);
                                 progress.issuer = player;
                                 progress.phase = Phase::MandatoryFirst;
-                                continue;
+                                continue 'drive;
                             }
                             completion::Prefix::AlreadyComplete => {}
                             completion::Prefix::InvalidEncodedPlayer => {
@@ -385,7 +396,6 @@ pub fn execute<'b, P, E>(
                 updates: 0,
                 in_progress: false,
                 choice: None,
-                queued_completion: None,
             };
             let result = drive(
                 context,
@@ -452,7 +462,7 @@ pub fn resume_end_turn<'b, P, E>(
         .stamp
         .same_instance(context.notifications.state.action_stamp())
         || choice.kind != PolicyKind::PlayerActions
-        || progress.queued_completion.is_some()
+        || context.notifications.backend.turn_messages.iter().any(|m|matches!(m,super::round_dispatch::TurnMessage::PlayerComplete { .. }))
         || runtime.pending_player_effect()
             != Some(c6_core::game_update::PlayerEffect::ActiveControl { player: owner })
         || !context
@@ -470,7 +480,7 @@ pub fn resume_end_turn<'b, P, E>(
         .take()
         .expect("checked");
     progress.choice = None;
-    progress.queued_completion = Some((owner, completion::NONE));
+    context.notifications.backend.turn_messages.push_back(super::round_dispatch::TurnMessage::PlayerComplete { player: owner, reason: completion::NONE });
     let mut resumed_active = |state: &mut LoadedState,
                               backend: &mut Runtime<'b, P>,
                               runtime: &mut loaded::Runtime,

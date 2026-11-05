@@ -2,6 +2,7 @@
 //! Live omitted fields, creator authority, subtype effects and complete
 //! Manager::Update remain explicit dependencies.
 pub mod allocation;
+mod borrowed;
 pub mod initialization;
 pub mod lifecycle;
 pub mod processing;

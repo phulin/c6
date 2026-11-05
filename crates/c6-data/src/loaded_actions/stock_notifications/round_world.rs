@@ -1,9 +1,9 @@
 //! XP2 world upkeep over the existing climate, trade and action owners.
 use super::Runtime;
 use crate::game_update_state::{
-    activation::cityless_managers, round_climate, round_diplomatic_relations, round_eras,
-    round_fallout, round_great_people, round_map, round_quests, round_random_events,
-    round_religion, round_trade,
+    activation::cityless_managers, round_climate, round_congress, round_diplomatic_relations,
+    round_emergency, round_eras, round_fallout, round_great_people, round_map, round_quests,
+    round_random_events, round_religion, round_trade,
 };
 use c6_core::{
     game_capabilities::Membership,
@@ -29,7 +29,7 @@ pub struct Current<'a, 'b, P, E> {
     pub backend: &'a mut Runtime<'b, P>,
     pub map: &'a mut round_map::Runtime,
     pub climate: &'a mut round_climate::Runtime,
-    pub cityless: &'a cityless_managers::Runtime,
+    pub cityless: &'a mut cityless_managers::Runtime,
     pub carbon: round_climate::CarbonRules<'a>,
     pub alive_major_ids: &'a [i32],
     pub trade: &'a mut round_trade::Runtime,
@@ -41,6 +41,9 @@ pub struct Current<'a, 'b, P, E> {
     pub quests: &'a mut round_quests::Runtime,
     pub diplomatic_definitions: &'a round_diplomatic_relations::Definitions,
     pub era_definitions: &'a round_eras::Definitions,
+    pub congress_definitions: &'a round_congress::Definitions,
+    pub favor_definitions: &'a round_congress::favor::Definitions,
+    pub alive_ids: &'a [i32],
     pub capabilities: &'a Membership,
     pub effects: &'a mut E,
 }
@@ -53,6 +56,43 @@ impl<P> round_trade::Effects for Runtime<'_, P> {
     }
 }
 struct EraReports;
+struct Favor<'a, 'b, P> {
+    backend: &'a mut Runtime<'b, P>,
+    definitions: &'a round_congress::favor::Definitions,
+    climate: &'a round_climate::Runtime,
+    alive: &'a [i32],
+    majors: &'a [i32],
+}
+impl<P> round_congress::Effects for Favor<'_, '_, P> {
+    fn favor_per_turn(&mut self, state: &LoadedState, owner: i32) -> Result<i32, Error> {
+        round_congress::favor::calculate(
+            state,
+            self.definitions,
+            owner,
+            self.climate,
+            self.alive,
+            self.majors,
+        )
+    }
+    fn favor_changed(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        amount: i32,
+        reason: i32,
+    ) -> Result<(), Error> {
+        self.backend
+            .deliver_round_report(
+                state,
+                0x68e7d3da,
+                owner,
+                amount,
+                reason,
+                super::turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers,
+            )
+            .map_err(|_| Error::Unsupported("Congress favor scalar report"))
+    }
+}
 impl round_eras::Effects for EraReports {
     fn countdown_started(
         &mut self,
@@ -167,6 +207,10 @@ impl<P, E: Effects<P>> round::WorldEffects for Current<'_, '_, P, E> {
             WorldManager::Fallout => {
                 round_fallout::run(state, self.fallout, self.backend).map_err(|e| format!("{e:?}"))
             }
+            WorldManager::Emergency => {
+                round_emergency::run(state, self.cityless, self.capabilities)
+                    .map_err(|e| format!("{e:?}"))
+            }
             // Economic.DoTurn26472b0 -> RecalculateValues26472c0 returns
             // before both resource calculations when IsActive26471c0's
             // actual monopolies capability is disabled.
@@ -176,6 +220,21 @@ impl<P, E: Effects<P>> round::WorldEffects for Current<'_, '_, P, E> {
             // tables. It destroys both vectors at2656666; there are no manager
             // writes, gameplay signals, commands or random calls in this leaf.
             WorldManager::Heroes => Ok(()),
+            WorldManager::Congress => round_congress::run(
+                state,
+                self.congress_definitions,
+                self.cityless,
+                self.capabilities,
+                self.alive_major_ids,
+                &mut Favor {
+                    backend: self.backend,
+                    definitions: self.favor_definitions,
+                    climate: self.climate,
+                    alive: self.alive_ids,
+                    majors: self.alive_major_ids,
+                },
+            )
+            .map_err(|e| format!("{e:?}")),
             _ => return self.effects.manager_turn(state, self.backend, manager),
         };
         result.map_err(|detail| {

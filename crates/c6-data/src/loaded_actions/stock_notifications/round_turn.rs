@@ -49,6 +49,7 @@ pub trait Effects<P>: round_world::Effects<P> {
         &mut self,
         state: &mut LoadedState,
         backend: &mut Runtime<'_, P>,
+        managers: &crate::game_update_state::activation::cityless_managers::Runtime,
         begin: bool,
         turn: i32,
     ) -> Result<(), Error>;
@@ -118,6 +119,8 @@ pub struct State<'a, 'd, 'r, E> {
     pub quests: crate::game_update_state::round_quests::Runtime,
     pub diplomatic_definitions: crate::game_update_state::round_diplomatic_relations::Definitions,
     pub era_definitions: crate::game_update_state::round_eras::Definitions,
+    pub congress_definitions: crate::game_update_state::round_congress::Definitions,
+    pub favor_definitions: crate::game_update_state::round_congress::favor::Definitions,
     pub capabilities: &'a c6_core::game_capabilities::Membership,
     pub effects: E,
     pub player_end: round_end::Inputs<'a, 'd, 'r>,
@@ -133,9 +136,9 @@ impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, 
         budget: &mut usize,
     ) -> Result<super::round_dispatch::Progress, Error> {
         use super::round_dispatch::{Entry, Progress};
-        let managers = self
+        let mut managers = self
             .cityless
-            .try_borrow()
+            .try_borrow_mut()
             .map_err(|_| Error::Unsupported("round current manager borrow"))?;
         if entry == Entry::AdvancePhase {
             let mut changed = false;
@@ -167,7 +170,7 @@ impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, 
                 backend,
                 map: &mut self.map,
                 climate: &mut self.climate,
-                cityless: &managers,
+                cityless: &mut managers,
                 carbon: crate::game_update_state::round_climate::CarbonRules {
                     resources: self.carbon.resources,
                     game_speed_cost_multiplier: self.carbon.game_speed_cost_multiplier,
@@ -183,6 +186,9 @@ impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, 
                 quests: &mut self.quests,
                 diplomatic_definitions: &self.diplomatic_definitions,
                 era_definitions: &self.era_definitions,
+                congress_definitions: &self.congress_definitions,
+                favor_definitions: &self.favor_definitions,
+                alive_ids: self.alive_ids,
                 capabilities: self.capabilities,
                 effects: &mut self.effects,
             },
@@ -258,7 +264,7 @@ impl<P, E: Effects<P>> round::TurnEffects for Current<'_, '_, '_, '_, P, E> {
     ) -> Result<(), Error> {
         self.world
             .effects
-            .turn_signal(state, self.world.backend, begin, turn)
+            .turn_signal(state, self.world.backend, self.world.cityless, begin, turn)
     }
     fn activate_at_turn_start(
         &mut self,
