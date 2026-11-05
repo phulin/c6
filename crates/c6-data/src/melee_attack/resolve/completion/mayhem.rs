@@ -179,3 +179,42 @@ pub fn on_district_combat(
     }
     Ok(())
 }
+
+/// Unit/District Results use the same real mayhem owner and current HP reads.
+pub fn on_unit_district_combat(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    placement: &unit_placement_state::Definitions<'_, '_>,
+    barbarian_owner: i32,
+    members: &crate::melee_attack::city::Generated,
+) -> Result<(), Error> {
+    if definitions.binding != *state.binding() {
+        return Err(Error::Binding);
+    }
+    let attacker = crate::melee_attack::actor(state, members.attacker).map_err(Error::Actor)?;
+    let barbarians =
+        attacker.e_owner == barbarian_owner || i32::from(members.defender.owner) == barbarian_owner;
+    state
+        .add_global_mayhem(if barbarians {
+            definitions.combat_barbarians
+        } else {
+            definitions.combat
+        })
+        .map_err(Error::State)?;
+    let attacker = crate::melee_attack::actor(state, members.attacker).map_err(Error::Actor)?;
+    if attacker.i_damage
+        >= placement
+            .movement
+            .maximum_damage(attacker)
+            .map_err(Error::Maximum)?
+    {
+        return Err(Error::DistrictDeathContinuation);
+    }
+    let district = state
+        .district(i32::from(members.defender.owner), members.defender.id)
+        .map_err(Error::District)?;
+    if district.garrison_damage >= members.defender_maximum_damage {
+        return Err(Error::DistrictDeathContinuation);
+    }
+    Ok(())
+}

@@ -464,7 +464,7 @@ pub fn on_district_combat<E: Effects>(
         effects,
     )
 }
-fn general_battle<E: Effects>(
+pub(crate) fn general_battle<E: Effects>(
     state: &mut LoadedState,
     defs: &Definitions,
     inputs: Inputs<'_>,

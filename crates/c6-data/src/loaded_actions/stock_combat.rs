@@ -39,6 +39,9 @@ pub struct State<'a> {
     pub statuses: Vec<resolve::surviving::Status>,
     pub deaths: Vec<resolve::UnitDeath>,
     pub resolved: Vec<resolve::completion::ResolvedCombat>,
+    pub city_melees: Vec<melee::city::resolve::Resolved>,
+    pub city_melee_reports: Vec<melee::city::Publication>,
+    pub city_melee_report_scope: Option<melee::city::ReportScope>,
     pub city_strikes: Vec<crate::city_strike::Generated>,
     pub city_strike_reports: Vec<crate::city_strike::reports::Output>,
     pub city_strike_report_scope: Option<crate::city_strike::reports::Scope>,
@@ -66,6 +69,9 @@ impl<'a> State<'a> {
             statuses: Vec::new(),
             deaths: Vec::new(),
             resolved: Vec::new(),
+            city_melees: Vec::new(),
+            city_melee_reports: Vec::new(),
+            city_melee_report_scope: None,
             city_strikes: Vec::new(),
             city_strike_reports: Vec::new(),
             city_strike_report_scope: None,
@@ -96,6 +102,9 @@ impl<'a> State<'a> {
                 statuses: Vec::new(),
                 deaths: Vec::new(),
                 resolved: Vec::new(),
+                city_melees: Vec::new(),
+                city_melee_reports: Vec::new(),
+                city_melee_report_scope: None,
                 city_strikes: Vec::new(),
                 city_strike_reports: Vec::new(),
                 city_strike_report_scope: None,
@@ -126,16 +135,24 @@ impl<'a, P> Runtime<'a, P> {
         state: &LoadedState,
         defender: UnitReference,
     ) -> Result<bool, Error> {
-        let configuration = self.combat_current(state)?.configuration
+        let configuration = self
+            .combat_current(state)?
+            .configuration
             .ok_or(Error::Missing("combat configuration"))?;
         resolve::surviving::combat_notification_required(
-            state, &configuration,
-            self.facts.manager_initialized.zip(self.facts.game_uninitializing),
+            state,
+            &configuration,
+            self.facts
+                .manager_initialized
+                .zip(self.facts.game_uninitializing),
             defender,
-        ).map_err(|e| Error::Requirement(format!("{e:?}")))
+        )
+        .map_err(|e| Error::Requirement(format!("{e:?}")))
     }
     pub(crate) fn combat_mut(&mut self) -> Result<&mut State<'a>, Error> {
-        self.combat.as_mut().ok_or(Error::Missing("current combat services"))
+        self.combat
+            .as_mut()
+            .ok_or(Error::Missing("current combat services"))
     }
     #[allow(clippy::too_many_arguments)]
     /// Loan the SAME mutable modifier stores for one synchronous attack, then
@@ -302,13 +319,16 @@ impl<'a, P> Runtime<'a, P> {
                 );
                 combat = self.combat.take().expect("combat outputs retained");
                 combat.bindings = Some(bindings);
-                let result = result.map(|resolved| {
-                    if let melee::transition::Outcome::Resolved(resolved) = resolved {
+                let result = result.map(|resolved| match resolved {
+                    melee::transition::Outcome::Resolved(resolved) => {
                         combat.resolved.push(resolved);
                         true
-                    } else {
-                        false
                     }
+                    melee::transition::Outcome::CityResolved(resolved) => {
+                        combat.city_melees.push(resolved);
+                        true
+                    }
+                    melee::transition::Outcome::NoTarget => false,
                 });
                 (
                     session
@@ -658,5 +678,40 @@ impl<P> resolve::surviving::Effects for Runtime<'_, P> {
             .melee_queries
             .ok_or(Error::Missing("melee movement queries"))?
             .district(state, attacker, location)
+    }
+}
+
+impl<P> resolve::completion::stock::UnitDistrictEffects for Runtime<'_, P> {
+    fn lua_unit_district_combat_occurred(
+        &mut self,
+        state: &mut LoadedState,
+        _: &mut resolve::completion::stock::Bindings,
+        members: &melee::city::Generated,
+    ) -> Result<(), Error> {
+        self.script
+            .on_combat_occurred(state, Some(members.attacker), None)
+            .map_err(Error::Script)
+    }
+}
+impl<P> melee::city::resolve::Effects for Runtime<'_, P> {
+    fn city_melee_publication(
+        &mut self,
+        state: &mut LoadedState,
+        publication: melee::city::Publication,
+    ) -> Result<(), String> {
+        let current = self.combat_current(state).map_err(|e| format!("{e:?}"))?;
+        if !current
+            .city_melee_report_scope
+            .as_ref()
+            .is_some_and(|s| s.matches(state))
+        {
+            return Err("unqualified city melee publication routes".into());
+        }
+        self.combat
+            .as_mut()
+            .expect("combat output owner")
+            .city_melee_reports
+            .push(publication);
+        Ok(())
     }
 }

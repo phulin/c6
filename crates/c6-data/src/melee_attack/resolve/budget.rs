@@ -35,6 +35,28 @@ where
 {
     let members = pending.members;
     let reference = members.damage.attacker;
+    consume_reference_attack(state, inputs, effects, reference)?;
+    if super::super::actor(state, reference)
+        .map_err(Error::Actor)?
+        .k_combat_modifers
+        .b_can_force_retreat
+    {
+        return Err(Error::ForcedRetreat);
+    }
+    Ok(RequiresPostCombatEffects { members })
+}
+
+/// Shared actual Unit budget tail. The enclosing ResolveCombat checks both
+/// Unit pointers before forced retreat, so District defenders skip that branch.
+pub(crate) fn consume_reference_attack<E>(
+    state: &mut LoadedState,
+    inputs: &Inputs<'_>,
+    effects: &mut E,
+    reference: c6_core::map::UnitReference,
+) -> Result<(), Error<ProviderError<E>>>
+where
+    E: upkeep::Effects + upkeep::OperationReports<Error = ProviderError<E>>,
+{
     let current = super::super::actor(state, reference).map_err(Error::Actor)?;
     let old = current.i_attacks_remaining;
     let next = old.wrapping_sub(1).max(0);
@@ -93,12 +115,5 @@ where
         )
         .map_err(Error::Sync)?;
     }
-    if super::super::actor(state, reference)
-        .map_err(Error::Actor)?
-        .k_combat_modifers
-        .b_can_force_retreat
-    {
-        return Err(Error::ForcedRetreat);
-    }
-    Ok(RequiresPostCombatEffects { members })
+    Ok(())
 }

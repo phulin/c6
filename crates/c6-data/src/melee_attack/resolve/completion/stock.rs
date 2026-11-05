@@ -1,6 +1,7 @@
 //! Ordered stock combat subscribers over persistent signal/runtime owners.
 //! Native addresses and capture qualification belong to the input adapter.
 use super::super::GeneratedMembers;
+pub mod unit_district;
 use super::{boosts, eras, history, mayhem, stock_guards, targets};
 use crate::unit_placement_state;
 use c6_core::{
@@ -10,6 +11,9 @@ use c6_core::{
     map::UnitReference,
     melee_attack::signals::{self, Scope as Signal},
     unit_moved_signal::{ListenerRing, RegistryError, Subscription},
+};
+pub use unit_district::{
+    combat_occurred as unit_district_combat_occurred, Effects as UnitDistrictEffects,
 };
 #[derive(Clone, Copy, Debug)]
 pub enum Callback {

@@ -39,6 +39,7 @@ fn failure(stage: Stage, error: impl std::fmt::Debug) -> Error {
 /// supported mandatory combat continuation; the containing operation continues.
 pub enum Outcome {
     NoTarget,
+    CityResolved(super::city::resolve::Resolved),
     Resolved(resolve::completion::ResolvedCombat),
 }
 pub struct Session<R> {
@@ -166,7 +167,9 @@ impl<R: backend::Requirements> Session<R> {
             + resolve::kill_awards::Effects
             + resolve::post_kill::Effects
             + backend::PostCombatYields
-            + resolve::completion::stock::Effects,
+            + resolve::completion::stock::Effects
+            + super::city::resolve::Effects
+            + resolve::completion::stock::UnitDistrictEffects,
         ProviderError<E>: std::fmt::Debug,
         R::Error: std::fmt::Debug,
         <E as resolve::completion::stock::Effects>::Error: std::fmt::Debug,
@@ -204,6 +207,34 @@ impl<R: backend::Requirements> Session<R> {
             .ok_or_else(|| failure(Stage::Reentry, "attack already active"))?;
         let (_, mut backend) = backend.with_reporting(Reports(effects));
         let result = (|| {
+            if let target_selection::Defender::District(district) = selected {
+                let definitions = inputs
+                    .generation
+                    .city
+                    .ok_or_else(|| failure(Stage::Generate, "city melee definitions"))?;
+                let members = super::city::generate(
+                    state,
+                    &mut backend,
+                    definitions,
+                    inputs.generation,
+                    inputs.experience,
+                    actor,
+                    district,
+                )
+                .map_err(|e| failure(Stage::Generate, e))?;
+                let (reports, _, _, _) = backend.kill_parts();
+                return super::city::resolve::apply(
+                    state,
+                    sight,
+                    reports.0,
+                    definitions,
+                    inputs,
+                    bindings,
+                    members,
+                )
+                .map(Outcome::CityResolved)
+                .map_err(|e| failure(Stage::Completion, e));
+            }
             let pending = match execution::begin_selected(
                 state,
                 Some(inputs.generation.maximum_damage),

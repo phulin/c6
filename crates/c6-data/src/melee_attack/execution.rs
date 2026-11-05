@@ -46,6 +46,7 @@ pub struct RequiresStrengthModifiers {
     pub base_strengths: kernel::BaseStrengths,
 }
 pub struct GenerateRules<'a> {
+    pub city: Option<&'a super::city::Definitions>,
     pub formation: &'a formation_rules::Definitions,
     pub strength: &'a super::strength::Definitions,
     pub damage: &'a super::damage::Definitions,

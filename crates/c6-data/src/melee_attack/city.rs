@@ -7,6 +7,43 @@ use c6_core::{
     map::UnitReference,
     unit::{ComponentId, PlotCoord},
 };
+pub mod resolve;
+pub mod weariness;
+
+#[derive(Clone, Debug)]
+pub struct ReportScope {
+    binding: c6_core::core_player::initialization::WireBinding,
+    witness: c6_core::loaded_state::ObservedSnapshotWitness,
+}
+impl ReportScope {
+    /// The caller qualifies the actual DistrictDamageChanged, combat status
+    /// and XP report routes for this same observed state origin.
+    pub fn from_qualified_origin(state: &LoadedState) -> Option<Self> {
+        Some(Self {
+            binding: state.binding().clone(),
+            witness: state.observed_snapshot()?.clone(),
+        })
+    }
+    pub fn matches(&self, state: &LoadedState) -> bool {
+        state.binding() == &self.binding && state.observed_snapshot() == Some(&self.witness)
+    }
+}
+#[derive(Clone, Debug)]
+pub enum Publication {
+    DistrictDamageChanged {
+        district: ComponentId,
+        defense_type: u32,
+        current: i32,
+        previous: i32,
+    },
+    Statuses {
+        attacker: UnitReference,
+        defender: ComponentId,
+        attacker_damage: i32,
+        defender_damage: i32,
+        status: u32,
+    },
+}
 
 #[derive(Debug)]
 pub struct Error {
@@ -28,6 +65,7 @@ impl std::error::Error for Error {}
 pub struct Definitions {
     pub district: district::Definitions,
     pub strength: district_strength::Definitions,
+    pub weariness: weariness::Definitions,
     promotion_classes: Vec<(u32, u32)>,
     outer_melee_percent: i32,
     outer_enabled_percent: i32,
@@ -55,6 +93,7 @@ impl Definitions {
             })
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
+            weariness: weariness::Definitions::from_rules(state, rules)?,
             district: district::Definitions::from_current_rules(state, rules)
                 .map_err(|e| error("rules", e))?,
             strength: district_strength::Definitions::from_rules(state, rules)
