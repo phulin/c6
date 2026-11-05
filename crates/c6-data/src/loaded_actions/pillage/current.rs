@@ -146,46 +146,32 @@ impl<P> Effects for Current<'_, '_, '_, '_, '_, P> {
         Ok(crate::melee_attack::experience::reporting::observer_can_see_player(observer, o))
     }
     fn local_unit_visible(&self, s: &LoadedState, a: UnitReference) -> Result<bool, Error> {
+        // Pillage.Start calls LocalPlayerVisibility.IsVisible(Unit.GetLocation),
+        // not Unit.IsVisible: hidden-unit state does not gate the animation.
         let u = s
             .world()
             .unit(a)
             .map_err(|e| error("visible actor", e))?
             .ok_or_else(|| error("visible actor", "missing"))?
             .record;
-        let o = self
+        let observer = self
             .sight
             .local_observer
             .ok_or_else(|| error("observer", "missing"))?;
-        let location = u.k_location;
-        city_range_attack::unit_visible_with_counts::<actions::Error>(
-            s,
-            u,
-            o,
-            self.dispatcher.inputs.sight_definitions,
-            |hash, normal| {
-                let layers = self.sight.shared(o).map_err(actions::Error::Unsupported)?;
-                let Some(l) = layers.0.iter().find(|l| l.type_hash == hash) else {
-                    return if normal {
-                        Err(actions::Error::Unsupported("Pillage normal visibility"))
-                    } else {
-                        Ok(0)
-                    };
-                };
-                let i = l
-                    .grid_width
-                    .wrapping_mul(location.y as u32)
-                    .wrapping_add(location.x as u32) as usize;
-                Ok(l.values.get(i).copied().unwrap_or(0))
-            },
-            || {
-                self.sight
-                    .hidden_layer_hashes
-                    .first()
-                    .copied()
-                    .ok_or(actions::Error::Unsupported("Pillage hidden layer0"))
-            },
-        )
-        .map_err(|e| error("local visibility", e))
+        let layers = self
+            .sight
+            .shared(observer)
+            .map_err(|e| error("plot visibility", e))?;
+        let layer = layers
+            .0
+            .iter()
+            .find(|l| l.type_hash == c6_core::visibility_change::BASE_LAYER_HASH)
+            .ok_or_else(|| error("plot visibility", "base layer"))?;
+        let index = layer
+            .grid_width
+            .wrapping_mul(u.k_location.y as u32)
+            .wrapping_add(u.k_location.x as u32) as usize;
+        Ok(layer.values.get(index).copied().unwrap_or(0) > 0)
     }
     fn report(&mut self, s: &mut LoadedState, r: Report) -> Result<(), Error> {
         if let Report::Operation { unit, improvement } = r {
