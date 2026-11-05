@@ -1,5 +1,7 @@
 //! Research turn composition borrowing the SAME stock action backend.
 //! Canonical science/progress calculation stays in `research::Context`.
+#[path = "stock_research_acquisition.rs"]
+pub mod acquisition;
 use super::Runtime;
 use crate::loaded_actions::{choose_tech, culture_notifications, notifications::processing};
 use crate::research;
@@ -10,6 +12,10 @@ pub enum Error {
     Culture(culture_notifications::Error),
     Notification(processing::Error),
     Effect(research::Effect),
+    Acquisition {
+        effect: research::Effect,
+        reason: String,
+    },
     Query(research::Query),
 }
 impl std::fmt::Display for Error {
@@ -139,6 +145,55 @@ impl<P> research::Effects for Effects<'_, '_, P> {
     ) -> Result<(), Error> {
         self.backend.check(state).map_err(Error::Notification)?;
         match effect {
+            research::Effect::GameAcquired {
+                player,
+                kind,
+                index,
+            } => self.game_acquired(state, definitions, player, kind, index),
+            research::Effect::GainAnalysis { player, kind } => {
+                self.gain_analysis(state, player, kind)
+            }
+            research::Effect::DistrictCosts(player) => {
+                research::Context {
+                    state,
+                    definitions,
+                    effects: self,
+                }
+                .recompute_empty_district_costs(player)
+                .map_err(|_| Error::Effect(research::Effect::DistrictCosts(player)))?;
+                self.backend
+                    .reached
+                    .push("stock research empty-roster district costs");
+                Ok(())
+            }
+            research::Effect::UpdateUnitsForTech(player) => {
+                let effect = research::Effect::UpdateUnitsForTech(player);
+                let units = state
+                    .world()
+                    .player(player)
+                    .and_then(|p| p.unit_records())
+                    .map_err(|_| Error::Effect(effect.clone()))?;
+                for unit in units {
+                    if !unit.value.b_delayed_death
+                        && state
+                            .unit_runtime(player, unit.value.id)
+                            .map_err(|_| Error::Effect(effect.clone()))?
+                            .formation
+                            .is_some()
+                    {
+                        return Err(Error::Effect(effect));
+                    }
+                }
+                self.backend
+                    .reached
+                    .push("stock research unit update without live formations");
+                Ok(())
+            }
+            research::Effect::PlayerAcquired {
+                player,
+                kind,
+                index,
+            } => self.player_acquired(state, definitions, player, kind, index),
             research::Effect::ChooseTechnology(owner) => {
                 let needed = self
                     .choices
