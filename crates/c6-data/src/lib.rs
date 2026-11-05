@@ -880,3 +880,6 @@ pub mod city_strike;
 
 pub mod builder_improvement;
 pub mod builder_repair;
+
+pub mod city_capture;
+pub mod city_destroy;

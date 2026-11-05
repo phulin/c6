@@ -50,6 +50,7 @@ pub enum Error {
 }
 struct Object {
     handle: u64,
+    destruction: Option<destruction::Metadata>,
     affected: AffectedModifiers,
     destroyed: ListenerRing<DestroyedListener>,
 }
@@ -68,6 +69,7 @@ pub struct ModifierView<'a> {
     pub applied: &'a [u64],
 }
 pub(super) struct Creation {
+    destruction_initialized: bool,
     player_cities_subscriptions: Vec<PlayerCitiesSubscription>,
     player_capital_subscriptions: Vec<PlayerCitiesSubscription>,
     city_removed_subscriptions: Vec<policy::CitySubscription>,
@@ -106,6 +108,7 @@ impl EffectRuntime {
             }
             objects.push(Object {
                 handle: object.handle,
+                destruction: None,
                 affected: object.affected,
                 destroyed: ListenerRing::from_ordered(&object.destroyed).map_err(Error::Ring)?,
             });
@@ -118,6 +121,7 @@ impl EffectRuntime {
         )
         .map_err(Error::Query)?;
         self.city_creation = Some(Creation {
+            destruction_initialized: false,
             player_cities_subscriptions: Vec::new(),
             player_capital_subscriptions: Vec::new(),
             city_removed_subscriptions: Vec::new(),
@@ -678,6 +682,7 @@ impl EffectRuntime {
         let affected =
             AffectedModifiers::from_sorted(Vec::new()).expect("empty constructor affected list");
         let destroyed = ListenerRing::from_ordered(&[]).map_err(Error::Ring)?;
+        let ordinal = self.next_object_pool_ordinal().map_err(Error::Query)?;
         let handle = self
             .append_normal_object(
                 state,
@@ -691,6 +696,10 @@ impl EffectRuntime {
             .map_err(Error::Query)?;
         self.city_creation.as_mut().unwrap().objects.push(Object {
             handle,
+            destruction: Some(destruction::Metadata {
+                ordinal,
+                owned_modifiers: Vec::new(),
+            }),
             affected,
             destroyed,
         });
@@ -730,6 +739,7 @@ impl EffectRuntime {
         self.city_creation
             .as_ref()
             .ok_or(Error::Missing("building lifecycle domain"))?;
+        let ordinal = self.next_object_pool_ordinal().map_err(Error::Query)?;
         let handle = self
             .append_normal_object(
                 state,
@@ -743,6 +753,10 @@ impl EffectRuntime {
             .map_err(Error::Query)?;
         self.city_creation.as_mut().unwrap().objects.push(Object {
             handle,
+            destruction: Some(destruction::Metadata {
+                ordinal,
+                owned_modifiers: Vec::new(),
+            }),
             affected: AffectedModifiers::from_sorted(Vec::new())
                 .expect("empty building affected list"),
             destroyed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
@@ -867,6 +881,9 @@ impl EffectRuntime {
             .destroyed
             .subscribe(DestroyedListener::ModifierOwner(instance))
             .map_err(Error::Ring)?;
+        if let Some(metadata) = &mut creation.object_mut(owner)?.destruction {
+            metadata.owned_modifiers.push(instance);
+        }
         creation.modifiers.push(Dynamic {
             identity: (1u64 << 61) | u64::from(instance as u32),
             instance,
@@ -1016,6 +1033,7 @@ impl EffectRuntime {
         }
         creation.objects.push(Object {
             handle: owner,
+            destruction: None,
             affected: AffectedModifiers::from_sorted(vec![]).unwrap(),
             destroyed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
         });
@@ -1161,6 +1179,20 @@ impl EffectRuntime {
                 return Err(Error::Missing(
                     "City owned modifier disabled/suppressed/permanent destruction",
                 ));
+            }
+            if let Some(metadata) = &mut self
+                .city_creation
+                .as_mut()
+                .unwrap()
+                .object_mut(owner)?
+                .destruction
+            {
+                let at = metadata
+                    .owned_modifiers
+                    .iter()
+                    .position(|id| *id == instance)
+                    .ok_or(Error::Missing("current City owned modifier vector"))?;
+                metadata.owned_modifiers.remove(at);
             }
             // Deactivate23332b0 clears eligible tracked entries first. These
             // admitted policy definitions have no permanent/removed subjects.

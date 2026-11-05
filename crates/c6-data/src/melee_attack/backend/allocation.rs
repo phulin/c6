@@ -149,6 +149,14 @@ impl EffectRuntime {
         }
         Ok(())
     }
+    /// Current append ordinal, shared by source-created City/District wrappers.
+    pub(super) fn next_object_pool_ordinal(&self) -> Result<usize, QueryError> {
+        self.allocations
+            .pool
+            .as_ref()
+            .map(|pool| pool.next_order)
+            .ok_or(QueryError::Missing("current ObjectPool ordering"))
+    }
     pub fn next_object_instance_id(&self) -> Result<i32, QueryError> {
         self.allocations
             .pool

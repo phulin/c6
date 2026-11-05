@@ -43,6 +43,7 @@ pub fn construct(definitions: Definitions<'_>) -> Result<District, Error> {
         remaining_attacks: 0,
         cost: 0,
         is_complete: false,
+        marked_for_delete: Some(false),
         properties: TypedVariantMap::default(),
         yield_changes: zeroes(definitions.yields)?,
         base_yield_changes: zeroes(definitions.yields)?,
@@ -154,6 +155,7 @@ mod tests {
             }]
         );
         assert!(!d.is_complete && !d.under_siege && !d.pillaged);
+        assert_eq!(d.marked_for_delete, Some(false));
     }
     struct C {
         log: Vec<&'static str>,

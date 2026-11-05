@@ -264,6 +264,9 @@ pub struct District {
     pub remaining_attacks: i32,
     pub cost: i32,
     pub is_complete: bool,
+    /// Unsaved Instance+0xb0. Unknown after wire-only decoding; source-created
+    /// Districts start false and MarkForDelete sets true before removal events.
+    pub marked_for_delete: Option<bool>,
     pub properties: TypedVariantMap,
     pub yield_changes: Vec<HashValue<i32>>,
     pub base_yield_changes: Vec<HashValue<i32>>,
@@ -347,6 +350,7 @@ impl Wire for District {
             remaining_attacks: <i32>::read(r)?,
             cost: <i32>::read(r)?,
             is_complete: <bool>::read(r)?,
+            marked_for_delete: None,
             properties: <TypedVariantMap>::read(r)?,
             yield_changes: <Vec<HashValue<i32>>>::read(r)?,
             base_yield_changes: <Vec<HashValue<i32>>>::read(r)?,

@@ -14,25 +14,94 @@ pub struct PoolObject {
     pub owned_modifiers: Vec<i32>,
 }
 
-/// Execute OnCityDestroyed_DetachGameEffects23e1d90/ObjectDestroyed2331560.
-/// The caller supplies the current complete matching pool projection from the
-/// same initial snapshot and updates it for subsequent source allocations.
-/// Missing lifecycle state is an error; no wrapper/factory is invented here.
+pub(super) struct Metadata {
+    pub ordinal: usize,
+    pub owned_modifiers: Vec<i32>,
+}
+
+impl EffectRuntime {
+    /// Import the observed ICity pool domain once, before advancing this state.
+    /// Thereafter ownership vectors and factory ordinals live only in this
+    /// canonical registry, so later DistrictRemoved cannot replay old lists.
+    pub fn initialize_city_destruction_objects(
+        &mut self,
+        state: &LoadedState,
+        objects: &[PoolObject],
+    ) -> Result<(), Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        if !state.is_pristine() {
+            return Err(Error::Missing("initial City destruction object projection"));
+        }
+        let creation = self
+            .city_creation
+            .as_ref()
+            .ok_or(Error::Missing("City destruction canonical modifier domain"))?;
+        if creation.destruction_initialized {
+            return Err(Error::Missing(
+                "City destruction objects already initialized",
+            ));
+        }
+        for (index, row) in objects.iter().enumerate() {
+            if objects[..index]
+                .iter()
+                .any(|old| old.handle == row.handle || old.ordinal == row.ordinal)
+                || row
+                    .owned_modifiers
+                    .iter()
+                    .enumerate()
+                    .any(|(at, id)| row.owned_modifiers[..at].contains(id))
+            {
+                return Err(Error::Missing(
+                    "unique initial City destruction pool/owned state",
+                ));
+            }
+            if self
+                .object(row.handle)
+                .map_err(Error::Query)?
+                .kind
+                .city_component()
+                .is_none()
+                || !creation
+                    .objects
+                    .iter()
+                    .any(|object| object.handle == row.handle)
+            {
+                return Err(Error::Missing("initial City destruction ICity lifecycle"));
+            }
+        }
+        for (handle, object) in self.objects() {
+            if object.kind.city_component().is_some()
+                && !objects.iter().any(|row| row.handle == *handle)
+            {
+                return Err(Error::Missing("initial complete ICity destruction domain"));
+            }
+        }
+        let creation = self.city_creation.as_mut().unwrap();
+        for row in objects {
+            creation.object_mut(row.handle)?.destruction = Some(Metadata {
+                ordinal: row.ordinal,
+                owned_modifiers: row.owned_modifiers.clone(),
+            });
+        }
+        creation.destruction_initialized = true;
+        Ok(())
+    }
+}
+
+/// Execute OnCityDestroyed_DetachGameEffects23e1d90/ObjectDestroyed2331560
+/// using current pool metadata and owned vectors in the SAME canonical owner.
 #[allow(clippy::too_many_arguments)]
 pub fn detach_city(
     state: &mut LoadedState,
     runtime: &mut EffectRuntime,
     requirements: &mut requirements::Runtime,
     city: ComponentId,
-    objects: &[PoolObject],
     logging_priority: i32,
     features: &[u32],
     factory: &mut dyn collection::RequirementFactory,
     effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
 ) -> Result<(), Error> {
     runtime.current_owner(state).map_err(Error::Query)?;
-    // Enabled diagnostics call MakeObject before pool enumeration and can
-    // allocate a wrapper. Preserve that gameplay identity effect when added.
     if logging_priority > 1 {
         return Err(Error::Missing(
             "CityDestroyed enabled logging MakeObject continuation",
@@ -44,54 +113,57 @@ pub fn detach_city(
     if city.component_type != 2 {
         return Err(Error::Missing("CityDestroyed City component type"));
     }
-    // Check the represented interface domain, preserving every distinct wrapper
-    // and source pool order. An unimported owner is not an empty native pool.
-    if objects.is_empty() {
+    let creation = runtime
+        .city_creation
+        .as_ref()
+        .ok_or(Error::Missing("CityDestroyed canonical modifier domain"))?;
+    if !creation.destruction_initialized {
         return Err(Error::Missing(
-            "CityDestroyed current matching ObjectPool projection",
+            "CityDestroyed initial ICity pool projection",
         ));
     }
-    for (index, row) in objects.iter().enumerate() {
-        if objects[..index].iter().any(|old| old.handle == row.handle)
-            || index > 0 && objects[index - 1].ordinal >= row.ordinal
-        {
-            return Err(Error::Missing("CityDestroyed unique native pool ordering"));
-        }
-        if runtime
-            .object(row.handle)
-            .map_err(Error::Query)?
-            .kind
-            .city_component()
-            != Some(city)
-        {
-            return Err(Error::Missing("CityDestroyed current ICity pool identity"));
-        }
-        runtime
-            .city_creation
-            .as_mut()
-            .ok_or(Error::Missing("CityDestroyed canonical modifier domain"))?
-            .object_mut(row.handle)?;
-    }
+    let mut objects = Vec::new();
     for (handle, object) in runtime.objects() {
-        if object.kind.city_component() == Some(city)
-            && !objects.iter().any(|row| row.handle == *handle)
-        {
-            return Err(Error::Missing(
-                "CityDestroyed omitted current ICity wrapper",
-            ));
+        if object.kind.city_component() == Some(city) {
+            let row = creation
+                .objects
+                .iter()
+                .find(|row| row.handle == *handle)
+                .and_then(|row| row.destruction.as_ref())
+                .ok_or(Error::Missing(
+                    "CityDestroyed current pool/lifecycle metadata",
+                ))?;
+            objects.push((row.ordinal, *handle));
         }
-        // Improvement interface support must be established before this class
-        // can silently disappear from the complete native ICity projection.
         if matches!(object.kind, ContextObject::Improvement { city: id, .. } if id == city) {
             return Err(Error::Missing("CityDestroyed Improvement ICity interface"));
         }
     }
-    for row in objects {
-        // ClearModifiers copies the owned vector before invoking destruction.
-        // The projection is retained for the whole batch, like native shared_ptrs.
-        for instance in &row.owned_modifiers {
+    objects.sort_by_key(|row| row.0);
+    if objects.windows(2).any(|rows| rows[0].0 == rows[1].0) {
+        return Err(Error::Missing("CityDestroyed unique native pool ordering"));
+    }
+    for (_, handle) in objects {
+        // The copied pool contains WEAK owners. Lock each surviving wrapper
+        // only when reached; prior callbacks may have released its last owner.
+        // New wrappers are outside the copied pool. The current lock survives
+        // its complete ObjectDestroyed dispatch, then releases before the next.
+        if !runtime.objects().iter().any(|row| row.0 == handle) {
+            continue;
+        }
+        let owned = runtime
+            .city_creation
+            .as_mut()
+            .unwrap()
+            .object_mut(handle)?
+            .destruction
+            .as_ref()
+            .ok_or(Error::Missing("CityDestroyed current ownership"))?
+            .owned_modifiers
+            .clone();
+        for instance in &owned {
             let owner = runtime.city_modifier_state(*instance)?.owner;
-            if owner != row.handle {
+            if owner != handle {
                 return Err(Error::Missing("CityDestroyed owned modifier identity"));
             }
             runtime.remove_city_modifier_instance(
@@ -108,7 +180,7 @@ pub fn detach_city(
             .unwrap()
             .modifiers
             .iter()
-            .any(|record| record.owner == row.handle)
+            .any(|record| record.owner == handle)
         {
             return Err(Error::Missing(
                 "CityDestroyed omitted current owned modifier",
@@ -118,7 +190,7 @@ pub fn detach_city(
             .city_creation
             .as_mut()
             .unwrap()
-            .object_mut(row.handle)?
+            .object_mut(handle)?
             .destroyed
             .cursor_start()
             .map_err(Error::Ring)?;
@@ -127,7 +199,7 @@ pub fn detach_city(
                 .city_creation
                 .as_mut()
                 .unwrap()
-                .object_mut(row.handle)?
+                .object_mut(handle)?
                 .destroyed
                 .cursor_route(cursor)
                 .map_err(Error::Ring)?;
@@ -147,7 +219,7 @@ pub fn detach_city(
                     state,
                     runtime,
                     requirements,
-                    row.handle,
+                    handle,
                     instance,
                     features,
                     factory,
@@ -160,7 +232,7 @@ pub fn detach_city(
                     .city_creation
                     .as_mut()
                     .unwrap()
-                    .object_mut(row.handle)?
+                    .object_mut(handle)?
                     .destroyed
                     .cursor_release(cursor)
                     .map_err(Error::Ring)?;
@@ -170,7 +242,7 @@ pub fn detach_city(
                 .city_creation
                 .as_mut()
                 .unwrap()
-                .object_mut(row.handle)?
+                .object_mut(handle)?
                 .destroyed
                 .cursor_next(cursor)
                 .map_err(Error::Ring)?
@@ -180,9 +252,9 @@ pub fn detach_city(
             }
         }
     }
-    // The native subscriber trims expired weak pool slots after releasing its
-    // temporary strong owners. Canonical gameplay wrappers remain until the
-    // enclosing City/District destruction releases their real owners.
+    // The native subscriber trims expired weak slots after visiting the copied
+    // pool. Lifetime retirement remains with the canonical real owner graph;
+    // ordinary City cache release belongs to the enclosing City destructor.
     Ok(())
 }
 

@@ -263,6 +263,7 @@ mod tests {
                 remaining_attacks: 99,
                 cost: 50,
                 is_complete: true,
+                marked_for_delete: Some(false),
                 properties: crate::unit::variants::TypedVariantMap::default(),
                 yield_changes: vec![],
                 base_yield_changes: vec![],

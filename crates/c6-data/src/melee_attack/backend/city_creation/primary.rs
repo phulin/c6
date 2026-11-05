@@ -82,6 +82,7 @@ impl EffectRuntime {
             creation.primary.entries[at].retained |= retain;
             return Ok(handle);
         }
+        let ordinal = self.next_object_pool_ordinal().map_err(Error::Query)?;
         let handle = self
             .append_normal_object(
                 state,
@@ -96,6 +97,10 @@ impl EffectRuntime {
         let creation = self.city_creation.as_mut().unwrap();
         creation.objects.push(Object {
             handle,
+            destruction: Some(super::destruction::Metadata {
+                ordinal,
+                owned_modifiers: Vec::new(),
+            }),
             affected: AffectedModifiers::from_sorted(Vec::new())
                 .expect("empty primary affected list"),
             destroyed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
