@@ -303,6 +303,13 @@ pub fn target<E>(
 fn discount(raw: i32, percent: i32) -> i32 {
     raw.wrapping_sub(multiply(raw, from_float(percent as f32 / 100.0)))
 }
+fn available_resource(owned: i32, reserved: i32) -> i32 {
+    if reserved > 0 {
+        owned.wrapping_sub(reserved)
+    } else {
+        owned
+    }
+}
 /// GetUpgradeCost: speed base, live cost difference, Unit/formation/treasury
 /// discounts, native minimum branches, then signed divisor rounding.
 pub fn gold_cost<E>(
@@ -501,6 +508,16 @@ pub fn upgrade<E: Effects>(
                 .and_then(|r| r.value.first())
                 .copied()
                 .ok_or(Error::Missing("upgrade strategic stockpile"))?;
+            // GetResourceAmount(resource, ownership0, true) subtracts a
+            // positive current reservation; payment itself still debits owned0.
+            let reserved = player(state, id.0)?
+                .resources
+                .reserved_resources
+                .iter()
+                .rev()
+                .find(|r| r.resource_hash == resource)
+                .map_or(0, |r| r.value);
+            let available = available_resource(available, reserved);
             if available < quoted_resource_cost {
                 return Ok(Outcome::Rejected(Rejection::InsufficientResource));
             }
@@ -595,7 +612,7 @@ pub fn upgrade<E: Effects>(
 
 #[cfg(test)]
 mod tests {
-    use super::discount;
+    use super::{available_resource, discount};
 
     #[test]
     fn treasury_discount_retains_native_fixed_fraction_before_final_rounding() {
@@ -604,5 +621,12 @@ mod tests {
         assert_eq!(discount(100 * 256, 33), 17_200);
         assert_eq!(discount(100 * 256, -33), 34_100);
         assert_eq!(discount(110 * 256, 100), 0);
+    }
+
+    #[test]
+    fn upgrade_availability_subtracts_only_positive_reservations_with_native_wrap() {
+        assert_eq!(available_resource(25, 10), 15);
+        assert_eq!(available_resource(25, -10), 25);
+        assert_eq!(available_resource(i32::MIN, 1), i32::MAX);
     }
 }
