@@ -62,6 +62,7 @@ impl<P> Runtime<'_, P> {
 fn update<'b, P, E>(
     context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
     runtime: &mut loaded::Runtime,
+    research_runtime: &mut crate::research::Runtime,
     inputs: &deactivation::Inputs<'_, '_, '_>,
     visibility: &mut data::deactivation::VisibilityHistory,
     budget: &mut usize,
@@ -70,6 +71,7 @@ fn update<'b, P, E>(
         &mut LoadedState,
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
+        &mut crate::research::Runtime,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -109,6 +111,7 @@ fn update<'b, P, E>(
                     context.notifications.state,
                     &mut context.notifications.backend,
                     runtime,
+                    research_runtime,
                     player,
                     first,
                 )
@@ -163,6 +166,7 @@ fn update<'b, P, E>(
 fn drive<'b, P, E>(
     context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
     runtime: &mut loaded::Runtime,
+    research_runtime: &mut crate::research::Runtime,
     inputs: &deactivation::Inputs<'_, '_, '_>,
     visibility: &mut data::deactivation::VisibilityHistory,
     budget: &mut usize,
@@ -171,6 +175,7 @@ fn drive<'b, P, E>(
         &mut LoadedState,
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
+        &mut crate::research::Runtime,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -254,6 +259,7 @@ fn drive<'b, P, E>(
         if let Some(choice) = update(
             context,
             runtime,
+            research_runtime,
             inputs,
             visibility,
             budget,
@@ -301,6 +307,7 @@ fn retain<P, E>(
 pub fn execute<'b, P, E>(
     context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
     runtime: &mut loaded::Runtime,
+    research_runtime: &mut crate::research::Runtime,
     inputs: &deactivation::Inputs<'_, '_, '_>,
     visibility: &mut data::deactivation::VisibilityHistory,
     player: i32,
@@ -310,6 +317,7 @@ pub fn execute<'b, P, E>(
         &mut LoadedState,
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
+        &mut crate::research::Runtime,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -354,6 +362,7 @@ pub fn execute<'b, P, E>(
             let result = drive(
                 context,
                 runtime,
+                research_runtime,
                 inputs,
                 visibility,
                 budget,
@@ -374,6 +383,7 @@ pub fn execute<'b, P, E>(
 pub fn resume_end_turn<'b, P, E>(
     context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
     runtime: &mut loaded::Runtime,
+    research_runtime: &mut crate::research::Runtime,
     inputs: &deactivation::Inputs<'_, '_, '_>,
     visibility: &mut data::deactivation::VisibilityHistory,
     budget: &mut usize,
@@ -381,6 +391,7 @@ pub fn resume_end_turn<'b, P, E>(
         &mut LoadedState,
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
+        &mut crate::research::Runtime,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -447,6 +458,7 @@ pub fn resume_end_turn<'b, P, E>(
     let result = drive(
         context,
         runtime,
+        research_runtime,
         inputs,
         visibility,
         budget,
@@ -477,6 +489,7 @@ pub fn resume_research<'b, P, E>(
         &mut LoadedState,
         &mut Runtime<'b, P>,
         &mut loaded::Runtime,
+        &mut crate::research::Runtime,
         i32,
         bool,
     ) -> Result<ActivationOutcome, E>,
@@ -581,6 +594,7 @@ pub fn resume_research<'b, P, E>(
     let result = drive(
         context,
         runtime,
+        research_runtime,
         inputs,
         visibility,
         budget,
