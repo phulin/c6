@@ -1,5 +1,6 @@
 //! Current numeric City.CalculateYieldFromDistricts contribution.
 //! TrackedValue labels are presentation; its raw Q8 additions are unconditional.
+mod adjacency;
 use super::Error;
 use crate::{
     registry::{linux_type_hash, LinuxDefinitionRegistry},
@@ -19,6 +20,7 @@ pub struct Definitions {
     yields: LinuxDefinitionRegistry,
     districts: LinuxDefinitionRegistry,
     district: Vec<DistrictDefinition>,
+    adjacency: adjacency::RulesCache,
 }
 impl Definitions {
     pub fn from_rules(rules: &Rules) -> Result<Self, Error> {
@@ -50,16 +52,11 @@ impl Definitions {
                 if hash(reference, "DistrictType")? != linux_type_hash(&entry.type_name) {
                     continue;
                 }
-                let change = adjacency.find(hash(reference, "YieldChangeId")?);
-                adjacency_yields.push(match change {
-                    None => None,
-                    Some(change) => Some(hash(
-                        table("Adjacency_YieldChanges")?
-                            .row_by_id(change.database_rowid)
-                            .ok_or(Error::Unsupported("district adjacency row"))?,
-                        "YieldType",
-                    )?),
-                });
+                adjacency_yields.push(
+                    adjacency
+                        .find_index(hash(reference, "YieldChangeId")?)
+                        .map(|index| index as u32),
+                );
             }
             district.push(DistrictDefinition {
                 internal_only: boolean("InternalOnly")?,
@@ -71,7 +68,13 @@ impl Definitions {
             yields,
             districts,
             district,
+            adjacency: adjacency::RulesCache::from_rules(rules)?,
         })
+    }
+    /// Bind actual current configuration identities used by native trait exclusions.
+    /// Missing owners remain explicit when an excluded adjacency row is reached.
+    pub fn bind_player_configuration(&mut self, players: &[(i32, u32, u32)]) {
+        self.adjacency.bind_configuration(players);
     }
     fn yield_hash(&self, index: i32) -> Result<u32, Error> {
         usize::try_from(index)
@@ -139,11 +142,17 @@ impl Current<'_> {
         }
         let hash = self.definitions.yield_hash(yield_index)?;
         let definition = self.definitions.district(district)?;
-        for &requested in &definition.adjacency_yields {
-            if requested == Some(hash) {
-                return Err(Error::Unsupported(
-                    "current district adjacency rule evaluation",
-                ));
+        let mut total = 0i32;
+        for &reference in &definition.adjacency_yields {
+            if let Some(index) = reference {
+                total = total.wrapping_add(self.definitions.adjacency.evaluate(
+                    index,
+                    self.state,
+                    self.definitions,
+                    owner,
+                    district.location,
+                    hash,
+                )?);
             }
         }
         if self
@@ -153,7 +162,7 @@ impl Current<'_> {
             .map_err(|_| Error::Unsupported("district adjacency player validity"))?
         {
             let Some(attributes) = &plot.city_attributes else {
-                return Ok(0);
+                return Ok(total);
             };
             let city = self
                 .state
@@ -175,7 +184,7 @@ impl Current<'_> {
                 ));
             }
         }
-        Ok(0)
+        Ok(total)
     }
     fn adjacency(&self, district: &District, index: i32) -> Result<i32, Error> {
         let hash = self.definitions.yield_hash(index)?;

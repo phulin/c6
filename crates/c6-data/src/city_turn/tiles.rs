@@ -275,7 +275,7 @@ impl kernel::Runtime for Runtime<'_> {
         }
     }
 }
-fn adjacency_amount(change: i32, tiles: i32, count: i32) -> Option<i32> {
+pub(super) fn adjacency_amount(change: i32, tiles: i32, count: i32) -> Option<i32> {
     let raw = change.wrapping_shl(8).wrapping_mul(count);
     let raw = if tiles > 1 {
         let divisor = tiles.wrapping_shl(8);
