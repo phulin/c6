@@ -305,12 +305,17 @@ impl<P> Runtime<'_, P> {
     ) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("processor activation report binding"))?;
-        if state
+        // Player snapshot consumers resolve EventData1.player (+0x50), not
+        // every player's City roster. The global Victory/relations snapshots
+        // read existing manager fields; their output does not visit City yield
+        // providers. A foreign City cannot require this owner's City queries.
+        let player = state
             .retained()
             .players
             .iter()
-            .any(|p| !p.cities.records.entries.is_empty())
-        {
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Unsupported("processor activation report player"))?;
+        if !player.cities.records.entries.is_empty() {
             return Err(Error::Unsupported(
                 "processor activation current City cache queries",
             ));
