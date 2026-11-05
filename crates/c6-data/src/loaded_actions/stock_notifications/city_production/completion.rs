@@ -80,6 +80,14 @@ pub(super) fn dispatch<P>(
     for listener in services.listeners {
         match *listener {
             Listener::Attach => {
+                //23e04a2 skips even MakeObject when the actual modifier list is empty.
+                let attachments = services
+                    .attachments
+                    .building(building)
+                    .map_err(|_| missing("current building attachment definitions"))?;
+                if attachments.is_empty() {
+                    continue;
+                }
                 let owners = runtime
                     .modifier_owners_mut()
                     .map_err(|_| missing("current building modifier owners"))?;
@@ -114,11 +122,7 @@ pub(super) fn dispatch<P>(
                     .effects
                     .make_building_object(state, city_id, district_id, building)
                     .map_err(|_| missing("building modifier owner factory"))?;
-                for attachment in services
-                    .attachments
-                    .building(building)
-                    .map_err(|_| missing("current building attachment definitions"))?
-                {
+                for attachment in attachments {
                     owners
                         .effects
                         .attach_city_owner(
