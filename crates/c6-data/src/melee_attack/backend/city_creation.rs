@@ -667,6 +667,13 @@ impl EffectRuntime {
             _ => return Err(Error::Missing("City effect attachment owner interface")),
         };
 
+        if matches!(
+            self.object(owner).map_err(Error::Query)?.kind,
+            super::ContextObject::Policy { .. }
+        ) {
+            self.ensure_policy_city_lifecycle(owner)?;
+        }
+
         if definition.owner_requirements.is_some() {
             return Err(Error::Missing("City modifier owner requirement factory"));
         }
@@ -856,9 +863,6 @@ impl EffectRuntime {
         if let Some((handle, _)) = self.objects.iter().find(|(_, o)| o.kind == kind) {
             return Ok(*handle);
         }
-        if self.city_creation.is_none() {
-            return Err(Error::Missing("current modifier lifecycle domain"));
-        }
         let handle = self
             .append_normal_object(
                 state,
@@ -875,12 +879,29 @@ impl EffectRuntime {
                 },
             )
             .map_err(Error::Query)?;
-        self.city_creation.as_mut().unwrap().objects.push(Object {
-            handle,
+        self.allocations.constructed_policies.push(handle);
+        Ok(handle)
+    }
+    /// Add the City dispatch role of this same source-created Policy object.
+    /// Imported objects must supply their actual lifecycle through Initial;
+    /// only a constructor executed by this owner proves empty initial lists.
+    fn ensure_policy_city_lifecycle(&mut self, owner: u64) -> Result<(), Error> {
+        let creation = self
+            .city_creation
+            .as_mut()
+            .ok_or(Error::Missing("current City creation domain"))?;
+        if creation.objects.iter().any(|o| o.handle == owner) {
+            return Ok(());
+        }
+        if !self.allocations.constructed_policies.contains(&owner) {
+            return Err(Error::Missing("current imported Policy City lifecycle"));
+        }
+        creation.objects.push(Object {
+            handle: owner,
             affected: AffectedModifiers::from_sorted(vec![]).unwrap(),
             destroyed: ListenerRing::from_ordered(&[]).map_err(Error::Ring)?,
         });
-        Ok(handle)
+        Ok(())
     }
     /// Drop the Policy event's final strong reference after modifier teardown.
     /// ObjectPool.Share/Append23353a0/2335530 retain weak references only;
@@ -915,27 +936,29 @@ impl EffectRuntime {
         }) {
             return Err(Error::Missing("Policy surviving Unit modifier references"));
         }
-        let creation = self
-            .city_creation
-            .as_mut()
-            .ok_or(Error::Missing("current City creation domain"))?;
-        if creation.modifiers.iter().any(|m| {
-            m.owner == owner
-                || m.applied_subjects.contains(&owner)
-                || m.tracked.iter().any(|t| t.subject == owner)
-        }) {
-            return Err(Error::Missing("Policy surviving City modifier references"));
+        if let Some(creation) = self.city_creation.as_mut() {
+            if creation.modifiers.iter().any(|m| {
+                m.owner == owner
+                    || m.applied_subjects.contains(&owner)
+                    || m.tracked.iter().any(|t| t.subject == owner)
+            }) {
+                return Err(Error::Missing("Policy surviving City modifier references"));
+            }
+            if let Some(life) = creation.objects.iter().find(|o| o.handle == owner) {
+                if !matches!(
+                    life.destroyed.subscription_for(|_| true),
+                    Err(RegistryError::InvalidSubscription)
+                ) {
+                    return Err(Error::Missing(
+                        "Policy remaining City ObjectDestroyed listener",
+                    ));
+                }
+            }
+            creation.objects.retain(|o| o.handle != owner);
         }
-        let life = creation.object_mut(owner)?;
-        if !matches!(
-            life.destroyed.subscription_for(|_| true),
-            Err(RegistryError::InvalidSubscription)
-        ) {
-            return Err(Error::Missing(
-                "Policy remaining City ObjectDestroyed listener",
-            ));
-        }
-        creation.objects.retain(|o| o.handle != owner);
+        self.allocations
+            .constructed_policies
+            .retain(|h| *h != owner);
         self.objects.retain(|r| r.0 != owner);
         Ok(())
     }

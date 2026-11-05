@@ -10,6 +10,8 @@ pub(super) struct Pool {
     next_order: usize,
 }
 pub(super) struct State {
+    /// Constructor provenance only; objects remain in EffectRuntime.objects.
+    pub(super) constructed_policies: Vec<u64>,
     pool: Option<Pool>,
     modifier_next: Option<i32>,
     modifier_ids: Vec<i32>,
@@ -21,6 +23,7 @@ impl State {
     pub(super) fn from_initial(state: &LoadedState) -> Self {
         Self {
             pool: None,
+            constructed_policies: Vec::new(),
             absent_unit_wrappers: Vec::new(),
             modifier_next: None,
             modifier_ids: Vec::new(),
