@@ -1,4 +1,5 @@
 //! Current Unit experience eligibility, bonuses and ordinary melee awards.
+pub mod reporting;
 use crate::{
     formation_rules,
     registry::LinuxDefinitionRegistry,
