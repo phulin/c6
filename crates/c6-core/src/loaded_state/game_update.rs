@@ -77,6 +77,11 @@ impl Runtime {
             npc_activation: None,
         }
     }
+    /// Whether this runtime belongs to the supplied input binding. This does
+    /// not admit omitted live inputs or reset an unfinished continuation.
+    pub fn matches(&self, state: &LoadedState) -> bool {
+        &self.binding == state.binding()
+    }
     pub fn pending(&self) -> Option<&core::Continuation> {
         self.pending.as_ref()
     }
@@ -854,6 +859,33 @@ mod inactive_tests {
         complete_current_player(&state, &mut runtime).unwrap();
         assert_eq!(state.retained.core.player_processor, after_control);
         assert_eq!(runtime.player_progress().completed, 1);
+    }
+    #[test]
+    fn binding_query_preserves_failed_and_pending_runtime() {
+        let state = crate::loaded_state::tests::state();
+        let mut runtime = Runtime::new(
+            &state,
+            Inputs {
+                autoplay: AutoplayInputs {
+                    end_turn_signaled: None,
+                    has_pending_state_change: None,
+                    pending_state: None,
+                    active: None,
+                },
+                needs_update: None,
+                auto_player_game: None,
+                local_player: None,
+            },
+        );
+        runtime.pending = Some(core::Continuation::BeginTurn);
+        runtime.fail_player_callback();
+        assert!(runtime.matches(&state));
+        assert!(runtime.failed());
+        assert!(matches!(runtime.pending(), Some(core::Continuation::BeginTurn)));
+        runtime.binding.occurrence_id.push(1);
+        assert!(!runtime.matches(&state));
+        assert!(runtime.failed());
+        assert!(matches!(runtime.pending(), Some(core::Continuation::BeginTurn)));
     }
     #[test]
     fn inactive_return_advances_pass_without_active_player_counter_or_blocking_writes() {
