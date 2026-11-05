@@ -34,6 +34,7 @@ pub mod move_to;
 pub mod notifications;
 pub mod reporting;
 pub mod scripting;
+pub mod session;
 pub mod stock_notifications;
 pub mod stock_script;
 pub mod transition;
