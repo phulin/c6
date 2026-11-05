@@ -251,6 +251,7 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                 owner,
                 self.units,
                 self.visibility,
+                self.backend.movement().ok().map(|m|m.definitions.formation),
             ),
             _ => Err(Error::Unsupported("unknown NPC end consumer")),
         }

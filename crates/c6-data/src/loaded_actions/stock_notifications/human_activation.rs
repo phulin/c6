@@ -255,6 +255,7 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
                         owner,
                         self.definitions.maintenance.unit_registry(),
                         self.visibility,
+                        self.backend.movement().ok().map(|m|m.definitions.formation),
                     )?;
                     let t = player(state, owner)?
                         .ai_targets

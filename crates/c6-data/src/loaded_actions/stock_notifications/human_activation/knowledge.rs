@@ -9,6 +9,7 @@ pub fn observe_visible_units(
     observer: i32,
     units: &LinuxDefinitionRegistry,
     visibility: &unit_sight_state::Runtime,
+    combat: Option<&crate::formation_rules::Definitions>,
 ) -> Result<(), Error> {
     let targets = state
         .retained()
@@ -30,7 +31,7 @@ pub fn observe_visible_units(
             "current historical knowledge aging continuation",
         ));
     }
-    refresh_visible_units(state, observer, units, visibility)
+    refresh_visible_units(state, observer, units, visibility, combat)
 }
 
 /// UpdateKnowledgeBase at the final control-priority signal does not age or
@@ -40,6 +41,7 @@ pub fn refresh_visible_units(
     observer: i32,
     units: &LinuxDefinitionRegistry,
     visibility: &unit_sight_state::Runtime,
+    combat: Option<&crate::formation_rules::Definitions>,
 ) -> Result<(), Error> {
     let layers = visibility.shared(observer).map_err(Error::Unsupported)?;
     let normal = layers
@@ -54,7 +56,12 @@ pub fn refresh_visible_units(
     if width == 0 {
         return Err(Error::Unsupported("current Targets Map width"));
     }
+    enum Observation {
+        Unit(i32, u32),
+        Camp(c6_core::unit::PlotCoord),
+    }
     let mut observed = Vec::new();
+    let camp_hash = state.retained().barbarian.improvement_hash;
     for (index, plot) in map.plots.iter().enumerate() {
         let cell = (index / width)
             .checked_mul(normal.grid_width as usize)
@@ -90,12 +97,31 @@ pub fn refresh_visible_units(
             }
         }
         if !visible {
+            // 21aaae0..21aab27: revealed plots without a district still
+            // refresh actual camp knowledge; ordinary improvements do nothing.
+            let revealed = state
+                .world()
+                .visibility(observer)
+                .ok_or(Error::Unsupported("current Targets revealed owner"))?
+                .revealed
+                .get(index)
+                .ok_or(Error::Unsupported("current Targets revealed plot"))?;
+            match revealed {
+                0 => {}
+                1 if plot.improvement_hash == camp_hash => {
+                    observed.push(Observation::Camp(c6_core::unit::PlotCoord {
+                        x: (index % width) as i32,
+                        y: (index / width) as i32,
+                    }))
+                }
+                1 => {}
+                _ => {
+                    return Err(Error::Unsupported(
+                        "current Targets canonical revealed byte",
+                    ))
+                }
+            }
             continue;
-        }
-        if plot.improvement_hash != u32::MAX {
-            return Err(Error::Unsupported(
-                "current Targets improvement observation continuation",
-            ));
         }
         for reference in state
             .world()
@@ -114,16 +140,73 @@ pub fn refresh_visible_units(
                     "current Targets hidden Unit observation",
                 ));
             }
-            observed.push((unit.record.e_owner, unit.record.id));
+            observed.push(Observation::Unit(unit.record.e_owner, unit.record.id));
+        }
+        if plot.improvement_hash == camp_hash {
+            observed.push(Observation::Camp(c6_core::unit::PlotCoord {
+                x: (index % width) as i32,
+                y: (index / width) as i32,
+            }));
         }
     }
     // Plot order, then current layer member order, is the native observation
     // order. Never enumerate a player roster or sort by Unit ID instead.
-    for unit in observed {
-        crate::unit_creation::production_effects::observe_current_unit::<std::convert::Infallible>(
-            state, units, observer, unit,
-        )
-        .map_err(|_| Error::Unsupported("current Targets UnitInfo update"))?;
+    for observation in observed {
+        match observation {
+            Observation::Unit(owner, id) => {
+                crate::unit_creation::production_effects::observe_current_unit::<
+                    std::convert::Infallible,
+                >(state, units, observer, (owner, id))
+                .map_err(|_| Error::Unsupported("current Targets UnitInfo update"))?
+            }
+            Observation::Camp(location) => observe_camp(state, observer, location, combat)?,
+        }
     }
+    Ok(())
+}
+
+/// UpdateBarbarianCamp20012b0 and UpdateCamp1fff4c0. This remains gameplay
+/// knowledge: PlayerCivilized::Test237ca00 counts these locations near cities.
+/// GetBestDefender's flags1, NO_PLAYER viewer and null attacker select exactly
+/// the existing default profile: no war/visibility query, callback or RNG.
+fn observe_camp(
+    state: &mut LoadedState,
+    observer: i32,
+    location: c6_core::unit::PlotCoord,
+    combat: Option<&crate::formation_rules::Definitions>,
+) -> Result<(), Error> {
+    let camps = &mut state
+        .combat_ai_targets_mut(observer)
+        .map_err(|_| Error::Unsupported("current camp knowledge owner"))?
+        .knowledge_base
+        .barbarians;
+    let index = match camps
+        .iter()
+        .position(|v| v.camp_location.x == location.x && v.camp_location.y == location.y)
+    {
+        Some(index) => index,
+        None => {
+            camps.push(c6_core::player_ai_targets::BarbarianKnowledge {
+                camp_location: c6_core::player_ai_targets::PlotCoord {
+                    x: location.x,
+                    y: location.y,
+                },
+                turns_since_observation: 0,
+                guard_hash: u32::MAX,
+            });
+            camps.len() - 1
+        }
+    };
+    camps[index].turns_since_observation = 0;
+    let combat = combat.ok_or(Error::Unsupported("current camp guard combat definitions"))?;
+    let guard = crate::combat_defender::get_best_defender(state, combat, location)
+        .map_err(|_| Error::Unsupported("current camp guard defender query"))?
+        .map_or(u32::MAX, |v| v.e_type_index);
+    state
+        .combat_ai_targets_mut(observer)
+        .map_err(|_| Error::Unsupported("current camp knowledge guard owner"))?
+        .knowledge_base
+        .barbarians[index]
+        .guard_hash = guard;
     Ok(())
 }

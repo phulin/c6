@@ -280,6 +280,7 @@ pub fn finish_completed_human_pass<P>(
                         owner,
                         services.maintenance.maintenance.unit_registry(),
                         &sight,
+                        c.services.effects.movement().ok().map(|m|m.definitions.formation),
                     )
                 },
             )

@@ -462,6 +462,7 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     owner,
                     self.definitions.maintenance.unit_registry(),
                     self.visibility(),
+                    backend.movement().ok().map(|m|m.definitions.formation),
                 )?;
                 state
                     .combat_ai_targets_mut(owner)
