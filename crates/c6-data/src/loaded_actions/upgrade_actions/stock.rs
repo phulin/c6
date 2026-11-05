@@ -12,8 +12,17 @@ use c6_core::{
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Report {
-    UnitUpgraded { unit: ComponentId, unit_type: u32 },
-    CommandComplete { unit: ComponentId },
+    /// Reporting 0xfc7db95e: COMMAND_UPGRADE (0xd34b69c0), old CID, value 0.
+    CommandStarted {
+        unit: ComponentId,
+    },
+    UnitUpgraded {
+        unit: ComponentId,
+        unit_type: u32,
+    },
+    CommandComplete {
+        unit: ComponentId,
+    },
 }
 
 pub struct Current<'s, 'a, 'd, 'r, 't, 'q, P> {
@@ -82,6 +91,16 @@ impl<P> Effects for Current<'_, '_, '_, '_, '_, '_, P> {
         target: u32,
     ) -> Result<(), String> {
         super::transfer::preflight(state, actor, target, self.transfer, self.backend)
+    }
+    fn command_started(&mut self, state: &mut LoadedState, old: ComponentId) -> Result<(), String> {
+        self.backend
+            .check(state)
+            .map_err(|e| format!("upgrade command-start binding: {e:?}"))?;
+        if !self.transfer.presentation_reports_qualified {
+            return Err("unqualified upgrade command-start report consumers".into());
+        }
+        self.reports.push(Report::CommandStarted { unit: old });
+        Ok(())
     }
     fn prepare_transfer(&mut self, state: &LoadedState, old: &Unit) -> Result<(), String> {
         super::transfer::prepare(state, old, self.transfer)
