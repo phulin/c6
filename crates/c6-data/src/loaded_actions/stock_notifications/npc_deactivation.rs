@@ -1,6 +1,7 @@
-//! Stock empty-asset NPC deactivation on the persistent action owner. Native
+//! Stock NPC deactivation on the persistent action owner. Native
 //! policy caches are omitted; current control/knowledge writes and ordering are
-//! retained. Reached nonempty policy/gameplay continuations remain explicit.
+//! retained. Decisions remain external; unimplemented gameplay continuations
+//! fail explicitly after their actual preceding stores.
 use super::Runtime;
 pub use c6_core::game_update::Error;
 use c6_core::{
@@ -76,19 +77,49 @@ fn player(state: &LoadedState, owner: i32) -> Result<&RetainedPlayer, Error> {
         .find(|p| p.header.owner == owner)
         .ok_or(Error::Unsupported("current NPC deactivation player"))
 }
-fn no_units(state: &LoadedState, owner: i32) -> Result<(), Error> {
+/// Tactical.OnTurnDeactivate2196060 can displace or delete an overstacked
+/// ordinary unit. With fewer than two resolved layered candidates its friendly
+/// count cannot reach two, regardless of the pure definition/type predicates.
+/// This guard deliberately leaves the reached positive placement branch explicit.
+fn tactical_end(state: &LoadedState, owner: i32) -> Result<(), Error> {
     if state
+        .player_slot_status(owner)
+        .map_err(|_| Error::Unsupported("NPC tactical control role"))?
+        == 3
+    {
+        return Ok(());
+    }
+    let units = state
         .world()
         .player(owner)
-        .map_err(|_| Error::Unsupported("current NPC units"))?
+        .map_err(|_| Error::Unsupported("NPC tactical player"))?
         .unit_records()
-        .map_err(|_| Error::Unsupported("current NPC Unit roster"))?
-        .is_empty()
-    {
-        Ok(())
-    } else {
-        Err(Error::Unsupported("NPC recruitment/action continuation"))
+        .map_err(|_| Error::Unsupported("NPC tactical unit roster"))?;
+    for slot in units {
+        let unit = &slot.value;
+        if unit.b_delayed_death || unit.k_location.x == -9999 || unit.k_location.y == -9999 {
+            continue;
+        }
+        let candidates = c6_core::skip_turn::placement::layered_units(state.world(), unit)
+            .map_err(|_| Error::Unsupported("NPC tactical current layered units"))?;
+        let mut resolved = 0usize;
+        for &candidate in candidates {
+            if state
+                .world()
+                .unit(candidate)
+                .map_err(|_| Error::Unsupported("NPC tactical current candidate"))?
+                .is_some()
+            {
+                resolved += 1;
+            }
+        }
+        if resolved >= 2 {
+            return Err(Error::Unsupported(
+                "NPC tactical stacked-unit placement continuation",
+            ));
+        }
     }
+    Ok(())
 }
 fn no_cities(state: &LoadedState, owner: i32) -> Result<(), Error> {
     let p = player(state, owner)?;
@@ -171,14 +202,26 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                     .ok_or(Error::Unsupported("current NPC Homeland"))?
                     .additional_priority;
                 if current == self.inputs.configured(kind)? || current == additional {
-                    no_units(state, owner)?;
-                    no_cities(state, owner)?;
+                    // DoTurn2135330/2195f60 returns true after native
+                    // RecruitUnits/AssignMoves. Those calls choose controller
+                    // allocations, formation changes and unit commands; they
+                    // belong to external policy, including its selection RNG.
+                    // An explicit EndTurn does not authorize native choices.
+                    self.backend
+                        .reached
+                        .push("external NPC unit action selection omitted");
                 }
             }
             Kind::Tactical => {
                 if current == self.inputs.configured(kind)? {
-                    no_units(state, owner)?;
-                    no_cities(state, owner)?;
+                    // DoTurn2135330/2195f60 returns true after native
+                    // RecruitUnits/AssignMoves. Those calls choose controller
+                    // allocations, formation changes and unit commands; they
+                    // belong to external policy, including its selection RNG.
+                    // An explicit EndTurn does not authorize native choices.
+                    self.backend
+                        .reached
+                        .push("external NPC unit action selection omitted");
                 }
             }
             _ => return Err(Error::Unsupported("unknown NPC readiness consumer")),
@@ -225,9 +268,12 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                 if self.inputs.planning_instance_count != Some(0) {
                     return Err(Error::Unsupported("current NPC planning instance teardown"));
                 }
-                // Clear(empty) has no destructor. SetAiPlanner only occurs in
-                // the current Unit loop; no Unit pointer is silently dropped.
-                no_units(state, owner)
+                // Clear(empty) has no destructor. Each current Unit then gets
+                // SetAiPlanner(null)21b9e20: a plain pointer store, with no
+                // report, command or RNG. These planner links and the matching
+                // activation21b9280 are omitted external-policy storage (same
+                // contract as npc_leaves::Planning), not gameplay owners.
+                Ok(())
             }
             Kind::City => no_cities(state, owner),
             Kind::Research => {
@@ -245,13 +291,16 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                 // data; the already selected current research is preserved.
                 Ok(())
             }
-            Kind::Tactical => no_units(state, owner),
+            Kind::Tactical => tactical_end(state, owner),
             Kind::Targets => super::human_activation::knowledge::observe_visible_units(
                 state,
                 owner,
                 self.units,
                 self.visibility,
-                self.backend.movement().ok().map(|m|m.definitions.formation),
+                self.backend
+                    .movement()
+                    .ok()
+                    .map(|m| m.definitions.formation),
             ),
             _ => Err(Error::Unsupported("unknown NPC end consumer")),
         }
