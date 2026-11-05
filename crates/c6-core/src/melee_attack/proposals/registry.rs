@@ -40,6 +40,16 @@ pub struct Proposal {
     pub defender_yields: Vec<PostCombatYield>,
 }
 impl Proposal {
+    /// Linux Unit/District constructor23caa00, before registry callbacks.
+    pub fn melee_unit_district(
+        attacker: UnitReference,
+        defender: ComponentId,
+        plot: Option<PlotCoord>,
+    ) -> Self {
+        let mut proposal = Self::melee_units(attacker, attacker, plot);
+        proposal.defender = Some(Participant::District(defender));
+        proposal
+    }
     /// Native Unit/Unit ProposedCombat23ca920 defaults, before ObjectCreated.
     pub fn melee_units(
         attacker: UnitReference,

@@ -47,6 +47,24 @@ impl<'a, E: Effects> Context<'a, E> {
     pub fn state(&self) -> &LoadedState {
         self.state
     }
+    /// Register the current Unit/District participants through the same ordered
+    /// global, owner and Unit-component listeners as other combat proposals.
+    pub fn propose_unit_district(
+        &mut self,
+        attacker: UnitReference,
+        defender: ComponentId,
+        location: c6_core::unit::PlotCoord,
+    ) -> Result<(u32, kernel::Handle), kernel::DispatchError<Error<E::Error>>> {
+        super::actor(self.state, attacker)
+            .map_err(|e| kernel::DispatchError::Context(Error::Actor(e)))?;
+        self.state
+            .district(i32::from(defender.owner), defender.id)
+            .map_err(|e| kernel::DispatchError::Context(Error::District(e)))?;
+        kernel::propose(
+            self,
+            kernel::Proposal::melee_unit_district(attacker, defender, Some(location)),
+        )
+    }
     pub fn propose_units(
         &mut self,
         attacker: UnitReference,

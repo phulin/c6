@@ -111,6 +111,25 @@ struct BonusDefinitions {
     military_slot: Option<usize>,
 }
 impl Definitions {
+    /// District garrison comparison calls the Unit wound helper directly,
+    /// without the Unit attack opening's immunity/fuel gates.
+    pub(crate) fn unit_reduction_for_damage(
+        &self,
+        state: &LoadedState,
+        damage: i32,
+        coefficient: i32,
+    ) -> Result<i32, Error> {
+        self.check(state)?;
+        let percent = damage
+            .wrapping_mul(100)
+            .checked_div(self.max_hit_points)
+            .ok_or(Error::Missing("Unit wound division"))?;
+        Ok(kernel::reduction_for_damage(
+            percent,
+            coefficient,
+            self.wounded_multiplier,
+        ))
+    }
     /// Shared District garrison query uses this same quantized combat rule.
     pub fn reduction_for_damage(
         &self,

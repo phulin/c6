@@ -3,17 +3,19 @@
 //! supported resolution path; queued MoveTo and message aftermath own the outer
 //! request. District/religious combat and unsupported continuations return errors.
 use crate::{formation_path_state as path, formation_rules, movement_placement_state};
-pub mod transition;
-pub mod stock;
 pub mod backend;
+pub mod city;
 pub mod damage;
-pub mod experience;
+pub mod district_strength;
 pub mod execution;
+pub mod experience;
 pub mod proposals;
-pub mod results;
 pub mod resolve;
+pub mod results;
+pub mod stock;
 pub mod strength;
 pub mod target_selection;
+pub mod transition;
 use c6_core::{
     loaded_state::LoadedState,
     map::UnitReference,

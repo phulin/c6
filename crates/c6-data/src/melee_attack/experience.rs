@@ -33,6 +33,8 @@ pub struct Definitions {
     rules: kernel::Rules,
     ranged_base: i32,
     district_vs_unit: Option<i32>,
+    unit_vs_district: Option<i32>,
+    city_captured: Option<i32>,
 }
 impl Definitions {
     pub fn from_rules(
@@ -99,6 +101,8 @@ impl Definitions {
                 .map_err(Error::Definitions)?,
             ranged_base: p("EXPERIENCE_COMBAT_RANGED")?,
             district_vs_unit: p("EXPERIENCE_DISTRICT_VS_UNIT").ok(),
+            unit_vs_district: p("EXPERIENCE_UNIT_VS_DISTRICT_NOT_CITY_CAPTURED").ok(),
+            city_captured: p("EXPERIENCE_CITY_CAPTURED").ok(),
             rules: kernel::Rules {
                 maximum_barbarian_level: p("EXPERIENCE_MAX_BARB_LEVEL")?,
                 barbarian_soft_cap: p("EXPERIENCE_BARB_SOFT_CAP")?,
@@ -333,6 +337,57 @@ pub fn district_defender_award(
 
     defs.district_vs_unit
         .ok_or(Error::Missing("EXPERIENCE_DISTRICT_VS_UNIT"))
+}
+
+/// CalculateExperienceEarned(true, attacker, NULL, MELEE, UNIT_VS_DISTRICT).
+/// A city capture selects its distinct award before applying the attacker's
+/// current government/general/attacking XP multiplier and native Q8 ceiling.
+#[allow(clippy::too_many_arguments)]
+pub fn unit_district_award(
+    state: &LoadedState,
+    defs: &Definitions,
+    formation: &formation_rules::Definitions,
+    levels: &[(i32, u32)],
+    attacker: UnitReference,
+    defender_owner: i32,
+    city_captured: bool,
+) -> Result<i32, Error> {
+    use kernel::Context as _;
+    if state.binding().inputs != defs.identities {
+        return Err(Error::Binding);
+    }
+    let mut current = Context {
+        state,
+        defs,
+        formation,
+        levels,
+        attacker,
+        defender: attacker,
+        ranged: false,
+    };
+    if !current.can_earn(kernel::Side::Attacker)? {
+        return Ok(0);
+    }
+    let multiplier = current.modifier(kernel::Side::Attacker)?;
+    let level = levels
+        .iter()
+        .find(|r| r.0 == defender_owner)
+        .ok_or(Error::Missing("current District owner level"))?
+        .1;
+    let free = level == 0x04e6b0a0;
+    let amount =
+        if free && current.level(kernel::Side::Attacker)? >= defs.rules.maximum_barbarian_level {
+            defs.rules.barbarian_soft_cap
+        } else if city_captured {
+            defs.city_captured
+                .ok_or(Error::Missing("EXPERIENCE_CITY_CAPTURED"))?
+        } else {
+            defs.unit_vs_district.ok_or(Error::Missing(
+                "EXPERIENCE_UNIT_VS_DISTRICT_NOT_CITY_CAPTURED",
+            ))?
+        };
+    let raw = ((i64::from(amount.wrapping_shl(8)) * i64::from(multiplier)) >> 8) as i32;
+    Ok((raw >> 8).wrapping_add(i32::from(raw & 255 != 0)))
 }
 
 #[derive(Debug)]

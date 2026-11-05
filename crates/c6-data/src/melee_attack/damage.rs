@@ -387,3 +387,50 @@ pub fn district_unit_with_draws(
     let amount = context.calculate_damage(&parameters, average)?;
     Ok((amount, draws))
 }
+
+/// Genuine Unit/District damage parameter call, before the outer-defense
+/// percentage adjustment. Both the garrison and outer calls consume a draw.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn unit_district_with_draws(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    attacker: c6_core::map::UnitReference,
+    attacker_raw: i32,
+    defender_raw: i32,
+    maximum: i32,
+    outer_damage: i32,
+    outer_maximum: i32,
+    defense_type: u32,
+    bypass: bool,
+) -> Result<(i32, Vec<RandomDraw>), Error> {
+    use kernel::ExchangeContext as _;
+    if state.binding().inputs != definitions.identities {
+        return Err(Error::Binding);
+    }
+    let parameters = c6_core::combat::DamageParameters {
+        attacker_strength_raw: attacker_raw,
+        defender_strength_raw: defender_raw,
+        defender_max_hit_points: maximum,
+        outer_defense_damage: outer_damage,
+        outer_defense_max_hit_points: outer_maximum,
+        defense_type,
+        power_scaling_raw: c6_core::movement::MovementPoints::route_float_bits(
+            definitions.power_scaling.to_bits(),
+        )
+        .0,
+        minimum_damage: definitions.minimum_damage,
+        base_damage: definitions.base_damage,
+        power_dampener: definitions.power_dampener,
+        max_extra_damage: 0,
+        bypass_defenses: bypass,
+    };
+    let mut draws = Vec::new();
+    let amount = ExchangeContext {
+        state,
+        definitions,
+        defender: attacker,
+        draws: &mut draws,
+    }
+    .calculate_damage(&parameters, false)?;
+    Ok((amount, draws))
+}
