@@ -869,5 +869,6 @@ pub mod unit_creation;
 pub mod barbarian_activation;
 pub mod barbarian_camps;
 pub mod barbarian_camp_placement;
+pub mod barbarian_camp_units;
 
 pub mod ranged_attack;
