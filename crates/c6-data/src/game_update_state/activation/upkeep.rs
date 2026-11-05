@@ -64,6 +64,23 @@ pub struct Context<'s, 'a, P> {
     pub formation_definitions: &'s crate::formation_rules::Definitions,
     pub placement: &'s dyn stock_notifications::movement::PlacementQueries,
     pub phases: &'s super::Phases,
+    pub forced_rebase: &'s super::forced_rebase::Definitions,
+    pub cities: Option<CityServices<'s, 'a, P>>,
+}
+/// The current source iteration order and concrete public city implementation.
+/// The callback binds current owners and calls current_upkeep::Context::activate;
+/// production outcomes remain visible while the remaining player upkeep runs.
+pub type CityActivation<'s, 'a, P> = dyn FnMut(
+        &mut LoadedState,
+        &mut stock_notifications::Runtime<'a, P>,
+        i32,
+        u32,
+    ) -> Result<crate::city_production_turn::Outcome, crate::city_turn::Error>
+    + 's;
+pub struct CityServices<'s, 'a, P> {
+    pub order: &'s [u32],
+    pub activate: &'s mut CityActivation<'s, 'a, P>,
+    pub outcomes: &'s mut Vec<(i32, u32, crate::city_production_turn::Outcome)>,
 }
 pub struct StartSignal<'a> {
     pub requirements: &'a mut super::requirement_changes::Runtime,
@@ -167,20 +184,36 @@ impl<P> Context<'_, '_, P> {
         .map_err(|e| failure("unit resource activation", e))?;
         super::cityless_managers::after_units(self.state, self.managers_definitions, owner)
             .map_err(|e| failure("governors and trade", e))?;
-        if !self
+        let player = self
             .state
             .retained()
             .players
             .iter()
             .find(|p| p.header.owner == owner)
-            .ok_or_else(|| failure("statistics", "current player"))?
-            .cities
-            .records
-            .entries
-            .is_empty()
-        {
-            return Err(failure("statistics", "current City iteration order"));
-        }
+            .ok_or_else(|| failure("statistics", "current player"))?;
+        let city_order = if player.cities.records.entries.is_empty() {
+            vec![]
+        } else {
+            let current = self
+                .cities
+                .as_ref()
+                .ok_or_else(|| failure("statistics", "current City iteration order"))?;
+            let order = current.order.to_vec();
+            if order.len() != player.cities.records.entries.len()
+                || order.iter().enumerate().any(|(i, id)| {
+                    order[..i].contains(id)
+                        || !player
+                            .cities
+                            .records
+                            .entries
+                            .iter()
+                            .any(|c| c.value.header.id == *id)
+                })
+            {
+                return Err(failure("statistics", "current City iteration membership"));
+            }
+            order
+        };
         {
             let mut maintenance = stock_notifications::maintenance::Context {
                 state: self.state,
@@ -188,11 +221,20 @@ impl<P> Context<'_, '_, P> {
                 definitions: self.maintenance_definitions,
             };
             maintenance
-                .stats(owner, units, Some(&[]))
+                .stats(owner, units, Some(&city_order))
                 .map_err(|e| failure("statistics", e))?;
             maintenance.eras(owner).map_err(|e| failure("eras", e))?;
         }
-        placement_and_city_pass(self.state, owner)?;
+        placement_prelude(self.state, self.forced_rebase, owner)?;
+        for city in city_order {
+            let services = self
+                .cities
+                .as_mut()
+                .ok_or_else(|| failure("city activation", "current city services"))?;
+            let outcome = (services.activate)(self.state, self.backend, owner, city)
+                .map_err(|e| failure("city activation", e))?;
+            services.outcomes.push((owner, city, outcome));
+        }
         super::cityless_managers::after_cities(
             self.state,
             self.managers_definitions,
@@ -266,6 +308,8 @@ impl<P> Context<'_, '_, P> {
             self.treasury_definitions,
             &treasury_deals::Queries {
                 capabilities: self.capabilities,
+                cities: self.backend.city_query_inputs(),
+                city_order: self.cities.as_ref().map(|c| c.order),
             },
             self.deals,
             &mut GoldEffects,
@@ -290,21 +334,21 @@ impl<P> Context<'_, '_, P> {
 }
 
 /// Stock Placement virtual +0x78 (forced rebasing), improvement captures and
-/// the subsequent City activation pass. Empty collections return at their real
-/// source loop boundaries; positive collections require their gameplay bodies.
-pub fn placement_and_city_pass(state: &LoadedState, owner: i32) -> Result<(), Error> {
+/// the subsequent City activation pass are separate. Current districts are
+/// checked for real air capacity before entering aircraft continuations.
+pub fn placement_prelude(
+    state: &LoadedState,
+    definitions: &super::forced_rebase::Definitions,
+    owner: i32,
+) -> Result<(), Error> {
+    super::forced_rebase::check_districts(state, definitions, owner)
+        .map_err(|e| failure("forced district rebasing", e))?;
     let player = state
         .retained()
         .players
         .iter()
         .find(|p| p.header.owner == owner)
         .ok_or_else(|| failure("placement", "current player"))?;
-    if !player.districts.records.entries.is_empty() {
-        return Err(failure(
-            "forced district rebasing",
-            "current district callbacks",
-        ));
-    }
     if !player.improvements.plot_indices.is_empty() {
         return Err(failure(
             "forced improvement rebasing",
@@ -312,11 +356,5 @@ pub fn placement_and_city_pass(state: &LoadedState, owner: i32) -> Result<(), Er
         ));
     }
     // ExecuteImprovementCaptures traverses the same current improvement list.
-    if !player.cities.records.entries.is_empty() {
-        return Err(failure(
-            "city activation",
-            "current City upkeep and loyalty transfers",
-        ));
-    }
     Ok(())
 }
