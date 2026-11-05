@@ -22,6 +22,7 @@ pub const FOUND_CITY_HASH: u32 = 0x5733ac6c;
 pub const MOVE_TO_HASH: u32 = 0x580f2f68;
 pub const RANGE_ATTACK_HASH: u32 = 0x09d0292a;
 pub const BUILD_IMPROVEMENT_HASH: u32 = 0x1d60e778;
+pub const REPAIR_HASH: u32 = 0x08ca367f;
 pub const PILLAGE_HASH: u32 = 0x4885d724;
 pub const MAKE_TRADE_ROUTE_HASH: u32 = 0x8374d954;
 pub const ALERT_HASH: u32 = 0xe547bc17;
@@ -46,6 +47,8 @@ pub enum OperationParameters {
     },
     /// Linux Pillage ClassParameters version one.
     Pillage { modifiers: u32, improvement_hash: u32 },
+    /// Linux Repair ClassParameters version one.
+    Repair { modifiers: u32, improvement_hash: u32 },
     MakeTradeRoute {
         modifiers: u32,
         location0: PlotCoord,
@@ -67,6 +70,7 @@ fn parameter_kind(hash: u32) -> Result<u8, Error> {
         MAKE_TRADE_ROUTE_HASH => Ok(2),
         BUILD_IMPROVEMENT_HASH => Ok(3),
         PILLAGE_HASH => Ok(4),
+        REPAIR_HASH => Ok(5),
         _ => Err(Error::UnsupportedHandler(hash)),
     }
 }
@@ -182,6 +186,10 @@ impl OperationQueue {
                     r.version(1)?;
                     OperationParameters::Pillage { modifiers:r.u32()?, improvement_hash:r.u32()? }
                 }
+                5 => {
+                    r.version(1)?;
+                    OperationParameters::Repair { modifiers:r.u32()?, improvement_hash:r.u32()? }
+                }
                 _ => unreachable!(),
             };
             nodes.push(OperationNode {
@@ -211,6 +219,7 @@ impl OperationQueue {
                 OperationParameters::MakeTradeRoute { .. } => (2, 56),
                 OperationParameters::BuildImprovement { .. } => (3, 40),
                 OperationParameters::Pillage { .. } => (4, 40),
+                OperationParameters::Repair { .. } => (5, 40),
             };
             if actual != kind {
                 return Err(Error::ParameterHandlerMismatch(node.operation_hash));
@@ -246,7 +255,8 @@ impl OperationQueue {
                     }
                 }
                 OperationParameters::BuildImprovement { modifiers, improvement_hash }
-                | OperationParameters::Pillage { modifiers, improvement_hash } => {
+                | OperationParameters::Pillage { modifiers, improvement_hash }
+                | OperationParameters::Repair { modifiers, improvement_hash } => {
                     for v in [1, *modifiers, *improvement_hash] {
                         word(&mut bytes, v);
                     }

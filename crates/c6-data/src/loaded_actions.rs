@@ -268,7 +268,8 @@ impl TypedParameters for OperationParameters {
     fn improvement(&self) -> Result<u32, Error> {
         match self {
             Self::BuildImprovement { improvement_hash, .. }
-            | Self::Pillage { improvement_hash, .. } => Ok(*improvement_hash),
+            | Self::Pillage { improvement_hash, .. }
+            | Self::Repair { improvement_hash, .. } => Ok(*improvement_hash),
             _ => Err(Error::Unsupported("BuildImprovement parameter type")),
         }
     }
@@ -497,7 +498,7 @@ where
         if h.identity().operation_hash == OperationHash(c6_core::unit::FORTIFY_HASH) {
             return self.fortify_handler.as_mut().ok_or(Error::Unsupported("Fortify handler composition"))?(self.state, s.unit, self.external);
         }
-        if h.identity().operation_hash == OperationHash(c6_core::unit::PILLAGE_HASH) {
+        if matches!(h.identity().operation_hash.0, c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH) {
             let improvement = s.operation.parameters.improvement()?;
             return self.pillage_handler.as_mut().ok_or(Error::Unsupported("Pillage handler composition"))?(
                 self.state,s.unit,improvement,visible_only,self.external);

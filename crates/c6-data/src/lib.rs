@@ -879,3 +879,4 @@ pub mod ranged_attack;
 pub mod city_strike;
 
 pub mod builder_improvement;
+pub mod builder_repair;
