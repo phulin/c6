@@ -35,9 +35,9 @@ impl appeal::Effects for Appeal<'_> {
     }
 }
 impl<P> Current<'_, '_, P> {
-    fn current(&self) -> Result<citizens::Current<'_>, Error> {
+    fn current<'q>(&'q self, territory: &'q crate::city_territory::Runtime) -> Result<citizens::Current<'q>, Error> {
         let query=self.backend.city_query_inputs().ok_or(Error::Unsupported("Farm current city queries"))?;
-        Ok(citizens::Current { definitions: query.definitions, territory: query.current.territory,
+        Ok(citizens::Current { definitions: query.definitions, territory,
             drought_ids: query.current.drought_ids, fallout_turns: self.fallout })
     }
 }
@@ -57,11 +57,15 @@ impl<P> citizens::Effects for Current<'_, '_, P> {
             }).map(|_|()).map_err(|_|Error::Unsupported("Farm worker appeal continuation"))
     }
     fn capacity(&mut self,s:&LoadedState,o:i32,c:u32,p:PlotCoord)->Result<i32,Error>{
-        citizens::capacity(s,o,c,p,self.definitions,&self.current()?)
+        let q=self.backend.city_query_inputs().ok_or(Error::Unsupported("Farm current city queries"))?;
+        let territory=q.current.territory.read()?;
+        citizens::capacity(s,o,c,p,self.definitions,&self.current(&territory)?)
     }
     fn plot_yields(&mut self,s:&LoadedState,o:i32,c:u32,p:usize)
         ->Result<Vec<c6_core::city_citizen_assignment::Yield>,Error>{
-        citizens::plot_yields(s,o,c,p,&self.current()?)
+        let q=self.backend.city_query_inputs().ok_or(Error::Unsupported("Farm current city queries"))?;
+        let territory=q.current.territory.read()?;
+        citizens::plot_yields(s,o,c,p,&self.current(&territory)?)
     }
     fn food_and_gold_indices(&self)->Result<(i32,i32),Error>{
         let q=self.backend.city_query_inputs().ok_or(Error::Unsupported("Farm current city queries"))?;

@@ -7,6 +7,8 @@ use crate::{
     loaded_actions::configuration::Configuration,
 };
 use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
+#[path = "territory_view.rs"]
+pub mod territory_view;
 /// The fixed stock output consumers publish derived snapshots only. Added
 /// synchronous consumers require a separate implementation of upkeep::Effects.
 pub enum Scope {
@@ -15,7 +17,7 @@ pub enum Scope {
 /// Borrowed current owners. With `trade: None`, each query reads the canonical
 /// graph from LoadedState rather than retaining a route snapshot across turns.
 pub struct Current<'a> {
-    pub territory: &'a crate::city_territory::Runtime,
+    pub territory: &'a dyn territory_view::Territory,
     pub drought_ids: Option<&'a [i32]>,
     pub trade: Option<&'a c6_core::trade_graph_state::GraphState>,
     pub capabilities: &'a c6_core::game_capabilities::Membership,
@@ -45,6 +47,7 @@ impl Current<'_> {
                 .current_era()
                 .ok_or(CityError::Unsupported("current canonical era index"))?,
         };
+        let territory = self.territory.read()?;
         yield_calculation::calculate(
             state,
             owner,
@@ -53,7 +56,7 @@ impl Current<'_> {
             kind,
             definitions,
             &yield_calculation::Current {
-                territory: self.territory,
+                territory: &territory,
                 drought_ids: self.drought_ids,
                 trade,
                 capabilities: self.capabilities,
@@ -128,10 +131,13 @@ impl<E: production::Effects> Context<'_, E> {
             .economy
             .happiness_from_surplus(amenities.wrapping_sub(needed)))
     }
-    fn citizen_current(&self) -> upkeep::citizens::Current<'_> {
+    fn citizen_current<'q>(
+        &'q self,
+        territory: &'q crate::city_territory::Runtime,
+    ) -> upkeep::citizens::Current<'q> {
         upkeep::citizens::Current {
             definitions: self.definitions,
-            territory: self.current.territory,
+            territory,
             drought_ids: self.current.drought_ids,
             fallout_turns: &self.fallout,
         }
@@ -331,6 +337,7 @@ impl<E: production::Effects> upkeep::culture::Effects for Context<'_, E> {
         o: i32,
         c: u32,
     ) -> std::result::Result<Option<u32>, CityError> {
+        let territory = self.current.territory.read()?;
         upkeep::buyable_plots::next_plot(
             s,
             o,
@@ -338,7 +345,7 @@ impl<E: production::Effects> upkeep::culture::Effects for Context<'_, E> {
             self.buyable,
             &self.definitions.tiles,
             &crate::city_turn::tiles::Current {
-                territory: self.current.territory,
+                territory: &territory,
                 drought_ids: self.current.drought_ids,
                 resource_visibility: &self.definitions.resources,
             },
@@ -430,7 +437,8 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
         c: u32,
         p: PlotCoord,
     ) -> std::result::Result<i32, CityError> {
-        upkeep::citizens::capacity(s, o, c, p, self.workers, &self.citizen_current())
+        let territory = self.current.territory.read()?;
+        upkeep::citizens::capacity(s, o, c, p, self.workers, &self.citizen_current(&territory))
     }
     fn plot_yields(
         &mut self,
@@ -439,7 +447,8 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
         c: u32,
         p: usize,
     ) -> std::result::Result<Vec<c6_core::city_citizen_assignment::Yield>, CityError> {
-        upkeep::citizens::plot_yields(s, o, c, p, &self.citizen_current())
+        let territory = self.current.territory.read()?;
+        upkeep::citizens::plot_yields(s, o, c, p, &self.citizen_current(&territory))
     }
     fn food_and_gold_indices(&self) -> std::result::Result<(i32, i32), CityError> {
         Ok((

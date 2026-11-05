@@ -466,8 +466,9 @@ impl<P> crate::found_city::cultural_identity::Context for CityPlacement<'_, '_, 
                 .ok_or(crate::city_turn::Error::Unsupported(
                     "current placement City queries",
                 ))?;
+        let territory = inputs.current.territory.read()?;
         let current = crate::city_turn::yield_calculation::Current {
-            territory: inputs.current.territory,
+            territory: &territory,
             drought_ids: inputs.current.drought_ids,
             trade: state.trade_graph()?,
             capabilities: inputs.current.capabilities,
