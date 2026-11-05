@@ -284,7 +284,7 @@ impl Runtime {
         self.congress = Some(inputs);
         Ok(())
     }
-    fn validate(&self, state: &LoadedState) -> Result<(), Error> {
+    pub(crate) fn validate(&self, state: &LoadedState) -> Result<(), Error> {
         if !self.instance.same_instance(state.action_stamp()) {
             Err(missing("activation Climate/Parks instance"))
         } else {
