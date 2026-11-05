@@ -1,5 +1,7 @@
 //! Ordered activation managers. Positive city/trader branches report their
 //! unfinished native prefix; the empty collections are read from current state.
+#[path = "resource_cities.rs"]
+mod resource_cities;
 use crate::{
     game_parameters::sql_integer,
     registry::{linux_type_hash, LinuxDefinitionRegistry},
@@ -33,6 +35,7 @@ pub struct Definitions {
     units: LinuxDefinitionRegistry,
     traders: Vec<bool>,
     resources: Vec<(u32, bool)>,
+    city_resources: resource_cities::Definitions,
     denounce: i32,
     earliest_major_dow_turn: i32,
     casus_prerequisites: Vec<(u32, Option<u32>, bool)>,
@@ -204,7 +207,9 @@ impl Definitions {
                 });
             casus_prerequisites.push((linux_type_hash(name.as_bytes()), prerequisite, golden));
         }
+        let city_resources = resource_cities::Definitions::from_rules(state, rules, &resources)?;
         Ok(Self {
+            city_resources,
             congress_initial_era: parameter("WORLD_CONGRESS_INITIAL_ERA")?,
             special_session_min_turns: parameter(
                 "WORLD_CONGRESS_MIN_TIME_BETWEEN_SPECIAL_SESSIONS",
@@ -256,9 +261,15 @@ pub struct Runtime {
     emergency_signals: Option<Vec<c6_core::game_emergency::Signal>>,
 }
 impl Runtime {
-    pub fn initialize_congress_round(&mut self, state: &LoadedState, current: crate::game_update_state::round_congress::Current) -> Result<(), Error> {
+    pub fn initialize_congress_round(
+        &mut self,
+        state: &LoadedState,
+        current: crate::game_update_state::round_congress::Current,
+    ) -> Result<(), Error> {
         self.validate(state)?;
-        if self.congress_round.is_some() { return Err(missing("Congress round already initialized")); }
+        if self.congress_round.is_some() {
+            return Err(missing("Congress round already initialized"));
+        }
         self.congress_round = Some(current);
         Ok(())
     }
@@ -627,9 +638,7 @@ pub fn before_units(
             }
         }
     }
-    if !player(state, owner)?.cities.records.entries.is_empty() {
-        return Err(missing("city resource accumulation"));
-    }
+    resource_cities::accumulate(state, &defs.city_resources, owner)?;
     e.report_block(state, 0x1153df52, false)?;
     state
         .player_resources_mut(owner)
@@ -705,9 +714,7 @@ pub fn after_cities(
     {
         row.value = 0;
     }
-    if !player(state, owner)?.cities.records.entries.is_empty() {
-        return Err(missing("city resource maintenance/power"));
-    }
+    resource_cities::maintain(state, &defs.city_resources, owner)?;
     for &(hash, accumulates) in &defs.resources {
         if !accumulates {
             continue;
