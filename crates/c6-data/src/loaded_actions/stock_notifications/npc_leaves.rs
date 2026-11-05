@@ -542,17 +542,10 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
             }
             Kind::Homeland => {
                 no_units(state, owner)?;
-                let h = p
-                    .ai_homeland
-                    .as_ref()
-                    .ok_or(Error::Unsupported("NPC Homeland owner"))?;
-                if h.control_instance_id != u32::MAX {
-                    return Err(Error::Unsupported(
-                        "NPC Homeland existing control ownership",
-                    ));
-                }
                 // 2135230 prepares move priorities/EstablishPriorities;
-                // external policies own actual new Homeland move selection.
+                // it does not inspect or execute control_instance_id. Preserve
+                // that owner for the separate control/deactivation path.
+                // External policies own actual new Homeland move selection.
                 Ok(())
             }
             Kind::Research => {
