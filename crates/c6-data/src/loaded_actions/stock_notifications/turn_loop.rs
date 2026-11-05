@@ -2,7 +2,7 @@
 use super::{current_aftermath, deactivation, Runtime};
 use crate::game_update_state::{
     self as data,
-    activation::upkeep::{ActivationOutcome, PolicyChoice},
+    activation::upkeep::{ActivationOutcome, PolicyChoice, PolicyKind},
 };
 use c6_core::{
     loaded_state::{game_update as loaded, turn_completion, ActionStamp, LoadedState},
@@ -383,6 +383,12 @@ pub fn resume_research<'b, P, E>(
         .as_ref()
         .ok_or(Error::Policy("no suspended policy choice"))?
         .clone();
+    let kind = match choice.kind {
+        PolicyKind::Research(kind) => kind,
+        PolicyKind::PlayerActions => {
+            return Err(Error::Policy("current choice requires a player action"))
+        }
+    };
     if !choice.options.contains(&index) {
         return Err(Error::Policy("illegal external research choice"));
     }
@@ -410,7 +416,7 @@ pub fn resume_research<'b, P, E>(
             definitions,
             effects: &mut effects,
         };
-        let legal = match choice.kind {
+        let legal = match kind {
             crate::research::Kind::Technology => {
                 research.can_research_technology(choice.player, index)
             }
@@ -420,7 +426,7 @@ pub fn resume_research<'b, P, E>(
         if !legal {
             return Err(Error::Policy("research choice is no longer legal"));
         }
-        let request = match choice.kind {
+        let request = match kind {
             crate::research::Kind::Technology => research.request_technology(
                 choice.player,
                 index,
@@ -434,7 +440,7 @@ pub fn resume_research<'b, P, E>(
             runtime.fail_player_callback();
             return Err(Error::PolicyAction(format!("{error:?}")));
         }
-        let selected = c6_core::research_turn::current(&research, choice.player, choice.kind)
+        let selected = c6_core::research_turn::current(&research, choice.player, kind)
             .map_err(|e| Error::PolicyAction(format!("{e:?}")))?;
         if selected != index {
             runtime.fail_player_callback();

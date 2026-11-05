@@ -27,10 +27,15 @@ fn failure(stage: &'static str, cause: impl std::fmt::Debug) -> Error {
         cause: format!("{cause:?}"),
     }
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PolicyKind {
+    Research(research::Kind),
+    PlayerActions,
+}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PolicyChoice {
     pub player: i32,
-    pub kind: research::Kind,
+    pub kind: PolicyKind,
     pub options: Vec<i32>,
 }
 #[derive(Debug, Eq, PartialEq)]

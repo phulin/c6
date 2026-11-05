@@ -21,6 +21,7 @@ pub mod game_update;
 pub mod gold;
 pub mod human_activation;
 pub mod inactive_control;
+pub mod npc_activation;
 #[path = "stock_maintenance.rs"]
 pub mod maintenance;
 #[path = "stock_manager_queries.rs"]
