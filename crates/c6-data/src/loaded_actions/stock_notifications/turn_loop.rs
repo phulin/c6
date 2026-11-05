@@ -1,30 +1,35 @@
-//! Whole current-state human turn handoff on the persistent stock backend.
-//! New-round and active nonhuman policy continuations remain unsupported.
+//! Persistent turn handoff and source-positioned external policy continuations.
 use super::{current_aftermath, deactivation, Runtime};
-use crate::game_update_state as data;
+use crate::game_update_state::{
+    self as data,
+    activation::upkeep::{ActivationOutcome, PolicyChoice},
+};
 use c6_core::{
-    loaded_state::{game_update as loaded, turn_completion, LoadedState},
+    loaded_state::{game_update as loaded, turn_completion, ActionStamp, LoadedState},
     turn_completion as completion,
 };
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Debug)]
 pub enum Outcome {
     InvalidEncodedPlayer,
     PausedHuman,
     AlreadyComplete,
-    /// Complete ordinary updates returned before exposing this player's input.
     DecisionReady {
         player: i32,
         updates: usize,
     },
+    /// The current callback is suspended before a genuine player choice.
+    Choice(PolicyChoice),
 }
 #[derive(Debug)]
 pub enum Error<E> {
     Completion(completion::Error),
     Activation(E),
     InactiveControl(E),
+    ActiveControl(E),
     Notifications(c6_core::unit_operation_aftermath::Error),
     Deactivation(deactivation::Error),
+    Policy(&'static str),
+    PolicyAction(String),
     Budget,
 }
 impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
@@ -33,7 +38,25 @@ impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
     }
 }
 impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
-
+#[derive(Clone, Copy)]
+enum Phase {
+    MandatoryFirst,
+    ConditionalSecond,
+    Ordinary,
+}
+pub(crate) struct Progress {
+    stamp: ActionStamp,
+    issuer: i32,
+    phase: Phase,
+    updates: usize,
+    in_progress: bool,
+    choice: Option<PolicyChoice>,
+}
+impl<P> Runtime<'_, P> {
+    pub fn pending_policy_choice(&self) -> Option<&PolicyChoice> {
+        self.turn_progress.as_ref().and_then(|p| p.choice.as_ref())
+    }
+}
 #[allow(clippy::too_many_arguments)]
 fn update<'b, P, E>(
     context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
@@ -41,40 +64,75 @@ fn update<'b, P, E>(
     inputs: &deactivation::Inputs<'_, '_, '_>,
     visibility: &mut data::deactivation::VisibilityHistory,
     budget: &mut usize,
-    activation: &mut impl FnMut(&mut LoadedState, &mut Runtime<'b, P>, i32, bool) -> Result<(), E>,
+    resuming: bool,
+    activation: &mut impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+        bool,
+    ) -> Result<ActivationOutcome, E>,
     inactive: &mut impl FnMut(&mut LoadedState, &mut Runtime<'b, P>, i32) -> Result<(), E>,
-) -> Result<(), Error<E>> {
-    if *budget == 0 {
-        return Err(Error::Budget);
-    }
-    *budget -= 1;
-    {
-        let mut c = data::context(
+    active: &mut impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+    ) -> Result<ActivationOutcome, E>,
+) -> Result<Option<PolicyChoice>, Error<E>> {
+    if !resuming {
+        if *budget == 0 {
+            return Err(Error::Budget);
+        }
+        *budget -= 1;
+        data::context(
             context.notifications.state,
             runtime,
             inputs.readiness,
             &mut context.notifications.backend,
         )
+        .map_err(Error::Completion)?
+        .prepare_prefix()
         .map_err(Error::Completion)?;
-        c.prepare_prefix().map_err(Error::Completion)?;
     }
     loop {
-        let next = loaded::prepare_current_player(context.notifications.state, runtime)
-            .map_err(Error::Completion)?;
+        let next = match runtime.pending_player_effect() {
+            Some(effect) => Some(effect),
+            None => loaded::prepare_current_player(context.notifications.state, runtime)
+                .map_err(Error::Completion)?,
+        };
         let Some(next) = next else { break };
-        let owner = match next {
-            c6_core::game_update::PlayerEffect::Blocking { player } => player,
+        match next {
             c6_core::game_update::PlayerEffect::Activation { player, first } => {
-                activation(
+                match activation(
                     context.notifications.state,
                     &mut context.notifications.backend,
+                    runtime,
                     player,
                     first,
                 )
-                .map_err(Error::Activation)?;
+                .map_err(Error::Activation)?
+                {
+                    ActivationOutcome::Choice(choice) => return Ok(Some(choice)),
+                    ActivationOutcome::Complete => {}
+                }
                 loaded::complete_activation(context.notifications.state, runtime)
                     .map_err(Error::Completion)?;
-                player
+            }
+            c6_core::game_update::PlayerEffect::ActiveControl { player } => {
+                match active(
+                    context.notifications.state,
+                    &mut context.notifications.backend,
+                    runtime,
+                    player,
+                )
+                .map_err(Error::ActiveControl)?
+                {
+                    ActivationOutcome::Choice(choice) => return Ok(Some(choice)),
+                    ActivationOutcome::Complete => {}
+                }
+                loaded::complete_active_control(context.notifications.state, runtime)
+                    .map_err(Error::Completion)?;
             }
             c6_core::game_update::PlayerEffect::InactiveControl { player } => {
                 inactive(
@@ -85,33 +143,130 @@ fn update<'b, P, E>(
                 .map_err(Error::InactiveControl)?;
                 loaded::complete_inactive_player(context.notifications.state, runtime)
                     .map_err(Error::Completion)?;
-                continue;
             }
-            c6_core::game_update::PlayerEffect::ActiveControl { .. } => {
-                return Err(Error::Completion(completion::Error::Unsupported(
-                    "current mixed nonhuman/off-turn controller gameplay",
-                )));
+            c6_core::game_update::PlayerEffect::Blocking { player } => {
+                context
+                    .notifications
+                    .update(player, budget)
+                    .map_err(Error::Notifications)?;
+                loaded::complete_current_player(context.notifications.state, runtime)
+                    .map_err(Error::Completion)?;
             }
-        };
-        context
-            .notifications
-            .update(owner, budget)
-            .map_err(Error::Notifications)?;
-        loaded::complete_current_player(context.notifications.state, runtime)
-            .map_err(Error::Completion)?;
+        }
     }
     deactivation::finish_completed_human_pass(context, runtime, inputs, visibility, budget)
         .map_err(Error::Deactivation)?;
-    Ok(())
+    Ok(None)
 }
-
-/// Execute PlayerTurnComplete, its mandatory first Update and conditional
-/// second Update, then ordinary engine updates until the active human has
-/// finished activation. `activation` MUST execute the full TurnManager body and
-/// Processor activation report; the public upkeep::Context::activate supplies
-/// that implementation. `inactive` executes the selected inactive controller
-/// branch (stock inactive_control::run), retaining its pending work state. Both
-/// receive the same canonical state and backend.
+#[allow(clippy::too_many_arguments)]
+fn drive<'b, P, E>(
+    context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
+    runtime: &mut loaded::Runtime,
+    inputs: &deactivation::Inputs<'_, '_, '_>,
+    visibility: &mut data::deactivation::VisibilityHistory,
+    budget: &mut usize,
+    progress: &mut Progress,
+    activation: &mut impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+        bool,
+    ) -> Result<ActivationOutcome, E>,
+    inactive: &mut impl FnMut(&mut LoadedState, &mut Runtime<'b, P>, i32) -> Result<(), E>,
+    active: &mut impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+    ) -> Result<ActivationOutcome, E>,
+) -> Result<Outcome, Error<E>> {
+    loop {
+        if !progress.in_progress {
+            match progress.phase {
+                Phase::ConditionalSecond => {
+                    if !context
+                        .notifications
+                        .state
+                        .turn_active(progress.issuer)
+                        .map_err(|_| Error::Policy("current completion player"))?
+                    {
+                        progress.phase = Phase::Ordinary;
+                        continue;
+                    }
+                }
+                Phase::Ordinary => {
+                    let state = &context.notifications.state;
+                    let owner = state.retained().core.local_player;
+                    let index = usize::try_from(owner)
+                        .ok()
+                        .filter(|i| *i < 64)
+                        .ok_or(Error::Policy("current next player slot"))?;
+                    if state
+                        .player_slot_status(owner)
+                        .map_err(|_| Error::Policy("current next player role"))?
+                        == 3
+                        && state
+                            .turn_active(owner)
+                            .map_err(|_| Error::Policy("current next player activity"))?
+                        && !state.retained().core.player_processor.activation_event[index]
+                        && runtime.pending().is_none()
+                    {
+                        return Ok(Outcome::DecisionReady {
+                            player: owner,
+                            updates: progress.updates,
+                        });
+                    }
+                }
+                Phase::MandatoryFirst => {}
+            }
+        }
+        if let Some(choice) = update(
+            context,
+            runtime,
+            inputs,
+            visibility,
+            budget,
+            progress.in_progress,
+            activation,
+            inactive,
+            active,
+        )? {
+            if runtime.pending_player_effect().is_none() {
+                return Err(Error::Policy("policy choice lost its current callback"));
+            }
+            progress.in_progress = true;
+            progress.choice = Some(choice.clone());
+            return Ok(Outcome::Choice(choice));
+        }
+        progress.updates += 1;
+        progress.in_progress = false;
+        progress.choice = None;
+        progress.phase = match progress.phase {
+            Phase::MandatoryFirst => Phase::ConditionalSecond,
+            Phase::ConditionalSecond | Phase::Ordinary => Phase::Ordinary,
+        };
+    }
+}
+fn retain<P, E>(
+    context: &mut current_aftermath::Context<'_, Runtime<'_, P>>,
+    runtime: &mut loaded::Runtime,
+    progress: Progress,
+    result: Result<Outcome, Error<E>>,
+) -> Result<Outcome, Error<E>> {
+    if matches!(result, Ok(Outcome::Choice(_))) {
+        context.notifications.backend.turn_progress = Some(progress);
+    } else {
+        context.notifications.backend.turn_progress = None;
+        if result.is_err() {
+            runtime.fail_player_callback();
+        }
+    }
+    result
+}
+/// Execute completion and mandatory ordinary updates. A Choice retains the
+/// current callback and outer update position on the SAME backend; it is not an
+/// error or a completed update. Call resume_research after supplying a research choice.
 #[allow(clippy::too_many_arguments)]
 pub fn execute<'b, P, E>(
     context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
@@ -121,100 +276,188 @@ pub fn execute<'b, P, E>(
     player: i32,
     reason: u32,
     budget: &mut usize,
-    mut activation: impl FnMut(&mut LoadedState, &mut Runtime<'b, P>, i32, bool) -> Result<(), E>,
+    mut activation: impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+        bool,
+    ) -> Result<ActivationOutcome, E>,
     mut inactive: impl FnMut(&mut LoadedState, &mut Runtime<'b, P>, i32) -> Result<(), E>,
+    mut active: impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+    ) -> Result<ActivationOutcome, E>,
 ) -> Result<Outcome, Error<E>> {
-    let result = (|| {
-        let prefix = turn_completion::Context {
-            state: context.notifications.state,
-            effects: &mut context.notifications.backend,
-        }
-        .execute(player, reason)
-        .map_err(Error::Completion)?;
-        match prefix {
-            completion::Prefix::InvalidEncodedPlayer => Ok(Outcome::InvalidEncodedPlayer),
-            completion::Prefix::PausedHuman => Ok(Outcome::PausedHuman),
-            completion::Prefix::AlreadyComplete => Ok(Outcome::AlreadyComplete),
-            completion::Prefix::RequiresGameUpdate(_mandatory) => {
-                // Each call freshly resolves this exclusive logical Game through
-                // a current data Context, as the native singleton calls do.
-                update(
-                    context,
-                    runtime,
-                    inputs,
-                    visibility,
-                    budget,
-                    &mut activation,
-                    &mut inactive,
-                )?;
-                let mut updates = 1;
-                if context
-                    .notifications
-                    .state
-                    .turn_active(player)
-                    .map_err(|_| {
-                        Error::Completion(completion::Error::Unsupported(
-                            "current completion player",
-                        ))
-                    })?
-                {
-                    update(
-                        context,
-                        runtime,
-                        inputs,
-                        visibility,
-                        budget,
-                        &mut activation,
-                        &mut inactive,
-                    )?;
-                    updates += 1;
-                }
-                loop {
-                    let state = &context.notifications.state;
-                    let owner = state.retained().core.local_player;
-                    if state.player_slot_status(owner).map_err(|_| {
-                        Error::Completion(completion::Error::Unsupported(
-                            "current next player control role",
-                        ))
-                    })? != 3
-                    {
-                        return Err(Error::Completion(completion::Error::Unsupported(
-                            "next nonhuman external decision gameplay",
-                        )));
-                    }
-                    let index = usize::try_from(owner).ok().filter(|i| *i < 64).ok_or(
-                        Error::Completion(completion::Error::Unsupported(
-                            "current next player slot",
-                        )),
-                    )?;
-                    if state.turn_active(owner).map_err(|_| {
-                        Error::Completion(completion::Error::Unsupported(
-                            "current next player activity",
-                        ))
-                    })? && !state.retained().core.player_processor.activation_event[index]
-                        && runtime.pending().is_none()
-                    {
-                        return Ok(Outcome::DecisionReady {
-                            player: owner,
-                            updates,
-                        });
-                    }
-                    update(
-                        context,
-                        runtime,
-                        inputs,
-                        visibility,
-                        budget,
-                        &mut activation,
-                        &mut inactive,
-                    )?;
-                    updates += 1;
-                }
-            }
-        }
-    })();
-    if result.is_err() {
-        runtime.fail_player_callback();
+    if context.notifications.backend.turn_progress.is_some() {
+        return Err(Error::Policy("resume the pending external choice"));
     }
-    result
+    let prefix = match (turn_completion::Context {
+        state: context.notifications.state,
+        effects: &mut context.notifications.backend,
+    })
+    .execute(player, reason)
+    {
+        Ok(prefix) => prefix,
+        Err(error) => {
+            runtime.fail_player_callback();
+            return Err(Error::Completion(error));
+        }
+    };
+    match prefix {
+        completion::Prefix::InvalidEncodedPlayer => Ok(Outcome::InvalidEncodedPlayer),
+        completion::Prefix::PausedHuman => Ok(Outcome::PausedHuman),
+        completion::Prefix::AlreadyComplete => Ok(Outcome::AlreadyComplete),
+        completion::Prefix::RequiresGameUpdate(_) => {
+            let mut progress = Progress {
+                stamp: context.notifications.state.action_stamp(),
+                issuer: player,
+                phase: Phase::MandatoryFirst,
+                updates: 0,
+                in_progress: false,
+                choice: None,
+            };
+            let result = drive(
+                context,
+                runtime,
+                inputs,
+                visibility,
+                budget,
+                &mut progress,
+                &mut activation,
+                &mut inactive,
+                &mut active,
+            );
+            retain(context, runtime, progress, result)
+        }
+    }
+}
+/// Validate and apply the actual external technology request, then resume at
+/// the suspended callback. No completion command, update prefix or activation
+/// upkeep is replayed. Invalid choices preserve the pending continuation.
+#[allow(clippy::too_many_arguments)]
+pub fn resume_research<'b, P, E>(
+    context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
+    runtime: &mut loaded::Runtime,
+    inputs: &deactivation::Inputs<'_, '_, '_>,
+    visibility: &mut data::deactivation::VisibilityHistory,
+    budget: &mut usize,
+    definitions: &crate::research::Definitions,
+    research_runtime: &mut crate::research::Runtime,
+    choices: &crate::loaded_actions::choose_tech::Definitions,
+    culture: Option<&super::research::CultureInputs<'_>>,
+    index: i32,
+    mut activation: impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+        bool,
+    ) -> Result<ActivationOutcome, E>,
+    mut inactive: impl FnMut(&mut LoadedState, &mut Runtime<'b, P>, i32) -> Result<(), E>,
+    mut active: impl FnMut(
+        &mut LoadedState,
+        &mut Runtime<'b, P>,
+        &mut loaded::Runtime,
+        i32,
+    ) -> Result<ActivationOutcome, E>,
+) -> Result<Outcome, Error<E>> {
+    let progress = context
+        .notifications
+        .backend
+        .turn_progress
+        .as_ref()
+        .ok_or(Error::Policy("no suspended policy choice"))?;
+    if !progress
+        .stamp
+        .same_instance(context.notifications.state.action_stamp())
+    {
+        return Err(Error::Policy(
+            "policy continuation belongs to another world",
+        ));
+    }
+    let choice = progress
+        .choice
+        .as_ref()
+        .ok_or(Error::Policy("no suspended policy choice"))?
+        .clone();
+    if !choice.options.contains(&index) {
+        return Err(Error::Policy("illegal external research choice"));
+    }
+    match runtime.pending_player_effect() {
+        Some(
+            c6_core::game_update::PlayerEffect::Activation { player, .. }
+            | c6_core::game_update::PlayerEffect::ActiveControl { player },
+        ) if player == choice.player => {}
+        _ => {
+            return Err(Error::Policy(
+                "policy continuation current callback differs",
+            ))
+        }
+    }
+    {
+        let mut effects = super::research::Effects {
+            backend: &mut context.notifications.backend,
+            runtime: research_runtime,
+            choices,
+            choice_graph: None,
+            culture,
+        };
+        let mut research = crate::research::Context {
+            state: context.notifications.state,
+            definitions,
+            effects: &mut effects,
+        };
+        let legal = match choice.kind {
+            crate::research::Kind::Technology => {
+                research.can_research_technology(choice.player, index)
+            }
+            crate::research::Kind::Civic => research.can_progress_civic(choice.player, index),
+        }
+        .map_err(|e| Error::PolicyAction(format!("{e:?}")))?;
+        if !legal {
+            return Err(Error::Policy("research choice is no longer legal"));
+        }
+        let request = match choice.kind {
+            crate::research::Kind::Technology => research.request_technology(
+                choice.player,
+                index,
+                crate::research::InsertMode::Replace,
+            ),
+            crate::research::Kind::Civic => {
+                research.request_civic(choice.player, index, crate::research::InsertMode::Replace)
+            }
+        };
+        if let Err(error) = request {
+            runtime.fail_player_callback();
+            return Err(Error::PolicyAction(format!("{error:?}")));
+        }
+        let selected = c6_core::research_turn::current(&research, choice.player, choice.kind)
+            .map_err(|e| Error::PolicyAction(format!("{e:?}")))?;
+        if selected != index {
+            runtime.fail_player_callback();
+            return Err(Error::Policy("research request did not select the choice"));
+        }
+    }
+    let mut progress = context
+        .notifications
+        .backend
+        .turn_progress
+        .take()
+        .expect("checked policy continuation");
+    progress.choice = None;
+    let result = drive(
+        context,
+        runtime,
+        inputs,
+        visibility,
+        budget,
+        &mut progress,
+        &mut activation,
+        &mut inactive,
+        &mut active,
+    );
+    retain(context, runtime, progress, result)
 }

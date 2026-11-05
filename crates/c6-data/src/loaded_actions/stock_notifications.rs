@@ -12,33 +12,33 @@ use super::{
 };
 #[path = "stock_activation.rs"]
 mod activation;
-#[path = "stock_notifications_game_update.rs"]
-pub mod game_update;
-#[path = "stock_manager_queries.rs"]
-mod manager_queries;
-#[path = "stock_maintenance.rs"]
-pub mod maintenance;
-pub mod social;
-pub mod human_activation;
-pub mod inactive_control;
+pub mod city_queries;
 pub mod cityless_managers;
 pub mod deactivation;
-pub mod turn_loop;
-pub mod city_queries;
+#[path = "stock_notifications_game_update.rs"]
+pub mod game_update;
 #[path = "stock_gold.rs"]
 pub mod gold;
+pub mod human_activation;
+pub mod inactive_control;
+#[path = "stock_maintenance.rs"]
+pub mod maintenance;
+#[path = "stock_manager_queries.rs"]
+mod manager_queries;
 #[path = "stock_movement.rs"]
 pub mod movement;
 #[path = "stock_research.rs"]
 pub mod research;
 #[path = "stock_scoring.rs"]
 pub mod scoring;
-#[path = "stock_turn.rs"]
-pub mod turn;
-#[path = "stock_turn_reports.rs"]
-pub mod turn_reports;
 #[path = "stock_skip_turn.rs"]
 pub mod skip_turn;
+pub mod social;
+#[path = "stock_turn.rs"]
+pub mod turn;
+pub mod turn_loop;
+#[path = "stock_turn_reports.rs"]
+pub mod turn_reports;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
@@ -92,6 +92,9 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     movement: Option<movement::State<'a>>,
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
+    pub(crate) turn_progress: Option<turn_loop::Progress>,
+    pub(crate) activation_progress:
+        Option<crate::game_update_state::activation::upkeep::ActivationProgress>,
 }
 impl<'a, P> Runtime<'a, P> {
     pub fn new(
@@ -124,6 +127,8 @@ impl<'a, P> Runtime<'a, P> {
             movement: None,
             city_queries: None,
             gold_signals: None,
+            activation_progress: None,
+            turn_progress: None,
         })
     }
     /// Semantic stock informational publication. The source caller has run its
@@ -181,7 +186,11 @@ impl<'a, P> Runtime<'a, P> {
             type_hash: 0x40fb_81ed,
             location: [current.header.location_x, current.header.location_y],
             component: Some(ComponentId {
-                owner: current.header.owner.try_into().map_err(|_| processing::Error::Unsupported("City owner range"))?,
+                owner: current
+                    .header
+                    .owner
+                    .try_into()
+                    .map_err(|_| processing::Error::Unsupported("City owner range"))?,
                 component_type: 2,
                 id: current.header.id,
             }),
@@ -235,7 +244,7 @@ impl<'a, P> Runtime<'a, P> {
             processing::Scope::SourceInitializedStockXp2,
         )))
     }
-    fn check(&self, state: &LoadedState) -> Result<(), processing::Error> {
+    pub(crate) fn check(&self, state: &LoadedState) -> Result<(), processing::Error> {
         if state.binding() != &self.binding {
             return Err(processing::Error::Unsupported(
                 "stock aftermath state identity",

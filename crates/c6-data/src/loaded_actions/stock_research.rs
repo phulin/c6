@@ -166,7 +166,25 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                 Ok(())
             }
             research::Effect::Report(ref report)
-                if matches!(report.event, 0xc5613042 | 0xac2769a3 | 0x80f1366d) =>
+                if matches!(report.event, 0x48062f97 | 0x4378a305 | 0xf621c5ac) =>
+            {
+                research::Context {
+                    state,
+                    definitions,
+                    effects: self,
+                }
+                .stock_technology_publication_yields(report)
+                .map_err(|_| Error::Effect(effect))?;
+                self.backend
+                    .reached
+                    .push("stock technology publication current yield queries");
+                Ok(())
+            }
+            research::Effect::Report(ref report)
+                if matches!(
+                    report.event,
+                    0xc5613042 | 0xac2769a3 | 0x87667464 | 0x80f1366d
+                ) =>
             {
                 research::Context {
                     state,

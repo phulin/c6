@@ -27,18 +27,47 @@ fn failure(stage: &'static str, cause: impl std::fmt::Debug) -> Error {
         cause: format!("{cause:?}"),
     }
 }
-struct GoldEffects;
-impl treasury_deals::Effects for GoldEffects {
-    fn gold_changed(
-        &mut self,
-        _: &mut LoadedState,
-        _: i32,
-    ) -> Result<(), c6_core::game_update::Error> {
-        Err(c6_core::game_update::Error::Unsupported(
-            "activation gold report and GoldChanged signal",
-        ))
-    }
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PolicyChoice {
+    pub player: i32,
+    pub kind: research::Kind,
+    pub options: Vec<i32>,
 }
+#[derive(Debug, Eq, PartialEq)]
+pub enum ActivationOutcome {
+    Complete,
+    Choice(PolicyChoice),
+}
+#[derive(Debug)]
+pub(crate) struct ActivationProgress {
+    player: i32,
+    first: bool,
+}
+fn prefix_once(
+    progress: &mut Option<ActivationProgress>,
+    player: i32,
+    first: bool,
+    prefix: impl FnOnce() -> Result<(), Error>,
+) -> Result<(), Error> {
+    if let Some(current) = progress {
+        if current.player != player || current.first != first {
+            return Err(failure(
+                "activation continuation",
+                "current player/activation differs",
+            ));
+        }
+        return Ok(());
+    }
+    prefix()?;
+    *progress = Some(ActivationProgress { player, first });
+    Ok(())
+}
+pub type Controller<'s, 'a, P> = dyn FnMut(
+        &mut LoadedState,
+        &mut stock_notifications::Runtime<'a, P>,
+        i32,
+    ) -> Result<ActivationOutcome, Error>
+    + 's;
 /// All runtimes belong to the same current world. Callers retain these owners
 /// across turns and supply current graphs lazily through the existing services.
 pub struct Context<'s, 'a, P> {
@@ -66,6 +95,7 @@ pub struct Context<'s, 'a, P> {
     pub phases: &'s super::Phases,
     pub forced_rebase: &'s super::forced_rebase::Definitions,
     pub cities: Option<CityServices<'s, 'a, P>>,
+    pub controller: Option<&'s mut Controller<'s, 'a, P>>,
 }
 /// The current source iteration order and concrete public city implementation.
 /// The callback binds current owners and calls current_upkeep::Context::activate;
@@ -109,52 +139,95 @@ impl<P> Context<'_, '_, P> {
         major: bool,
         units: &[u32],
         formations: &[u32],
-    ) -> Result<(), Error> {
-        if !first {
-            return Err(failure("activation", "repeated activation continuation"));
-        }
-        super::turn_started::dispatch(
-            self.state,
-            self.backend,
-            signal.requirements,
-            super::turn_started::Inputs {
-                scope: super::turn_started::Scope::StockHeadlessExternalPlayerPolicies,
-                listeners: signal.listeners,
-                relationship_definitions: signal.relationships,
-                alive_majors: self
-                    .research
-                    .alive_majors
-                    .as_deref()
-                    .ok_or_else(|| failure("turn started", "current major order"))?,
-                victory: Some(super::turn_started::VictoryInputs {
-                    definitions: signal.victory_definitions,
-                    current: signal.victory,
-                    scoring: self.scoring,
-                    scoring_definitions: self.scoring_definitions,
-                }),
-            },
-            owner,
-        )
-        .map_err(|e| failure("turn-start signal", e))?;
-        self.through_activation_signals(owner, major, units, formations)?;
+    ) -> Result<ActivationOutcome, Error> {
         self.backend
-            .update_turn_influence(self.state, owner, &tail.influence)
-            .map_err(|e| failure("influence rebuild", e))?;
-        stock_notifications::human_activation::run(
-            self.state,
-            self.backend,
-            self.maintenance_definitions,
-            tail.human,
-            units,
-            major,
-            tail.global_ai_initialized,
-            tail.scout,
-            true,
-        )
-        .map_err(|e| failure("human controller activation", e))?;
+            .check(self.state)
+            .map_err(|e| failure("activation runtime", e))?;
+        let mut progress = self.backend.activation_progress.take();
+        let prefix_result = prefix_once(&mut progress, owner, first, || {
+            if first {
+                super::turn_started::dispatch(
+                    self.state,
+                    self.backend,
+                    signal.requirements,
+                    super::turn_started::Inputs {
+                        scope: super::turn_started::Scope::StockHeadlessExternalPlayerPolicies,
+                        listeners: signal.listeners,
+                        relationship_definitions: signal.relationships,
+                        alive_majors: self
+                            .research
+                            .alive_majors
+                            .as_deref()
+                            .ok_or_else(|| failure("turn started", "current major order"))?,
+                        victory: Some(super::turn_started::VictoryInputs {
+                            definitions: signal.victory_definitions,
+                            current: signal.victory,
+                            scoring: self.scoring,
+                            scoring_definitions: self.scoring_definitions,
+                        }),
+                    },
+                    owner,
+                )
+                .map_err(|e| failure("turn-start signal", e))?;
+                self.through_activation_signals(owner, major, units, formations)?;
+            } else {
+                super::cityless_managers::on_congress_turn_started(
+                    self.state,
+                    self.managers_definitions,
+                    self.managers_queries,
+                    self.managers,
+                    self.phases,
+                    self.backend,
+                    owner,
+                )
+                .map_err(|e| failure("turn activation Congress signal", e))?;
+            }
+            self.backend
+                .update_turn_influence(self.state, owner, &tail.influence)
+                .map_err(|e| failure("influence rebuild", e))?;
+            Ok(())
+        });
+        self.backend.activation_progress = progress;
+        prefix_result?;
+        if self
+            .state
+            .player_slot_status(owner)
+            .map_err(|e| failure("activation role", e))?
+            != 3
+        {
+            let controller = self
+                .controller
+                .as_mut()
+                .ok_or_else(|| failure("controller activation", "current nonhuman controller"))?;
+            match controller(self.state, self.backend, owner)? {
+                ActivationOutcome::Choice(choice) => {
+                    if choice.player != owner {
+                        return Err(failure("controller decision", "different current player"));
+                    }
+                    return Ok(ActivationOutcome::Choice(choice));
+                }
+                ActivationOutcome::Complete => {}
+            }
+        } else {
+            stock_notifications::human_activation::run(
+                self.state,
+                self.backend,
+                self.maintenance_definitions,
+                tail.human,
+                units,
+                major,
+                tail.global_ai_initialized,
+                tail.scout,
+                true,
+                tail.influence.visibility,
+            )
+            .map_err(|e| failure("human controller activation", e))?;
+        }
         self.backend.processor_activation_complete(self.state,owner,first,
             stock_notifications::turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers)
-            .map_err(|e|failure("processor activation report",e))
+            .map_err(|e|failure("processor activation report",e))?;
+        self.backend.activation_progress = None;
+        Ok(ActivationOutcome::Complete)
     }
     /// Complete the first-activation managers through movement restoration.
     /// InfluenceMap and controller activation remain mandatory.
@@ -312,7 +385,7 @@ impl<P> Context<'_, '_, P> {
                 city_order: self.cities.as_ref().map(|c| c.order),
             },
             self.deals,
-            &mut GoldEffects,
+            self.backend,
             owner,
         )
         .map_err(|e| failure("treasury and deals", e))?;
@@ -357,4 +430,39 @@ pub fn placement_prelude(
     }
     // ExecuteImprovementCaptures traverses the same current improvement list.
     Ok(())
+}
+
+#[cfg(test)]
+mod continuation_tests {
+    use super::*;
+    #[test]
+    fn external_choice_resume_preserves_upkeep_and_rng_prefix() {
+        let mut checkpoint = None;
+        let mut balance = 0i32;
+        let mut random = c6_core::rng::RandomState::new(17);
+        prefix_once(&mut checkpoint, 62, true, || {
+            balance = balance.wrapping_add(100);
+            random.draw(19);
+            Ok(())
+        })
+        .unwrap();
+        let after_upkeep = random;
+        // A validated external choice changes current state between calls.
+        balance = balance.wrapping_sub(7);
+        prefix_once(&mut checkpoint, 62, true, || {
+            balance = balance.wrapping_add(100);
+            random.draw(19);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(balance, 93);
+        assert_eq!(random, after_upkeep);
+        assert_eq!(random.calls, 1);
+        assert!(prefix_once(&mut checkpoint, 63, true, || {
+            balance = 0;
+            Ok(())
+        })
+        .is_err());
+        assert_eq!(balance, 93);
+    }
 }
