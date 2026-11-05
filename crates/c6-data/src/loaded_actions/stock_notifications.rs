@@ -38,6 +38,7 @@ pub mod npc_deactivation;
 pub mod npc_leaves;
 #[path = "stock_research.rs"]
 pub mod research;
+pub mod round_ai;
 #[path = "stock_scoring.rs"]
 pub mod scoring;
 #[path = "stock_skip_turn.rs"]
@@ -95,6 +96,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub last_error: Option<String>,
     pub reached: Vec<&'static str>,
     npc_deactivation: Vec<npc_deactivation::State>,
+    round_ai: Vec<round_ai::Inputs>,
     binding: WireBinding,
     facts: Facts,
     temporary_serial: u64,
@@ -102,6 +104,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     player_services: Option<crate::unit_placement_services::Runtime>,
     unit_creation: Option<unit_creation::State<'a>>,
     modifier_owners: Option<unit_creation::ModifierOwners>,
+    unit_production_signals: Option<city_production::unit::Signals>,
     movement: Option<movement::State<'a>>,
     resource_revelation: Option<resource_revelation::State>,
     city_queries: Option<city_queries::Inputs<'a>>,
@@ -137,6 +140,7 @@ impl<'a, P> Runtime<'a, P> {
             last_error: None,
             reached: Vec::new(),
             npc_deactivation: Vec::new(),
+            round_ai: Vec::new(),
             binding: state.binding().clone(),
             facts,
             temporary_serial: 0,
@@ -144,6 +148,7 @@ impl<'a, P> Runtime<'a, P> {
             player_services: None,
             unit_creation: None,
             modifier_owners: None,
+            unit_production_signals: None,
             movement: None,
             resource_revelation: None,
             city_queries: None,
