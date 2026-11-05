@@ -14,6 +14,7 @@ use super::{
 mod activation;
 pub mod city_production;
 pub mod growth;
+pub mod founding;
 pub mod unit_creation;
 pub mod policy_modifiers;
 pub mod city_queries;
@@ -190,8 +191,6 @@ impl<'a, P> Runtime<'a, P> {
             npc_unit_decisions: None,
         })
     }
-    /// Current local player used only by source-local report routing.
-    pub fn local_player(&self) -> Option<i32> { self.facts.local_player }
     /// Semantic stock informational publication. The source caller has run its
     /// gameplay predicates and qualified the plain stock factory/consumer path.
     /// Native text, UI occurrence pools and display cache identity are omitted.
