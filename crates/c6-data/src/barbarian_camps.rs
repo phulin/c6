@@ -4,6 +4,7 @@
 //! This boundary does not implement improvement construction or its callbacks;
 //! those reached effects must be supplied over the same loaded state.
 use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
+pub mod queries;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Parameters {
