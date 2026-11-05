@@ -50,7 +50,14 @@ struct Object {
     destroyed: ListenerRing<DestroyedListener>,
 }
 /// This state is a child of EffectRuntime, not another modifier registry.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PlayerCitiesSubscription {
+    /// Logical collection callback routed through the same DynamicModifier.
+    pub receiver: u64,
+    pub owner: i32,
+}
 pub(super) struct Creation {
+    player_cities_subscriptions: Vec<PlayerCitiesSubscription>,
     modifiers: Vec<Dynamic>,
     objects: Vec<Object>,
     loyalty: ListenerRing<LoyaltyListener>,
@@ -96,6 +103,7 @@ impl EffectRuntime {
         )
         .map_err(Error::Query)?;
         self.city_creation = Some(Creation {
+            player_cities_subscriptions: Vec::new(),
             modifiers: Vec::new(),
             objects,
             loyalty,
@@ -567,8 +575,9 @@ impl EffectRuntime {
         });
         Ok(handle)
     }
-    /// Supported positive DynamicModifier factory: COLLECTION_OWNER over an
-    /// current City wrapper, with the two concrete City effect classes.
+    /// Building DynamicModifier factory over a current City context. Owner
+    /// selects that object; PlayerCities239eba0 snapshots the owner's ordered
+    /// live cities and initializes its future change subscriptions239ece0.
     /// The modifier is inserted before Activate; callback failure retains its
     /// real mutation prefix and never counts as successful attachment.
     #[allow(clippy::too_many_arguments)] // Native factory plus same-state owners.
@@ -582,9 +591,16 @@ impl EffectRuntime {
         effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
     ) -> Result<i32, Error> {
         self.current_owner(state).map_err(Error::Query)?;
-        let super::ContextObject::City(_) = self.object(owner).map_err(Error::Query)?.kind else {
+        let super::ContextObject::City(context) = self.object(owner).map_err(Error::Query)?.kind
+        else {
             return Err(Error::Missing("City attachment owner"));
         };
+        let player_owner = state
+            .city(i32::from(context.owner), context.id)
+            .map_err(|_| Error::Missing("current City collection owner"))?
+            .header
+            .owner;
+
         if definition.owner_requirements.is_some() {
             return Err(Error::Missing("City modifier owner requirement factory"));
         }
@@ -606,6 +622,37 @@ impl EffectRuntime {
             .as_mut()
             .ok_or(Error::Missing("current City creation domain"))?;
         creation.object_mut(owner)?;
+        let subjects = match definition.collection {
+            definitions::Collection::Owner => vec![owner],
+            definitions::Collection::PlayerCities => {
+                let player = state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == player_owner)
+                    .ok_or(Error::Missing("current PlayerCities owner"))?;
+                let ids = player
+                    .cities
+                    .records
+                    .entries
+                    .iter()
+                    .filter(|r| !r.value.header.delayed_death)
+                    .map(|r| c6_core::unit::ComponentId {
+                        owner: r.value.header.owner as i16,
+                        component_type: 2,
+                        id: r.value.header.id,
+                    })
+                    .collect::<Vec<_>>();
+                let mut subjects = Vec::with_capacity(ids.len());
+                for id in ids {
+                    subjects.push(self.make_city_object(state, id)?);
+                }
+                subjects
+            }
+            definitions::Collection::AllCities | definitions::Collection::Unsupported(_) => {
+                return Err(Error::Missing("new City collection GetItems factory"));
+            }
+        };
         let instance = self.allocate_modifier_id(state).map_err(Error::Query)?;
         // Logical effect handles occupy their own namespace. Native heap
         // addresses/allocator state are not fabricated or gameplay counters.
@@ -638,22 +685,44 @@ impl EffectRuntime {
             activated: false,
             hooks: collection::Hooks::BaseNoops,
         });
+        if definition.collection == definitions::Collection::PlayerCities {
+            self.city_creation
+                .as_mut()
+                .unwrap()
+                .player_cities_subscriptions
+                .push(PlayerCitiesSubscription {
+                    receiver: (1u64 << 61) | u64::from(instance as u32),
+                    owner: player_owner,
+                });
+        }
         // Factory hooks for these classes are BaseEffect single-RET methods.
-        // Owner.GetItems yields exactly the same registered owner object.
+        // GetItems has already produced the ordered snapshot before Activate.
         let mut factory = collection::MissingRequirements;
-        c6_core::unit_moved_signal::collection_addition::add(&mut Apply {
-            state,
-            runtime: self,
-            requirements,
-            subject: owner,
-            factory: &mut factory,
-            features: &[],
-            maximum_loyalty: maximum,
-            index,
-            effects,
-        })?;
+        for subject in subjects {
+            c6_core::unit_moved_signal::collection_addition::add(&mut Apply {
+                state,
+                runtime: self,
+                requirements,
+                subject,
+                factory: &mut factory,
+                features: &[],
+                maximum_loyalty: maximum,
+                index,
+                effects,
+            })?;
+        }
         self.city_creation.as_mut().unwrap().modifiers[index].activated = true;
         Ok(instance)
+    }
+    /// Source subscription order for GameEffects CityAdded/CityRemoved signals
+    /// (+288/+2e8). The caller appends these typed callbacks to its SAME signal
+    /// owner and dispatches collection::item_changed with this receiver.
+    pub fn player_cities_subscriptions(&self) -> Result<&[PlayerCitiesSubscription], Error> {
+        Ok(&self
+            .city_creation
+            .as_ref()
+            .ok_or(Error::Missing("current City creation domain"))?
+            .player_cities_subscriptions)
     }
     pub fn city_modifier_owner_subscription(&self, instance: i32) -> Result<Subscription, Error> {
         self.city_creation

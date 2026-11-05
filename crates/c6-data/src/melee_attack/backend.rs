@@ -42,6 +42,9 @@ pub enum CityEffect {
     Unsupported { native_type: u64 },
     FeatureProduction(c6_core::found_city::feature_production::Effect),
     IdentityPerTurn { amount: i32 },
+    /// AdjustCityInnerDefense2347210/2347230 delegates to the add-only RET
+    /// setter2420270; no report, query or RNG callback accompanies the write.
+    InnerDefense { amount: i32 },
     YieldChanges { yields: Vec<u32>, amounts: Vec<i32> },
 }
 #[derive(Debug)]
@@ -74,6 +77,13 @@ impl CityEffect {
                 state, city, features, *effect, remove,
             )
             .map_err(CityEffectError::FeatureProduction),
+            Self::InnerDefense { amount } => {
+                let combat = &mut state.city_mut(i32::from(city.owner), city.id)
+                    .map_err(|e| CityEffectError::Production(crate::city_production_turn::Error::State(e)))?.combat;
+                combat.inner_defense_strength_modifier = combat.inner_defense_strength_modifier
+                    .wrapping_add(if remove { amount.wrapping_neg() } else { *amount });
+                Ok(true)
+            }
             Self::IdentityPerTurn { amount } => {
                 crate::city_production_turn::modifier_effects::adjust_identity_per_turn(
                     state,

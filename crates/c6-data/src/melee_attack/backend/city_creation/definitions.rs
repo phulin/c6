@@ -9,8 +9,17 @@ use c6_core::{
     melee_attack::proposals::subject_sets as sets,
 };
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Collection {
+    Owner,
+    PlayerCities,
+    AllCities,
+    /// Imported lifetime for another collection; no new factory is inferred.
+    Unsupported(u32),
+}
 #[derive(Clone, Debug)]
 pub struct Attachment {
+    pub collection: Collection,
     pub id: Vec<u8>,
     pub effect: CityEffect,
     pub subject_requirements: Option<Vec<u8>>,
@@ -179,10 +188,15 @@ fn compile_building(db: &Database, building: &[u8]) -> Result<Compiled> {
         let kind = required(row, "ModifierType")?;
         let dynamic = find(db, "DynamicModifiers", "ModifierType", kind)?
             .ok_or("current DynamicModifier definition")?;
-        if required(dynamic, "CollectionType")? != b"COLLECTION_OWNER" {
-            return Err("Building modifier non-owner collection".into());
-        }
+        let collection = match required(dynamic, "CollectionType")? {
+            b"COLLECTION_OWNER" => Collection::Owner,
+            b"COLLECTION_PLAYER_CITIES" => Collection::PlayerCities,
+            _ => return Err("unsupported Building City collection".into()),
+        };
         let effect = match required(dynamic, "EffectType")? {
+            b"EFFECT_ADJUST_CITY_INNER_DEFENSE" => CityEffect::InnerDefense {
+                amount: whole_amount(argument(db, &id, b"Amount")?)?,
+            },
             b"EFFECT_ADJUST_CITY_IDENTITY_PER_TURN" => CityEffect::IdentityPerTurn {
                 amount: whole_amount(argument(db, &id, b"Amount")?)?,
             },
@@ -266,6 +280,7 @@ fn compile_building(db: &Database, building: &[u8]) -> Result<Compiled> {
             ));
         }
         attachments.push(Attachment {
+            collection,
             id,
             effect,
             owner_requirements: owner,
@@ -330,6 +345,17 @@ mod tests {
             requirements[0].predicate,
             sets::Predicate::Unsupported(linux_type_hash(b"REQUIREMENT_CITY_HAS_FULL_LOYALTY"))
         );
+    }
+    #[test]
+    fn player_cities_inner_defense_uses_definition_amount_without_building_identity() {
+        let db = database("UPDATE DynamicModifiers SET CollectionType='COLLECTION_PLAYER_CITIES', EffectType='EFFECT_ADJUST_CITY_INNER_DEFENSE' WHERE ModifierType='LOYALTY'; UPDATE ModifierArguments SET Value='-7' WHERE ModifierId='Z_LOYALTY';");
+        let (rows, _, _) = compile_building(&db, b"B").unwrap();
+        assert_eq!(rows[0].collection, Collection::Owner);
+        assert_eq!(rows[1].collection, Collection::PlayerCities);
+        assert!(matches!(
+            rows[1].effect,
+            CityEffect::InnerDefense { amount: -7 }
+        ));
     }
     #[test]
     fn triggered_and_dynamic_parameters_are_explicit_reached_errors() {
