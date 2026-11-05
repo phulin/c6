@@ -86,13 +86,59 @@ pub fn after_stats(
     rules: &Rules,
     current: &Current<'_>,
 ) -> Result<(), Error> {
+    let owner = event.owner;
+    boosts(state, event, defs, rules, current)?;
+    player_events(state, event, defs, rules, current.player_event_owners)?;
+    for binding in current.requirements {
+        let value = binding.value;
+        if binding.owner != owner || !value.active {
+            continue;
+        }
+        let tested = if let Some(hash) = binding.building {
+            if count(state, owner, hash)? > 0 {
+                2
+            } else {
+                1
+            }
+        } else {
+            1
+        };
+        let tested = if value.inverse {
+            c6_core::melee_attack::proposals::subject_sets::inverse(tested)
+        } else {
+            tested
+        };
+        let tested = if value.triggered && tested == 0 {
+            4
+        } else {
+            tested
+        };
+        // Simple.SetState's identical non-triggered assignment has no child,
+        // set or modifier dispatch. A changed record must use the same shared
+        // subject_sets::changes owner; it is never replaced with a no-op.
+        if value.state != tested || tested == 4 {
+            return Err(Error::Unsupported("changed building requirement dispatch"));
+        }
+    }
+    achievements(state, event)?;
+    Ok(())
+}
+
+/// Execute only the current ordered Boost callback group.
+pub fn boosts(
+    state: &LoadedState,
+    event: Event,
+    defs: &buildings::Definitions,
+    rules: &Rules,
+    current: &Current<'_>,
+) -> Result<(), Error> {
     let Event {
         owner,
         city,
         building,
     } = event;
     defs.validate(state)?;
-    let own = state.city(owner, city)?;
+    state.city(owner, city)?;
     let definition = defs
         .buildings
         .iter()
@@ -147,6 +193,27 @@ pub fn after_stats(
             _ => {}
         }
     }
+    Ok(())
+}
+/// Execute only the subscribed Player EventManager group.
+pub fn player_events(
+    state: &LoadedState,
+    event: Event,
+    defs: &buildings::Definitions,
+    rules: &Rules,
+    owners: &[i32],
+) -> Result<(), Error> {
+    defs.validate(state)?;
+    let Event {
+        owner,
+        city: _,
+        building,
+    } = event;
+    let definition = defs
+        .buildings
+        .iter()
+        .find(|v| v.hash == building)
+        .ok_or(Error::Unsupported("current building definition"))?;
     // 2b018d0 visits Resources, Culture, Districts, Techs, Culture for every
     // subscribed Player manager. Each child first checks current City owner.
     if definition.requires_placement || definition.wonder {
@@ -167,7 +234,7 @@ pub fn after_stats(
     if integer(row.get("UnlocksGovernmentPolicy").map_err(Error::Rules)?)? != 0 {
         return Err(Error::Unsupported("positive government policy unlock"));
     }
-    for &manager_owner in current.player_event_owners {
+    for &manager_owner in owners {
         if manager_owner != owner {
             continue;
         }
@@ -188,37 +255,27 @@ pub fn after_stats(
             return Err(Error::Unsupported("district/building unit ability award"));
         }
     }
-    for binding in current.requirements {
-        let value = binding.value;
-        if binding.owner != owner || !value.active {
-            continue;
-        }
-        let tested = if let Some(hash) = binding.building {
-            if count(state, owner, hash)? > 0 {
-                2
-            } else {
-                1
-            }
+    Ok(())
+}
+/// Current PlayerHasBuilding.Test before shared SimpleRequirement invalidation.
+pub fn test_player_has_building(
+    state: &LoadedState,
+    owner: i32,
+    building: Option<u32>,
+) -> Result<i32, Error> {
+    Ok(if let Some(hash) = building {
+        if count(state, owner, hash)? > 0 {
+            2
         } else {
             1
-        };
-        let tested = if value.inverse {
-            c6_core::melee_attack::proposals::subject_sets::inverse(tested)
-        } else {
-            tested
-        };
-        let tested = if value.triggered && tested == 0 {
-            4
-        } else {
-            tested
-        };
-        // Simple.SetState's identical non-triggered assignment has no child,
-        // set or modifier dispatch. A changed record must use the same shared
-        // subject_sets::changes owner; it is never replaced with a no-op.
-        if value.state != tested || tested == 4 {
-            return Err(Error::Unsupported("changed building requirement dispatch"));
         }
-    }
+    } else {
+        1
+    })
+}
+/// Execute the reached achievement guards after requirement callbacks.
+pub fn achievements(state: &LoadedState, event: Event) -> Result<(), Error> {
+    let own = state.city(event.owner, event.city)?;
     // Every sink in28fe130 requires one of its named nonordinary buildings,
     // a wonder count or >11 specialty districts. This bounded early-city path
     // reaches none; queries before those guards have no gameplay/RNG effects.

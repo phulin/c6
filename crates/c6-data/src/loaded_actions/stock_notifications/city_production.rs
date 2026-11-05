@@ -2,9 +2,11 @@
 //!
 //! This adapter shares current city queries with upkeep. It supports progress,
 //! including ordinary construction-plot initialization and externally chosen
-//! ordinary-building queue selection. Building completion remains separate.
+//! ordinary-building queue selection and completion through the same mutable
+//! modifier/requirement owners. Additional gameplay consumers remain explicit.
 //! Errors retain any mutation
 //! prefix already performed by the production kernel.
+pub mod completion;
 use super::{Decision, Runtime};
 use crate::city_production_turn::{self as production, appeal, buildings, selection};
 use c6_core::{
@@ -34,6 +36,7 @@ pub struct Effects<'runtime, 'inputs, 'definitions, P> {
     definitions: &'definitions buildings::Definitions,
     appeal: &'definitions appeal::Definitions,
     pub reports: Vec<Record>,
+    completion: Option<completion::Services<'definitions>>,
 }
 impl<'runtime, 'inputs, 'definitions, P> Effects<'runtime, 'inputs, 'definitions, P> {
     pub fn new(
@@ -47,7 +50,14 @@ impl<'runtime, 'inputs, 'definitions, P> Effects<'runtime, 'inputs, 'definitions
             definitions,
             appeal,
             reports: Vec::new(),
+            completion: None,
         }
+    }
+    /// Borrow the current completion registrations; all mutable gameplay owners
+    /// remain in this SAME stock runtime.
+    pub fn with_completion(mut self, services: completion::Services<'definitions>) -> Self {
+        self.completion = Some(services);
+        self
     }
     /// Apply an external building decision to this SAME current City/runtime.
     /// Legality is evaluated before queue writes; no production policy runs.
@@ -149,12 +159,18 @@ impl<P> production::Effects for Effects<'_, '_, '_, P> {
     }
     fn finish(
         &mut self,
-        _: &mut LoadedState,
-        _: i32,
-        _: u32,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
         _: &QueueEntry,
     ) -> Result<bool, production::Error> {
-        Err(production::Error::Unsupported("stock building completion"))
+        self.check(state)?;
+        if self.completion.is_none() {
+            return Err(production::Error::Unsupported(
+                "stock building completion services",
+            ));
+        }
+        buildings::finish_current(state, owner, city, self.definitions, self)
     }
     fn new_front(
         &mut self,
@@ -227,7 +243,8 @@ impl<P> buildings::Effects for Effects<'_, '_, '_, P> {
             | buildings::Report::QueueChanged
             | buildings::Report::ProductionChanged
             | buildings::Report::QueueEntryChanged { .. }
-            | buildings::Report::BuildingProgress { .. } => {
+            | buildings::Report::BuildingProgress { .. }
+            | buildings::Report::BuildingCompleted { .. } => {
                 if matches!(
                     report,
                     buildings::Report::QueueChanged
@@ -245,9 +262,6 @@ impl<P> buildings::Effects for Effects<'_, '_, '_, P> {
                 });
                 Ok(())
             }
-            _ => Err(production::Error::Unsupported(
-                "stock building non-progress report",
-            )),
         }
     }
     fn update_appeal(
@@ -260,15 +274,31 @@ impl<P> buildings::Effects for Effects<'_, '_, '_, P> {
     }
     fn building_signals(
         &mut self,
-        _: &mut LoadedState,
-        _: i32,
-        _: u32,
-        _: u32,
-        _: i32,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        building: u32,
+        plot: i32,
     ) -> Result<(), production::Error> {
-        Err(production::Error::Unsupported(
-            "stock building completion signals",
-        ))
+        self.check(state)?;
+        let services = self
+            .completion
+            .as_ref()
+            .ok_or(production::Error::Unsupported(
+                "stock building completion services",
+            ))?;
+        completion::dispatch(
+            self.runtime,
+            state,
+            crate::city_production_turn::building_callbacks::Event {
+                owner,
+                city,
+                building,
+            },
+            plot,
+            self.definitions,
+            services,
+        )
     }
 }
 
