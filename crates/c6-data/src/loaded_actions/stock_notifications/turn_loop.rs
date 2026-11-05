@@ -99,68 +99,78 @@ fn update<'b, P, E>(
         .map_err(Error::Completion)?;
     }
     loop {
-        let next = match runtime.pending_player_effect() {
-            Some(effect) => Some(effect),
-            None => loaded::prepare_current_player(context.notifications.state, runtime)
-                .map_err(Error::Completion)?,
-        };
-        let Some(next) = next else { break };
-        match next {
-            c6_core::game_update::PlayerEffect::Activation { player, first } => {
-                match activation(
-                    context.notifications.state,
-                    &mut context.notifications.backend,
-                    runtime,
-                    research_runtime,
-                    player,
-                    first,
-                )
-                .map_err(Error::Activation)?
-                {
-                    ActivationOutcome::Choice(choice) => return Ok(Some(choice)),
-                    ActivationOutcome::Complete => {}
+        loop {
+            let next = match runtime.pending_player_effect() {
+                Some(effect) => Some(effect),
+                None => loaded::prepare_current_player(context.notifications.state, runtime)
+                    .map_err(Error::Completion)?,
+            };
+            let Some(next) = next else { break };
+            match next {
+                c6_core::game_update::PlayerEffect::Activation { player, first } => {
+                    match activation(
+                        context.notifications.state,
+                        &mut context.notifications.backend,
+                        runtime,
+                        research_runtime,
+                        player,
+                        first,
+                    )
+                    .map_err(Error::Activation)?
+                    {
+                        ActivationOutcome::Choice(choice) => return Ok(Some(choice)),
+                        ActivationOutcome::Complete => {}
+                    }
+                    loaded::complete_activation(context.notifications.state, runtime)
+                        .map_err(Error::Completion)?;
                 }
-                loaded::complete_activation(context.notifications.state, runtime)
-                    .map_err(Error::Completion)?;
-            }
-            c6_core::game_update::PlayerEffect::ActiveControl { player } => {
-                match active(
-                    context.notifications.state,
-                    &mut context.notifications.backend,
-                    runtime,
-                    player,
-                )
-                .map_err(Error::ActiveControl)?
-                {
-                    ActivationOutcome::Choice(choice) => return Ok(Some(choice)),
-                    ActivationOutcome::Complete => {}
+                c6_core::game_update::PlayerEffect::ActiveControl { player } => {
+                    match active(
+                        context.notifications.state,
+                        &mut context.notifications.backend,
+                        runtime,
+                        player,
+                    )
+                    .map_err(Error::ActiveControl)?
+                    {
+                        ActivationOutcome::Choice(choice) => return Ok(Some(choice)),
+                        ActivationOutcome::Complete => {}
+                    }
+                    loaded::complete_active_control(context.notifications.state, runtime)
+                        .map_err(Error::Completion)?;
                 }
-                loaded::complete_active_control(context.notifications.state, runtime)
-                    .map_err(Error::Completion)?;
+                c6_core::game_update::PlayerEffect::InactiveControl { player } => {
+                    inactive(
+                        context.notifications.state,
+                        &mut context.notifications.backend,
+                        player,
+                    )
+                    .map_err(Error::InactiveControl)?;
+                    loaded::complete_inactive_player(context.notifications.state, runtime)
+                        .map_err(Error::Completion)?;
+                }
+                c6_core::game_update::PlayerEffect::Blocking { player } => {
+                    context
+                        .notifications
+                        .update(player, budget)
+                        .map_err(Error::Notifications)?;
+                    loaded::complete_current_player(context.notifications.state, runtime)
+                        .map_err(Error::Completion)?;
+                }
             }
-            c6_core::game_update::PlayerEffect::InactiveControl { player } => {
-                inactive(
-                    context.notifications.state,
-                    &mut context.notifications.backend,
-                    player,
-                )
-                .map_err(Error::InactiveControl)?;
-                loaded::complete_inactive_player(context.notifications.state, runtime)
-                    .map_err(Error::Completion)?;
-            }
-            c6_core::game_update::PlayerEffect::Blocking { player } => {
-                context
-                    .notifications
-                    .update(player, budget)
-                    .map_err(Error::Notifications)?;
-                loaded::complete_current_player(context.notifications.state, runtime)
-                    .map_err(Error::Completion)?;
+        }
+        match deactivation::finish_completed_human_pass(
+            context, runtime, inputs, visibility, budget,
+        )
+        .map_err(Error::Deactivation)?
+        {
+            deactivation::Outcome::Continue(_)
+            | deactivation::Outcome::ContinueWithoutDeactivation => continue,
+            deactivation::Outcome::Deactivated(_) | deactivation::Outcome::NoDeactivation => {
+                return Ok(None)
             }
         }
     }
-    deactivation::finish_completed_human_pass(context, runtime, inputs, visibility, budget)
-        .map_err(Error::Deactivation)?;
-    Ok(None)
 }
 #[allow(clippy::too_many_arguments)]
 fn drive<'b, P, E>(
