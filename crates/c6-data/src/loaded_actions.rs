@@ -30,6 +30,7 @@ pub mod current_aftermath;
 pub mod current_city_domains;
 pub mod diplomacy_pending_deals;
 pub mod handlers;
+pub mod government_actions;
 mod fortify;
 pub mod move_to;
 pub mod notifications;

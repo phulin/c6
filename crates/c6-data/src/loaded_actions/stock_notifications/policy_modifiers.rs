@@ -39,7 +39,7 @@ impl<P> Runtime<'_, P> {
         self.with_modifier_owners(|runtime, modifier| {
             let context = modifier
                 .effects
-                .make_policy_object(state, owner, policy as u32)
+                .make_policy_object(state, owner, hash)
                 .map_err(Error::City)?;
             if !added {
                 let mut owners = collections::Owners {

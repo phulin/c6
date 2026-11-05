@@ -4,6 +4,7 @@
 //! actual ModifierSystem counter; cached City objects keep their source IDs.
 pub mod collection;
 pub mod definitions;
+pub mod government;
 pub mod policy;
 use super::{EffectRuntime, QueryError};
 use c6_core::{
@@ -62,6 +63,7 @@ pub(super) struct Creation {
     player_capital_subscriptions: Vec<PlayerCitiesSubscription>,
     city_removed_subscriptions: Vec<policy::CitySubscription>,
     modifiers: Vec<Dynamic>,
+    government: government::State,
     objects: Vec<Object>,
     loyalty: ListenerRing<LoyaltyListener>,
     loyalty_subscriptions: Vec<(u64, Subscription)>,
@@ -110,6 +112,7 @@ impl EffectRuntime {
             player_capital_subscriptions: Vec::new(),
             city_removed_subscriptions: Vec::new(),
             modifiers: Vec::new(),
+            government: government::State::default(),
             objects,
             loyalty,
             loyalty_subscriptions: Vec::new(),
@@ -148,6 +151,19 @@ impl c6_core::melee_attack::proposals::subject_sets::SubjectContext for Requirem
         c6_core::melee_attack::proposals::subject_sets::Error<Error>,
     > {
         use c6_core::melee_attack::proposals::subject_sets::{self as sets, Error as E};
+        if definition.predicate
+            == sets::Predicate::Unsupported(crate::registry::linux_type_hash(
+                b"REQUIREMENT_CITY_HAS_BUILDING",
+            ))
+        {
+            return government::initialize_building(
+                self.state,
+                self.effects,
+                label,
+                definition,
+                subject,
+            );
+        }
         if definition.predicate
             != sets::Predicate::Unsupported(crate::registry::linux_type_hash(
                 b"REQUIREMENT_CITY_HAS_FULL_LOYALTY",
@@ -348,9 +364,18 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .map_err(|e| Error::Requirement(Box::new(e)))
     }
     fn clear_subject_requirement(&mut self) -> Result<(), Error> {
-        Err(Error::Missing(
-            "City dynamic requirement destruction continuation",
-        ))
+        let set = c6_core::unit_moved_signal::modifiers::Context::tracked(self)?
+            .requirement_set
+            .ok_or(Error::Missing("City tracked set"))?;
+        c6_core::unit_moved_signal::modifiers::Context::tracked_mut(self)?.requirement_set = None;
+        government::release(
+            self.state,
+            self.runtime,
+            self.requirements,
+            set,
+            self.effects,
+        )?;
+        Ok(())
     }
     fn remove_effects(&mut self) -> Result<(), Error> {
         // For the explicitly qualified stock metadata scope, the native pure
@@ -560,11 +585,9 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         else {
             return Ok(());
         };
-        if self.record()?.tracked[at].state.requirement_set.is_some() {
-            return Err(Error::Missing(
-                "City subject requirement release on removal",
-            ));
-        }
+        // RemoveTrackedSubject2334fb0 removes gameplay effects BEFORE erasing
+        // the tracker. TrackedSubject2331780 unsubscribes destruction, then
+        // requirement changes, then releases the shared requirement set.
         c6_core::unit_moved_signal::modifiers::Context::remove_effects(self)?;
         let token = self.record()?.tracked[at].destruction;
         self.creation_mut()?
@@ -572,6 +595,21 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .destroyed
             .unsubscribe(token)
             .map_err(Error::Ring)?;
+        if let Some(set) = self.record()?.tracked[at].state.requirement_set {
+            let receiver = self.record()?.identity;
+            self.requirements
+                .sets_mut()
+                .unsubscribe(receiver, set)
+                .map_err(|e| Error::Requirement(Box::new(e)))?;
+            self.record_mut()?.tracked[at].state.requirement_set = None;
+            government::release(
+                self.state,
+                self.runtime,
+                self.requirements,
+                set,
+                self.effects,
+            )?;
+        }
         self.record_mut()?.tracked.remove(at);
         self.record_mut()?
             .applied_subjects
@@ -663,13 +701,14 @@ impl EffectRuntime {
                     .header
                     .owner
             }
-            super::ContextObject::Policy { owner, .. } => owner,
+            super::ContextObject::Policy { owner, .. }
+            | super::ContextObject::Government { owner, .. } => owner,
             _ => return Err(Error::Missing("City effect attachment owner interface")),
         };
 
         if matches!(
             self.object(owner).map_err(Error::Query)?.kind,
-            super::ContextObject::Policy { .. }
+            super::ContextObject::Policy { .. } | super::ContextObject::Government { .. }
         ) {
             self.ensure_policy_city_lifecycle(owner)?;
         }
@@ -893,7 +932,9 @@ impl EffectRuntime {
         if creation.objects.iter().any(|o| o.handle == owner) {
             return Ok(());
         }
-        if !self.allocations.constructed_policies.contains(&owner) {
+        if !self.allocations.constructed_policies.contains(&owner)
+            && !creation.government.constructed.contains(&owner)
+        {
             return Err(Error::Missing("current imported Policy City lifecycle"));
         }
         creation.objects.push(Object {
@@ -909,7 +950,10 @@ impl EffectRuntime {
     pub fn retire_policy_object(&mut self, state: &LoadedState, owner: u64) -> Result<(), Error> {
         self.current_owner(state).map_err(Error::Query)?;
         let object = self.object(owner).map_err(Error::Query)?;
-        if !matches!(object.kind, super::ContextObject::Policy { .. }) {
+        if !matches!(
+            object.kind,
+            super::ContextObject::Policy { .. } | super::ContextObject::Government { .. }
+        ) {
             return Err(Error::Missing("Policy object retirement"));
         }
         if object.unit_lifecycle.as_ref().is_some_and(|r| {
@@ -945,6 +989,11 @@ impl EffectRuntime {
                 return Err(Error::Missing("Policy surviving City modifier references"));
             }
             if let Some(life) = creation.objects.iter().find(|o| o.handle == owner) {
+                if !life.affected.entries().is_empty() {
+                    return Err(Error::Missing(
+                        "Policy/Government live City affected modifiers",
+                    ));
+                }
                 if !matches!(
                     life.destroyed.subscription_for(|_| true),
                     Err(RegistryError::InvalidSubscription)
@@ -954,6 +1003,10 @@ impl EffectRuntime {
                     ));
                 }
             }
+            if creation.government.flat.iter().any(|r| r.owner == owner) {
+                return Err(Error::Missing("Government live flat modifiers"));
+            }
+            creation.government.constructed.retain(|h| *h != owner);
             creation.objects.retain(|o| o.handle != owner);
         }
         self.allocations
@@ -968,12 +1021,31 @@ impl EffectRuntime {
     pub fn remove_policy_city_modifiers(
         &mut self,
         state: &mut LoadedState,
-        _requirements: &mut super::requirements::Runtime,
+        requirements: &mut super::requirements::Runtime,
+        owner: u64,
+        effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
+    ) -> Result<(), Error> {
+        while self
+            .city_creation
+            .as_ref()
+            .ok_or(Error::Missing("City lifecycle"))?
+            .modifiers
+            .iter()
+            .any(|m| m.owner == owner)
+        {
+            self.remove_one_city_modifier(state, requirements, owner, effects)?;
+        }
+        Ok(())
+    }
+    fn remove_one_city_modifier(
+        &mut self,
+        state: &mut LoadedState,
+        requirements: &mut super::requirements::Runtime,
         owner: u64,
         effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
     ) -> Result<(), Error> {
         self.current_owner(state).map_err(Error::Query)?;
-        loop {
+        {
             let Some(index) = self
                 .city_creation
                 .as_ref()
@@ -989,7 +1061,7 @@ impl EffectRuntime {
             if self.city_creation.as_ref().unwrap().modifiers[index]
                 .tracked
                 .iter()
-                .any(|r| r.state.requirement_set.is_some() || r.state.removed)
+                .any(|r| r.state.removed)
             {
                 return Err(Error::Missing(
                     "Policy City Deactivate requirement/removed branch",
@@ -1008,6 +1080,14 @@ impl EffectRuntime {
                     .destroyed
                     .unsubscribe(row.destruction)
                     .map_err(Error::Ring)?;
+                if let Some(set) = row.state.requirement_set {
+                    let receiver = self.city_creation.as_ref().unwrap().modifiers[index].identity;
+                    requirements
+                        .sets_mut()
+                        .unsubscribe(receiver, set)
+                        .map_err(|e| Error::Requirement(Box::new(e)))?;
+                    government::release(state, self, requirements, set, effects)?;
+                }
             }
             self.city_creation.as_mut().unwrap().modifiers[index]
                 .modifier
@@ -1065,6 +1145,7 @@ impl EffectRuntime {
                 .retain(|r| r.receiver != m.identity);
             self.retire_effect(state, m.effect).map_err(Error::Query)?;
         }
+        Ok(())
     }
     pub fn next_city_modifier_id(&self) -> Result<i32, Error> {
         self.next_modifier_instance_id().map_err(Error::Query)

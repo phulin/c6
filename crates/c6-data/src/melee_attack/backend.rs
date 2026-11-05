@@ -22,10 +22,15 @@ pub enum ContextObject {
     /// Global Game wrapper; never substituted for a Plot or Player interface.
     Game,
     Player(i32),
-    /// Objects::Player subtype3, subvalue native Policy definition index.
+    /// Objects::Player subtype3, subvalue Policy definition type hash.
     Policy {
         owner: i32,
         policy: u32,
+    },
+    /// Objects::Player subtype2, subvalue Government definition type hash.
+    Government {
+        owner: i32,
+        government_hash: u32,
     },
     /// Objects.Unit's IPlayer interface uses its stored CID owner, while its
     /// IUnit interface resolves the CURRENT corresponding canonical Unit.
@@ -152,6 +157,11 @@ pub enum EffectState {
         context: u64,
         amount: i32,
     },
+    GovernmentBonus {
+        context: u64,
+        bonus: Option<u32>,
+        amount: i32,
+    },
 }
 #[derive(Debug)]
 pub struct Object {
@@ -270,7 +280,7 @@ impl EffectRuntime {
                     .city(i32::from(city.owner), city.id)
                     .map_err(|_| QueryError::Missing("current registered City"))?;
             }
-            ContextObject::Policy { owner, .. } => {
+            ContextObject::Policy { owner, .. } | ContextObject::Government { owner, .. } => {
                 state
                     .world()
                     .valid_player(owner)
@@ -672,7 +682,9 @@ impl registry::Context for EffectContext<'_> {
 impl player_strength::Context for EffectContext<'_> {
     fn context_player(&mut self) -> Result<Option<i32>, QueryError> {
         let owner = match self.object {
-            ContextObject::Player(owner) | ContextObject::Policy { owner, .. } => owner,
+            ContextObject::Player(owner)
+            | ContextObject::Policy { owner, .. }
+            | ContextObject::Government { owner, .. } => owner,
             ContextObject::Unit(u) => i32::from(u.component_id().owner),
             ContextObject::Alliance { .. } => return Ok(None),
             ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
@@ -886,7 +898,7 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
     ) -> Result<bool, Self::Error> {
         let context = match self.effects.effect(effect).map_err(Error::Query)? {
             EffectState::Player { context, .. } | EffectState::Alliance { context, .. } => *context,
-            EffectState::City { .. } => {
+            EffectState::City { .. } | EffectState::GovernmentBonus { .. } => {
                 return Err(Error::Query(QueryError::Unsupported(
                     "City effect in strength dispatcher",
                 )))
@@ -906,9 +918,9 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
             .map(|r| &mut r.1)
             .ok_or(Error::Query(QueryError::MissingEffect(effect)))?;
         match entry {
-            EffectState::City { .. } => Err(Error::Query(QueryError::Unsupported(
-                "City effect in strength dispatcher",
-            ))),
+            EffectState::City { .. } | EffectState::GovernmentBonus { .. } => Err(Error::Query(
+                QueryError::Unsupported("City effect in strength dispatcher"),
+            )),
             EffectState::Unit(_) => Err(Error::Query(QueryError::Unsupported(
                 "Unit effect in strength Apply dispatcher",
             ))),
