@@ -1,4 +1,4 @@
-//! Ordinary Builder Train completion on the same canonical creation owner.
+//! Ordinary Train completion on the same canonical creation owner.
 //! Queue/progress writes follow the synchronous creation and production signals.
 use crate::{registry::linux_type_hash, unit_creation as creation, Rules, SqlValue};
 use c6_core::{
@@ -16,12 +16,15 @@ pub enum Error<E> {
     Effect(E),
 }
 /// Static definition facts; no captured CanTrain or completion answer is stored.
-pub struct Definitions {
-    inputs: InputIdentities,
-    builder: u32,
+struct UnitDefinition {
+    hash: u32,
     population_cost: Option<i32>,
     civilian: bool,
     unit_index: usize,
+}
+pub struct Definitions {
+    inputs: InputIdentities,
+    units: Vec<UnitDefinition>,
 }
 impl Definitions {
     pub fn from_rules(
@@ -34,30 +37,29 @@ impl Definitions {
         }
         crate::unit_initialization_definitions::Definitions::validate_resources(rules, authority)
             .map_err(|_| Error::Missing("admitted Train definitions"))?;
+        let registry =
+            crate::unit_initialization_definitions::collection(rules, "Units", "UnitType")
+                .map_err(|_| Error::Missing("Train Unit definitions"))?;
         let table = rules
             .gameplay()
             .table("Units")
             .ok_or(Error::Missing("Units"))?;
-        let mut found = None;
-        for (index, row) in table.rows().enumerate() {
-            if row.text("UnitType").map_err(Error::Rules)? != "UNIT_BUILDER" {
-                continue;
-            }
+        let mut units = Vec::new();
+        for (index, entry) in registry.entries().iter().enumerate() {
+            let row = table
+                .row_by_id(entry.database_rowid)
+                .ok_or(Error::Missing("Train Unit row"))?;
             let population_cost = match row.get("PopulationCost").map_err(Error::Rules)? {
                 SqlValue::Null => None,
                 SqlValue::Integer(v) => Some(*v as i32),
                 _ => return Err(Error::Missing("population cost type")),
             };
-            let civilian = matches!(row.get("FormationClass").map_err(Error::Rules)?,SqlValue::Text(v)if v==b"FORMATION_CLASS_CIVILIAN");
-            found = Some(Self {
-                inputs: state.binding().inputs.clone(),
-                builder: linux_type_hash(b"UNIT_BUILDER"),
-                population_cost,
-                civilian,
-                unit_index: index,
-            });
+            units.push(UnitDefinition{hash:linux_type_hash(&entry.type_name),population_cost,civilian:matches!(row.get("FormationClass").map_err(Error::Rules)?,SqlValue::Text(v)if v==b"FORMATION_CLASS_CIVILIAN"),unit_index:index});
         }
-        found.ok_or(Error::Missing("Builder definition"))
+        Ok(Self {
+            inputs: state.binding().inputs.clone(),
+            units,
+        })
     }
 }
 pub trait Effects: creation::FactoryEffects {
@@ -105,7 +107,7 @@ fn copies<E>(state: &LoadedState, owner: i32, city: u32, hash: u32) -> Result<i3
 }
 /// Called by production::Effects::finish after current cost/progress have been
 /// computed. `required_cost` is that current-build calculation, in whole units.
-/// Other unit classes and positive population/yield branches remain explicit.
+/// Factory-supported ordinary classes share this kernel; positive population/yield branches remain explicit.
 pub fn finish_current<E: Effects>(
     factory: &mut creation::Context<'_, '_, '_, E>,
     definitions: &Definitions,
@@ -123,17 +125,16 @@ pub fn finish_current<E: Effects>(
     else {
         return Ok(false);
     };
-    if unit_hash != definitions.builder {
-        return Err(Error::Missing("ordinary Builder Train profile"));
-    }
+    let definition = definitions
+        .units
+        .iter()
+        .find(|v| v.hash == unit_hash)
+        .ok_or(Error::Missing("current Train Unit definition"))?;
     let owner = i32::from(city.owner);
     let value = factory.state.city(owner, city.id).map_err(Error::State)?;
     let progress = indexed(&value.build_queue.unit_progress, unit_hash);
     if progress < required_cost.wrapping_shl(8) {
         return Ok(false);
-    }
-    if !definitions.civilian {
-        return Err(Error::Missing("unit-completion yield grants"));
     }
     let military_formation = if military_formation == -1 {
         0
@@ -143,6 +144,18 @@ pub fn finish_current<E: Effects>(
     let mut copy = 0_i32;
     if copies::<<E as creation::Effects>::Error>(factory.state, owner, city.id, unit_hash)? >= 0 {
         loop {
+            if !definition.civilian
+                && factory
+                    .state
+                    .city(owner, city.id)
+                    .map_err(Error::State)?
+                    .header
+                    .yield_per_unit_complete
+                    .iter()
+                    .any(|v| v.value > 0)
+            {
+                return Err(Error::Missing("positive unit-completion yield grants"));
+            }
             let current = factory.state.city(owner, city.id).map_err(Error::State)?;
             let location = PlotCoord {
                 x: current.header.location_x,
@@ -181,13 +194,13 @@ pub fn finish_current<E: Effects>(
             }
         }
     }
-    if definitions.population_cost.is_some() {
+    if definition.population_cost.is_some() {
         return Err(Error::Missing("Train population consumption"));
     }
     let value = factory.state.city(owner, city.id).map_err(Error::State)?;
     let delta = *value
         .population_change_on_creation
-        .get(definitions.unit_index)
+        .get(definition.unit_index)
         .ok_or(Error::Missing("current population-on-unit array"))?;
     if value.header.population.wrapping_add(delta) >= 2 {
         return Err(Error::Missing("Train ChangePopulation callbacks"));
@@ -212,7 +225,7 @@ pub fn finish_current<E: Effects>(
     factory.effects.production_completed_report(
         factory.state,
         city,
-        definitions.unit_index as i32,
+        definition.unit_index as i32,
         military_formation,
     )?;
     Ok(true)

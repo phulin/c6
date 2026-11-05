@@ -455,6 +455,26 @@ impl<P> Session<'_, '_, P> {
 }
 
 impl<P> Session<'_, '_, P> {
+    /// Select an ordinary Unit on the same live City and stock services.
+    /// Legality precedes queue writes; failures retain the exact partial state.
+    pub fn choose_unit(
+        &mut self,owner:i32,city:u32,unit_hash:u32,
+        definitions:&crate::city_production_turn::unit_selection::Definitions,
+        current:&crate::city_production_turn::unit_selection::Current<'_>,
+    )->Result<Vec<stock_notifications::city_production::unit::Record>,Error<crate::city_production_turn::Error>>{
+        self.ordinary_player_action(owner)?;
+        let before=self.state().action_stamp();
+        let (result,reports)={
+            let mut effects=stock_notifications::city_production::unit::Selection{
+                runtime:&mut self.context.notifications.backend,definitions,
+                current:crate::city_production_turn::unit_selection::Current{build_maps:current.build_maps,fallout_turns:current.fallout_turns,civilization_levels:current.civilization_levels},reports:Vec::new(),
+            };
+            let result=effects.choose(self.context.notifications.state,owner,city,unit_hash);
+            (result,effects.reports)
+        };
+        let partial_failure=self.state().action_stamp()!=before;
+        self.retain(result.map(|()|reports),partial_failure)
+    }
     /// Append an explicit building choice using the same stock runtime and
     /// already-bound current city queries. Legality runs before queue writes;
     /// successful selection returns ordered semantic production publications.

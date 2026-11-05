@@ -7,6 +7,7 @@
 //! Errors retain any mutation
 //! prefix already performed by the production kernel.
 pub mod completion;
+pub mod unit;
 use super::{Decision, Runtime};
 use crate::city_production_turn::{self as production, appeal, buildings, selection};
 use c6_core::{

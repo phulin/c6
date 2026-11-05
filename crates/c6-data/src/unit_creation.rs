@@ -61,6 +61,8 @@ pub struct Definitions {
     ability_inactive: Vec<bool>,
     hero_units: Vec<u32>,
     operations: Vec<(u32, bool)>,
+    district_military_domains: Vec<(u32,u32)>,
+    unit_domains: Vec<u32>,
 }
 impl Definitions {
     pub fn continent_index(&self, hash:u32)->Option<usize>{self.continents.find_index(hash)}
@@ -233,7 +235,13 @@ impl Definitions {
                     .map_err(Error::Rules)
             })
             .collect::<Result<_, _>>()?;
+        let mut district_military_domains=Vec::new();
+        for row in rules.gameplay().table("Districts").ok_or(Error::Missing("Districts"))?.rows(){
+            district_military_domains.push((crate::registry::linux_type_hash(row.text("DistrictType").map_err(Error::Rules)?.as_bytes()),crate::registry::linux_type_hash(row.text("MilitaryDomain").map_err(Error::Rules)?.as_bytes())));
+        }
+        let unit_domains=units.entries().iter().map(|v|table.row_by_id(v.database_rowid).ok_or(Error::Missing("Unit row"))?.text("Domain").map(|v|crate::registry::linux_type_hash(v.as_bytes())).map_err(Error::Rules)).collect::<Result<Vec<_>,Error<std::convert::Infallible>>>()?;
         Ok(Self {
+            district_military_domains,unit_domains,
             continents: collection(rules,"Continents","ContinentType").map_err(Error::Resources)?,
             hero_units,
             identities: state.binding().inputs.clone(),
@@ -762,12 +770,21 @@ impl<E: FactoryEffects> Context<'_, '_, '_, E> {
         let Some(index) = self.definitions.units.find_index(parameters.unit_hash) else {
             return Ok(None);
         };
-        if self.definitions.units.entries()[index].type_name != b"UNIT_BUILDER" {
-            return Err(Error::Missing("ordinary Builder creation profile"));
+        if ![b"UNIT_BUILDER".as_slice(),b"UNIT_SCOUT".as_slice(),b"UNIT_WARRIOR".as_slice()].contains(&self.definitions.units.entries()[index].type_name.as_slice()) {
+            return Err(Error::Missing("ordinary city Unit creation profile"));
         }
         let properties = self.definitions.properties[index];
         if properties.base.combat > 0 {
-            return Err(Error::Missing("combat Unit district spawn selection"));
+            //28b9812 scans ordered complete districts; NO_DOMAIN districts never
+            //replace the requested City location. Matching military districts
+            //require occupancy/stacking/coastal spawn selection.
+            let player=self.state.retained().players.iter().find(|p|p.header.owner==owner).ok_or(Error::Missing("military spawn owner"))?;
+            for id in &city.districts.district_ids {
+                let district=player.districts.records.entries.iter().find(|e|e.index==(*id&0xffff)as i32 && e.value.id==*id).ok_or(Error::Missing("military spawn district"))?;
+                if district.value.is_complete && self.definitions.district_military_domains.iter().find(|v|v.0==district.value.district_hash).ok_or(Error::Missing("military spawn district definition"))?.1==self.definitions.unit_domains[index] {
+                    return Err(Error::Missing("military district spawn selection"));
+                }
+            }
         }
         if properties.track_religion {
             return Err(Error::Missing("religious Unit city religion selection"));
