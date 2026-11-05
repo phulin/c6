@@ -118,6 +118,40 @@ pub fn prepare<C: Context>(
     })
 }
 
+/// Linux CalculateDamage(District, Unit): both strengths are already combined.
+/// Unlike Unit/Unit damage, this path always reaches the damage kernel, even
+/// for nonpositive defending strength, and never reads the civilian percentage.
+pub fn prepare_district_unit<C: Context>(
+    c: &mut C,
+    defender_raw: i32,
+    attacker_raw: i32,
+    average: bool,
+) -> Result<Next, C::Error> {
+    let mut parameters = DamageParameters {
+        attacker_strength_raw: attacker_raw,
+        defender_strength_raw: defender_raw,
+        defender_max_hit_points: 0,
+        outer_defense_damage: 0,
+        outer_defense_max_hit_points: 0,
+        defense_type: u32::MAX,
+        power_scaling_raw: 256,
+        minimum_damage: 0,
+        base_damage: 0,
+        power_dampener: 0,
+        max_extra_damage: 0,
+        bypass_defenses: false,
+    };
+    parameters.defender_max_hit_points = c.maximum_hit_points()?;
+    parameters.minimum_damage = c.minimum_damage()?;
+    parameters.power_scaling_raw = MovementPoints::route_float_bits(c.power_scaling()?.to_bits()).0;
+    parameters.base_damage = c.base_damage()?;
+    parameters.power_dampener = c.power_dampener()?;
+    Ok(Next::RequiresCalculateDamage {
+        parameters,
+        average,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -224,6 +258,27 @@ mod tests {
             self.reads.push("civilian");
             Ok(50)
         }
+    }
+    #[test]
+    fn district_nonpositive_defense_still_assembles_random_damage_parameters() {
+        let mut c = Rules {
+            reads: vec![],
+            fail_base: false,
+        };
+        let Next::RequiresCalculateDamage {
+            parameters,
+            average,
+        } = prepare_district_unit(&mut c, -256, 20 << 8, false).unwrap()
+        else {
+            panic!("district strike must reach damage kernel")
+        };
+        assert_eq!(parameters.defender_strength_raw, -256);
+        assert_eq!(parameters.attacker_strength_raw, 20 << 8);
+        assert!(!average);
+        assert_eq!(
+            c.reads,
+            ["maximum", "minimum", "scaling", "base", "dampener"]
+        );
     }
     #[test]
     fn base_guard_precedes_wrapped_modifier_sums_and_preserves_rule_order() {

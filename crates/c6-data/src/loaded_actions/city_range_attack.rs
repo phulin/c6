@@ -30,6 +30,7 @@ pub struct Definitions {
     binding: WireBinding,
     districts: LinuxDefinitionRegistry,
     district_hit_points: Vec<Option<i32>>,
+    district_internal_only: Vec<Option<i32>>,
     buildings: LinuxDefinitionRegistry,
     building_outer_hit_points: Vec<Option<i32>>,
     district_xp2: LinuxDefinitionRegistry,
@@ -137,6 +138,7 @@ impl Definitions {
             binding: state.binding().clone(),
             districts: collection("Districts", "DistrictType")?,
             district_hit_points: values(rules, "Districts", "HitPoints")?,
+            district_internal_only: values(rules, "Districts", "InternalOnly")?,
             buildings: collection("Buildings", "BuildingType")?,
             building_outer_hit_points: values(rules, "Buildings", "OuterDefenseHitPoints")?,
             district_xp2: collection("Districts_XP2", "DistrictType")?,
@@ -313,7 +315,7 @@ pub fn initialize_auto(
 /// Native City::Districts::GetDistrictAt resolves each saved ID through the
 /// owner's Districts container, compares location, and skips missing slots.
 /// Generation bits are not used by RecycledIDContainer::Find.
-fn center_district<'a>(
+pub(crate) fn center_district<'a>(
     city: &c6_core::city::City,
     districts: &'a c6_core::player_districts::Districts,
 ) -> Option<&'a c6_core::player_districts::District> {
@@ -445,6 +447,73 @@ fn can_start_range_attack(
         }
     }
     Ok(false)
+}
+
+/// Current District.GetMaxDamage for the two actual combat defense types.
+/// A missing District definition yields zero; outer defenses query their City's
+/// current buildings/urban defenses only when the garrison definition has HP.
+pub fn maximum_damage(
+    state: &LoadedState,
+    district: &c6_core::player_districts::District,
+    definitions: &Definitions,
+    civilization_level_types: &[(i32, u32)],
+    outer: bool,
+) -> Result<i32, Error> {
+    if state.binding() != &definitions.binding {
+        return Err(Error::ConfigurationIdentity);
+    }
+    let garrison = definitions
+        .districts
+        .find_index(district.district_hash)
+        .and_then(|i| definitions.district_hit_points.get(i))
+        .copied()
+        .flatten()
+        .unwrap_or(0);
+    if !outer {
+        return Ok(garrison);
+    }
+    if garrison <= 0 {
+        return Ok(0);
+    }
+    outer_defense_hit_points_current(
+        state,
+        district_city(state, district)?,
+        definitions,
+        civilization_level_types,
+    )
+}
+/// Exact District.GetGarrisonedUnit prefix and shared default defender query.
+pub fn garrison<'s>(
+    state: &'s LoadedState,
+    district: &c6_core::player_districts::District,
+    definitions: &Definitions,
+    formation: &crate::formation_rules::Definitions,
+) -> Result<Option<&'s c6_core::unit::Unit>, Error> {
+    if !district.is_complete {
+        return Ok(None);
+    }
+    if state.binding() != &definitions.binding {
+        return Err(Error::ConfigurationIdentity);
+    }
+    let internal = definitions
+        .districts
+        .find_index(district.district_hash)
+        .and_then(|i| definitions.district_internal_only.get(i))
+        .copied()
+        .flatten()
+        .ok_or(Error::Unsupported("District.GetGarrisonedUnit definition"))?;
+    if internal != 0 {
+        return Ok(None);
+    }
+    crate::combat_defender::garrison_lookup(
+        state,
+        formation,
+        c6_core::unit::PlotCoord {
+            x: district.location.0,
+            y: district.location.1,
+        },
+    )
+    .map_err(|_| Error::Unsupported("District.GetGarrisonedUnit current defender"))
 }
 
 /// HasWalls/GetMaxDamage source prefix. No district definition returns zero;
@@ -583,7 +652,7 @@ pub(crate) fn district_city_optional<'a>(
         })
         .map(|slot| &slot.value))
 }
-fn district_city<'a>(
+pub(crate) fn district_city<'a>(
     state: &'a LoadedState,
     district: &c6_core::player_districts::District,
 ) -> Result<&'a c6_core::city::City, Error> {
@@ -592,7 +661,7 @@ fn district_city<'a>(
     ))
 }
 
-fn district_owner(
+pub(crate) fn district_owner(
     state: &LoadedState,
     district: &c6_core::player_districts::District,
 ) -> Result<i32, Error> {
@@ -1162,6 +1231,16 @@ pub fn test_ranged_attack_into(
     location: (i32, i32),
     queries: &Queries<'_>,
 ) -> Result<bool, Error> {
+    Ok(select_ranged_defender(state, district, location, queries)?.is_some())
+}
+
+/// Same ordered source target query, retaining the actual selected Unit.
+pub fn select_ranged_defender<'s>(
+    state: &'s LoadedState,
+    district: &c6_core::player_districts::District,
+    location: (i32, i32),
+    queries: &Queries<'_>,
+) -> Result<Option<&'s c6_core::unit::Unit>, Error> {
     let definitions = queries.definitions;
     let attack_owner = district_owner(state, district)?;
     let plot = if location.0 > -9999 && location.1 > -9999 {
@@ -1177,7 +1256,7 @@ pub fn test_ranged_attack_into(
             {
                 if let Some(enemy) = plot_district(state, plot)? {
                     if district_defensible(state, enemy, definitions)? {
-                        return Ok(false);
+                        return Ok(None);
                     }
                 }
             }
@@ -1186,7 +1265,7 @@ pub fn test_ranged_attack_into(
     // Native UnitContainer.GetUnits(...,layer=0) normalizes coordinates; absent
     // cells are the actual empty list rather than invented candidate objects.
     let Some(_plot) = plot else {
-        return Ok(false);
+        return Ok(None);
     };
     let map = state.world().map();
     let x = c6_core::movement_world::coord_range(location.0, map.header.width, map.header.wrap_x);
@@ -1223,7 +1302,7 @@ pub fn test_ranged_attack_into(
             selected = Some(unit);
         }
     }
-    Ok(selected.is_some())
+    Ok(selected)
 }
 
 fn unit_visible(

@@ -64,6 +64,31 @@ impl Proposal {
             defender_yields: vec![],
         }
     }
+    /// Linux District/Unit ProposedCombat constructor. The district is a real
+    /// gameplay participant; it must never be represented by a synthetic Unit.
+    pub fn ranged_district_unit(
+        attacker: ComponentId,
+        defender: UnitReference,
+        plot: Option<PlotCoord>,
+    ) -> Self {
+        Self {
+            owned_modifiers: vec![],
+            temporary: true,
+            modifiers_affecting:
+                crate::unit_moved_signal::modifiers::AffectedModifiers::from_sorted(vec![])
+                    .expect("new object has empty sorted modifier list"),
+            attacker: Participant::District(attacker),
+            defender: Some(Participant::Unit(defender)),
+            plot,
+            combat_type: 0x2ec4ce4d,
+            attacker_strength_modifier: 0,
+            defender_strength_modifier: 0,
+            capture_combat_units: false,
+            capture_unit_type: -1,
+            attacker_yields: vec![],
+            defender_yields: vec![],
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Handle(usize);
@@ -496,6 +521,42 @@ mod tests {
                 Ok(())
             }
         }
+    }
+    #[test]
+    fn district_proposal_dispatches_both_owners_and_only_real_defender_unit() {
+        let mut c = context(&[Subscriber::Owners, Subscriber::UnitComponents], 0);
+        let district = ComponentId {
+            owner: 12,
+            component_type: 3,
+            id: 7,
+        };
+        let defender = unit(62, 8);
+        c.runtime.owners = Some(vec![
+            (
+                12,
+                ListenerRing::from_ordered(&[Subscriber::Callback(1)]).unwrap(),
+            ),
+            (
+                62,
+                ListenerRing::from_ordered(&[Subscriber::Callback(2)]).unwrap(),
+            ),
+        ]);
+        c.runtime.units = Some(vec![(
+            defender.component_id(),
+            ListenerRing::from_ordered(&[Subscriber::Callback(3)]).unwrap(),
+        )]);
+        let (id, handle) = propose(
+            &mut c,
+            Proposal::ranged_district_unit(district, defender, Some(PlotCoord { x: 1, y: 2 })),
+        )
+        .unwrap();
+        assert_eq!(id, 0);
+        assert_eq!(c.events, [1, 2, 3]);
+        let p = c.runtime.proposal(handle).unwrap();
+        assert_eq!(p.attacker, Participant::District(district));
+        assert_eq!(p.defender, Some(Participant::Unit(defender)));
+        assert_eq!(p.combat_type, 0x2ec4ce4d);
+        assert_eq!(p.attacker_strength_modifier, 21);
     }
     fn context(order: &[Subscriber], counter: u32) -> Test {
         Test {

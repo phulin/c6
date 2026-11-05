@@ -15,7 +15,8 @@ pub enum Error<E> {
     Access(AccessError),
     Actor(super::Error),
     Effects(E),
-    UnsupportedDistrictReference,
+    District(c6_core::loaded_state::district_initialization::DistrictError),
+    DistrictOwner(crate::loaded_actions::Error),
     Runtime(kernel::Error),
     MissingCollection(u64),
     MissingCollectionKind(u64),
@@ -59,6 +60,24 @@ impl<'a, E: Effects> Context<'a, E> {
             c6_core::melee_attack::results::MELEE,
         )
     }
+    /// Register a genuine District/Unit proposal on the current owner, keeping
+    /// the existing global, player and defender Unit callback order.
+    pub fn propose_district_unit(
+        &mut self,
+        attacker: ComponentId,
+        defender: UnitReference,
+        location: c6_core::unit::PlotCoord,
+    ) -> Result<(u32, kernel::Handle), kernel::DispatchError<Error<E::Error>>> {
+        self.state
+            .district(i32::from(attacker.owner), attacker.id)
+            .map_err(|e| kernel::DispatchError::Context(Error::District(e)))?;
+        super::actor(self.state, defender)
+            .map_err(|e| kernel::DispatchError::Context(Error::Actor(e)))?;
+        kernel::propose(
+            self,
+            kernel::Proposal::ranged_district_unit(attacker, defender, Some(location)),
+        )
+    }
     pub(crate) fn propose_units_with_type(
         &mut self,
         attacker: UnitReference,
@@ -91,7 +110,14 @@ impl<E: Effects> kernel::Context for Context<'_, E> {
             kernel::Participant::Unit(id) => {
                 Ok(super::actor(self.state, id).map_err(Error::Actor)?.e_owner)
             }
-            kernel::Participant::District(_) => Err(Error::UnsupportedDistrictReference),
+            kernel::Participant::District(id) => {
+                let district = self
+                    .state
+                    .district(i32::from(id.owner), id.id)
+                    .map_err(Error::District)?;
+                crate::loaded_actions::city_range_attack::district_owner(self.state, district)
+                    .map_err(Error::DistrictOwner)
+            }
         }
     }
     fn unit_id(&mut self, id: UnitReference) -> Result<ComponentId, Self::Error> {

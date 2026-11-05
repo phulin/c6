@@ -15,6 +15,8 @@ mod activation;
 pub mod city_production;
 #[path = "stock_combat.rs"]
 pub mod combat;
+#[path = "stock_city_strike.rs"]
+pub mod city_strike;
 pub mod city_queries;
 pub mod cityless_managers;
 pub mod deactivation;

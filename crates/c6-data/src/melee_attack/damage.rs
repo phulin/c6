@@ -350,3 +350,40 @@ pub(crate) fn single_with_draws(
     };
     Ok((amount, draws))
 }
+
+/// One genuine District/Unit damage call. Shares the canonical GameSync owner
+/// and draw records with other combat; no Unit/Unit civilian shortcut applies.
+pub fn district_unit_with_draws(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    defender: c6_core::map::UnitReference,
+    attacker_raw: i32,
+    defender_raw: i32,
+) -> Result<(i32, Vec<RandomDraw>), Error> {
+    use kernel::ExchangeContext as _;
+    if state.binding().inputs != definitions.identities {
+        return Err(Error::Binding);
+    }
+    let pending = kernel::prepare_district_unit(
+        &mut Context(definitions),
+        defender_raw,
+        attacker_raw,
+        false,
+    )?;
+    let mut draws = Vec::new();
+    let mut context = ExchangeContext {
+        state,
+        definitions,
+        defender,
+        draws: &mut draws,
+    };
+    let kernel::Next::RequiresCalculateDamage {
+        parameters,
+        average,
+    } = pending
+    else {
+        unreachable!("District/Unit always uses the damage kernel")
+    };
+    let amount = context.calculate_damage(&parameters, average)?;
+    Ok((amount, draws))
+}

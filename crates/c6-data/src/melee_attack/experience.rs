@@ -32,6 +32,7 @@ pub struct Definitions {
     bonuses: LinuxDefinitionRegistry,
     rules: kernel::Rules,
     ranged_base: i32,
+    district_vs_unit: Option<i32>,
 }
 impl Definitions {
     pub fn from_rules(
@@ -97,6 +98,7 @@ impl Definitions {
             bonuses: collection(rules, "GovernmentBonusNames", "GovernmentBonusType")
                 .map_err(Error::Definitions)?,
             ranged_base: p("EXPERIENCE_COMBAT_RANGED")?,
+            district_vs_unit: p("EXPERIENCE_DISTRICT_VS_UNIT").ok(),
             rules: kernel::Rules {
                 maximum_barbarian_level: p("EXPERIENCE_MAX_BARB_LEVEL")?,
                 barbarian_soft_cap: p("EXPERIENCE_BARB_SOFT_CAP")?,
@@ -293,6 +295,44 @@ pub(crate) fn awards(
     )?;
     let attack = kernel::melee(&mut c, rules, kernel::Side::Attacker, defender_killed)?;
     Ok((attack, defense))
+}
+
+/// CalculateExperienceEarned(false, NULL, defender, RANGED, DISTRICT_VS_UNIT).
+/// The actual null opponent skips barbarian caps and returns the distinct raw
+/// district award, without strength ratios or the receiving Unit XP modifier.
+pub fn district_defender_award(
+    state: &LoadedState,
+    defs: &Definitions,
+    formation: &formation_rules::Definitions,
+    defender: UnitReference,
+) -> Result<i32, Error> {
+    if state.binding().inputs != defs.identities {
+        return Err(Error::Binding);
+    }
+    let unit = super::actor(state, defender).map_err(Error::Actor)?;
+    let index = state
+        .unit_runtime(unit.e_owner, unit.id)
+        .map_err(Error::State)?
+        .definition_index;
+    let index = usize::try_from(index)
+        .ok()
+        .filter(|i| *i < defs.earn.len())
+        .ok_or(Error::Missing("Unit definition"))?;
+    if defs.units.find_index(unit.e_type_index) != Some(index) {
+        return Err(Error::Missing("current Unit definition"));
+    }
+    if !defs.earn[index] || unit.k_experience.b_experience_locked {
+        return Ok(0);
+    }
+    if !(formation.combat(state, unit).map_err(Error::Combat)? > 0
+        || formation.ranged(state, unit).map_err(Error::Combat)? > 0
+        || formation.bombard(state, unit).map_err(Error::Combat)? > 0)
+    {
+        return Ok(0);
+    }
+
+    defs.district_vs_unit
+        .ok_or(Error::Missing("EXPERIENCE_DISTRICT_VS_UNIT"))
 }
 
 #[derive(Debug)]

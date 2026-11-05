@@ -28,17 +28,20 @@ impl PromotionQuery for crate::formation_movement_cost::Definitions<'_> {
 /// Immutable combat inputs and retained callback rings. Mutable modifier stores
 /// remain in Runtime::modifier_owners, shared with unit/building creation.
 pub struct State<'a> {
-    origin: ActionStamp,
+    pub(super) origin: ActionStamp,
     pub melee_queries: Option<&'a dyn melee::stock::MovementQueries>,
-    inputs: Option<backend::Inputs>,
-    bindings: Option<resolve::completion::stock::Bindings>,
+    pub(super) inputs: Option<backend::Inputs>,
+    pub(super) bindings: Option<resolve::completion::stock::Bindings>,
     pub observer: Option<i32>,
-    configuration: Option<crate::loaded_actions::configuration::RawGameConfiguration>,
+    pub(crate) configuration: Option<crate::loaded_actions::configuration::RawGameConfiguration>,
     pub promotion: &'a dyn PromotionQuery,
     pub experience_events: Vec<experience::reporting::Event>,
     pub statuses: Vec<resolve::surviving::Status>,
     pub deaths: Vec<resolve::UnitDeath>,
     pub resolved: Vec<resolve::completion::ResolvedCombat>,
+    pub city_strikes: Vec<crate::city_strike::Generated>,
+    pub city_strike_reports: Vec<crate::city_strike::reports::Output>,
+    pub city_strike_report_scope: Option<crate::city_strike::reports::Scope>,
 }
 impl<'a> State<'a> {
     /// Qualified Unit lifecycle/report callbacks without attack execution.
@@ -63,6 +66,9 @@ impl<'a> State<'a> {
             statuses: Vec::new(),
             deaths: Vec::new(),
             resolved: Vec::new(),
+            city_strikes: Vec::new(),
+            city_strike_reports: Vec::new(),
+            city_strike_report_scope: None,
         }
     }
     /// Split an initialized backend once; install returned stores in the SAME
@@ -90,6 +96,9 @@ impl<'a> State<'a> {
                 statuses: Vec::new(),
                 deaths: Vec::new(),
                 resolved: Vec::new(),
+                city_strikes: Vec::new(),
+                city_strike_reports: Vec::new(),
+                city_strike_report_scope: None,
             },
             requirements,
             effects,
@@ -111,6 +120,22 @@ impl<'a, P> Runtime<'a, P> {
         self.combat
             .as_ref()
             .ok_or(Error::Missing("current combat services"))
+    }
+    pub(crate) fn city_strike_notification_required(
+        &self,
+        state: &LoadedState,
+        defender: UnitReference,
+    ) -> Result<bool, Error> {
+        let configuration = self.combat_current(state)?.configuration
+            .ok_or(Error::Missing("combat configuration"))?;
+        resolve::surviving::combat_notification_required(
+            state, &configuration,
+            self.facts.manager_initialized.zip(self.facts.game_uninitializing),
+            defender,
+        ).map_err(|e| Error::Requirement(format!("{e:?}")))
+    }
+    pub(crate) fn combat_mut(&mut self) -> Result<&mut State<'a>, Error> {
+        self.combat.as_mut().ok_or(Error::Missing("current combat services"))
     }
     #[allow(clippy::too_many_arguments)]
     /// Loan the SAME mutable modifier stores for one synchronous attack, then

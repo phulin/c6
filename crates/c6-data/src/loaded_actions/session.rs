@@ -20,6 +20,7 @@ use c6_core::{
 pub mod advance;
 pub mod stock_turn_services;
 pub mod combat;
+pub mod city_strike;
 pub mod initialized;
 pub mod founding;
 #[path = "session_policy.rs"]

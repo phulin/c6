@@ -32,6 +32,7 @@ pub struct Definitions {
     binding: Option<c6_core::core_player::initialization::WireBinding>,
     max_hit_points: i32,
     wounded_multiplier: i32,
+    wounded_district_multiplier: Option<i32>,
     flanking_modifier: Option<i32>,
     bonuses: Option<BonusDefinitions>,
     defense: Option<DefenseDefinitions>,
@@ -123,6 +124,24 @@ impl Definitions {
             modifier,
             self.wounded_multiplier,
         ))
+    }
+    pub(crate) fn district_reduction_for_damage(
+        &self,
+        state: &LoadedState,
+        percent: i32,
+        modifier: i32,
+    ) -> Result<i32, Error> {
+        self.check(state)?;
+        Ok(kernel::reduction_for_damage(
+            percent,
+            modifier,
+            self.wounded_district_multiplier
+                .ok_or(Error::Missing("COMBAT_WOUNDED_DISTRICT_DAMAGE_MULTIPLIER"))?,
+        ))
+    }
+    pub(crate) fn district_maximum_hit_points(&self, state: &LoadedState) -> Result<i32, Error> {
+        self.check(state)?;
+        Ok(self.max_hit_points)
     }
     /// Admit the static religion/policy collections needed by later bonus stages.
     /// Their exact target builder SQL orders GovernmentSlots and Policies by rowid.
@@ -243,6 +262,10 @@ impl Definitions {
             binding: None,
             max_hit_points,
             wounded_multiplier,
+            wounded_district_multiplier: optional_parameter(
+                rules,
+                "COMBAT_WOUNDED_DISTRICT_DAMAGE_MULTIPLIER",
+            ),
             flanking_modifier,
             bonuses: None,
             defense: None,
@@ -348,7 +371,7 @@ impl<'a> CurrentPlayerCombat<'a> {
         self
     }
 
-    fn has_adjacency(&self, state: &LoadedState, owner: i32) -> Result<bool, Error> {
+    pub(crate) fn has_adjacency(&self, state: &LoadedState, owner: i32) -> Result<bool, Error> {
         if self.binding != state.binding() {
             return Err(Error::Binding);
         }
@@ -905,7 +928,7 @@ pub fn terrain_bonus(
         false,
     )
 }
-fn terrain_bonus_with_kind(
+pub(crate) fn terrain_bonus_with_kind(
     state: &LoadedState,
     definitions: &Definitions,
     defender_plot: c6_core::unit::PlotCoord,
