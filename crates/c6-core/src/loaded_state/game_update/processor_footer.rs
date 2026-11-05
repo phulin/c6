@@ -10,6 +10,42 @@ pub enum ProcessorPass {
     Returned,
 }
 impl<S: Services> Context<'_, S> {
+    /// 2a0d274..2a0d3cd: after actual EndTurn the changed-phase result forces
+    /// the current Update to return. BeginTurn belongs to a later Update.
+    pub fn finish_round_update(
+        &mut self,
+        pending_diplomacy_tail: impl FnOnce(&mut LoadedState, &mut S) -> Result<(), Error>,
+    ) -> Result<(), Error> {
+        let progress = self.runtime.player_progress();
+        if self.runtime.failed
+            || self.runtime.player_frame.is_some()
+            || !matches!(
+                self.runtime.pending,
+                Some(core::Continuation::PlayerUpdates(_))
+            )
+            || progress.completed != progress.selected
+            || self.state.retained.core.player_processor.active_count != 0
+            || !self.state.retained.core.game_processor.turn_complete
+            || !self.state.retained.core.game_processor.advance_turn
+        {
+            return Err(Error::Unsupported("Game.Update unfinished round end"));
+        }
+        let result = (|| {
+            core::update_autoplay(self)?;
+            pending_diplomacy_tail(self.state, &mut self.services)
+        })();
+        if result.is_err() {
+            self.runtime.failed = true;
+            return result;
+        }
+        self.runtime.pending = None;
+        self.runtime.player_cursor = 0;
+        self.runtime.pass_has_human = false;
+        self.runtime.pass_processed_ai = false;
+        self.runtime.deactivation_started = false;
+        self.runtime.processor_pass_iterations = 0;
+        Ok(())
+    }
     pub fn finish_exclusive_processor_pass(
         &mut self,
         mut any_multiplayer: impl FnMut(&mut LoadedState, &mut S) -> Result<bool, Error>,
@@ -132,6 +168,27 @@ mod tests {
                 alive_reads: 0,
             },
         )
+    }
+    #[test]
+    fn round_end_returns_without_replaying_prefix_or_beginning_next_turn() {
+        let (mut s, mut r, p) = fixture();
+        s.retained.core.player_processor.active_count = 0;
+        s.retained.core.game_processor.turn_complete = true;
+        s.retained.core.game_processor.advance_turn = true;
+        let turn = s.retained.core.current_turn;
+        let mut c = Context::new(&mut s, &mut r, p).unwrap();
+        c.finish_round_update(|state, _| {
+            assert_eq!(state.retained.core.current_turn, turn);
+            assert!(state.retained.core.game_processor.advance_turn);
+            Ok(())
+        })
+        .unwrap();
+        assert!(c.runtime.pending.is_none());
+        assert_eq!(c.runtime.inputs.needs_update, Some(true));
+        assert_eq!(c.services.alive_reads, 0);
+        assert_eq!(c.state.retained.core.current_turn, turn);
+        assert!(c.state.retained.core.game_processor.turn_complete);
+        assert!(c.state.retained.core.game_processor.advance_turn);
     }
     #[test]
     fn npc_backedge_preserves_update_prefix_and_skips_both_final_tails() {

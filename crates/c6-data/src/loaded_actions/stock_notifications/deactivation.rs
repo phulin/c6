@@ -51,6 +51,8 @@ pub enum Outcome {
     /// Another PlayerUpdates pass inside this same original Game.Update.
     Continue(Completed),
     ContinueWithoutDeactivation,
+    /// No selected player remains; phase/round work continues in this Update.
+    AdvancePhase,
 }
 #[derive(Debug)]
 pub enum Error {
@@ -176,7 +178,7 @@ pub fn finish_completed_human_pass<P>(
         let mut pending = loaded::deactivation::begin(&mut c).map_err(Error::Prefix)?;
         if pending.selected().is_empty() {
             if c.state.retained().core.player_processor.active_count == 0 {
-                return Err(Error::RequiresPhaseAdvance);
+                return Ok(Outcome::AdvancePhase);
             }
             return Ok(match finish_update(&mut c, inputs, budget)? {
                 loaded::ProcessorPass::ContinuePlayerUpdates => {
@@ -336,6 +338,9 @@ pub fn finish_completed_human_pass<P>(
             .select_next_player(c.state, inputs.configuration, inputs.phases)
             .map_err(Error::Prefix)?;
         let loaded::activation::Selection::Sequential(next) = selection else {
+            if selection == loaded::activation::Selection::AdvancePhase {
+                return Ok(Outcome::AdvancePhase);
+            }
             return Err(Error::UnsupportedNextSelection(selection));
         };
         c.services

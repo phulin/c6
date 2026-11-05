@@ -179,10 +179,16 @@ pub fn after_begin_turn<S: super::Services>(
         if human {
             crate::game_update::update_autoplay(context)?;
             context.runtime.pending = None;
+            context.runtime.player_cursor = 0;
+            context.runtime.pass_has_human = false;
+            context.runtime.deactivation_started = false;
             Ok(AfterBegin::HumanExit)
         } else {
             let ids = crate::game_update::players_to_process(context)?;
             context.runtime.pending = Some(crate::game_update::Continuation::PlayerUpdates(ids));
+            context.runtime.player_cursor = 0;
+            context.runtime.pass_has_human = false;
+            context.runtime.deactivation_started = false;
             Ok(AfterBegin::PlayerUpdates)
         }
     })();
@@ -243,6 +249,21 @@ pub enum PhaseAdvance {
     AutomationActivated,
     BeganPhase,
     Exhausted,
+}
+
+/// 2b5c250(true): completed game-turn slots do not block the round end even
+/// when their automation flag is false. Iterate the actual alive order.
+pub fn unprocessed_automation(state: &LoadedState, alive: &[i32]) -> Result<i32, Error> {
+    let mut count = 0i32;
+    for &owner in alive {
+        let index = usize::try_from(owner).ok().filter(|&i| i < 64)
+            .ok_or(Error::Unsupported("round automation player slot"))?;
+        let players = &state.retained.core.player_processor;
+        if !players.automation_processed[index] && !players.game_complete[index] {
+            count = count.wrapping_add(1);
+        }
+    }
+    Ok(count)
 }
 
 pub trait PhaseEffects {

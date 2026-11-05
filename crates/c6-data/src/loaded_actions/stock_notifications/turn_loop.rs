@@ -99,6 +99,15 @@ fn update<'b, P, E>(
         .map_err(Error::Completion)?;
     }
     loop {
+        if matches!(runtime.pending(), Some(c6_core::game_update::Continuation::BeginTurn)) {
+            match context.notifications.backend.continue_round(
+                context.notifications.state, runtime, inputs,
+                super::round_dispatch::Entry::BeginTurn, budget,
+            ).map_err(Error::Completion)? {
+                super::round_dispatch::Progress::PlayerUpdates => {}
+                super::round_dispatch::Progress::Returned => return Ok(None),
+            }
+        }
         loop {
             let next = match runtime.pending_player_effect() {
                 Some(effect) => Some(effect),
@@ -164,6 +173,15 @@ fn update<'b, P, E>(
         )
         .map_err(Error::Deactivation)?
         {
+            deactivation::Outcome::AdvancePhase => {
+                match context.notifications.backend.continue_round(
+                    context.notifications.state, runtime, inputs,
+                    super::round_dispatch::Entry::AdvancePhase, budget,
+                ).map_err(Error::Completion)? {
+                    super::round_dispatch::Progress::PlayerUpdates => continue,
+                    super::round_dispatch::Progress::Returned => return Ok(None),
+                }
+            }
             deactivation::Outcome::Continue(_)
             | deactivation::Outcome::ContinueWithoutDeactivation => continue,
             deactivation::Outcome::Deactivated(_) | deactivation::Outcome::NoDeactivation => {

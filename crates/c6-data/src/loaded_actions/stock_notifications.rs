@@ -42,6 +42,7 @@ pub mod round_ai;
 pub mod round_end;
 pub mod round_world;
 pub mod round_turn;
+pub mod round_dispatch;
 #[path = "stock_scoring.rs"]
 pub mod scoring;
 #[path = "stock_skip_turn.rs"]
@@ -115,6 +116,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub(super) research_acquisition: Option<research::acquisition::Binding>,
     pub(crate) turn_progress: Option<turn_loop::Progress>,
     pub(crate) completion_inflight: Option<i32>,
+    round_services: Option<Box<dyn round_dispatch::Services<P> + 'a>>,
     pub(crate) activation_progress:
         Option<crate::game_update_state::activation::upkeep::ActivationProgress>,
 }
@@ -160,6 +162,7 @@ impl<'a, P> Runtime<'a, P> {
             activation_progress: None,
             turn_progress: None,
             completion_inflight: None,
+            round_services: None,
         })
     }
     /// Semantic stock informational publication. The source caller has run its
