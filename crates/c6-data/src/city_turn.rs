@@ -15,6 +15,7 @@ pub mod tiles;
 pub mod yield_definitions;
 pub mod yield_calculation;
 pub mod upkeep;
+pub mod current_upkeep;
 
 #[derive(Debug)]
 pub enum Error {
