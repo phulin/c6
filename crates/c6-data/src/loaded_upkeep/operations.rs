@@ -353,8 +353,9 @@ pub fn pop_front_operation<E: OperationReports>(
         }
         // XP2 BuildImprovement's Deactivate slot3b033a8 binds the same
         // BaseHandler::Deactivate2d964c0; it has no derived prelude.
+        // XP2 Pillage slot3b03ac8 (basePillage3affca8) binds the same body.
         SKIP_TURN_HASH | FORTIFY_HASH | c6_core::unit::RANGE_ATTACK_HASH
-        | c6_core::unit::BUILD_IMPROVEMENT_HASH => {}
+        | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::PILLAGE_HASH => {}
         MOVE_TO_HASH => {
             complete_unit_movement(state, owner, id, effects)?;
         }

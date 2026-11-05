@@ -912,6 +912,8 @@ fn update<E: Effects, M: Movement<E>>(
     movement: &mut M,
 ) -> Result<(), Error<EffectError<E>, M::Error>> {
     let node = front(state, actor)?;
+    // Pillage inherits BaseHandler.Update2d96890: no state writes or effects.
+    if node.operation_hash == c6_core::unit::PILLAGE_HASH { return Ok(()); }
     if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
         let (destination, _) = target(&node)?;
         if movement
@@ -1136,7 +1138,8 @@ fn continue_operation<E: Effects, M: Movement<E>>(
                 alert::check_complete(state, actor, &mut data, runtime, effects, movement)?;
             } else if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
                 trade::check_complete(state, actor, &node, &mut data, movement)?;
-            } else if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
+            } else if matches!(node.operation_hash,c6_core::unit::RANGE_ATTACK_HASH | c6_core::unit::PILLAGE_HASH) {
+                // Both inherit BaseHandler.CheckComplete2d95670.
                 data.delete = true;
             } else {
                 let (destination, _) = target(&node)?;
@@ -1175,7 +1178,8 @@ fn continue_operation<E: Effects, M: Movement<E>>(
                 .i_operation_timer = timer;
         }
         if data.delete {
-            // MoveTo.TimerComplete 0x2da4950 is fixed false/no effects.
+            // MoveTo.TimerComplete2da4950 and Pillage inherited
+            // BaseHandler.TimerComplete2d956a0 are fixed false/no effects.
             loaded_upkeep::complete_unit_movement(state, actor.0, actor.1, effects)
                 .map_err(Error::Upkeep)?;
             evaluating(state, retained, false)?;
