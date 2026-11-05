@@ -24,6 +24,8 @@ pub enum Error<E> {
     Failed(String),
     /// Resolve the pending research choice before issuing a unit order.
     PendingResearch,
+    /// This request does not belong to the current ordinary player-action site.
+    DecisionBoundary(&'static str),
     Action(E),
 }
 impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
@@ -334,5 +336,116 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
             budget,
         );
         self.retain(result, true)
+    }
+}
+
+/// Failure from an explicit stock technology or civic queue request.
+pub type ResearchError = crate::research::Error<stock_notifications::research::Error>;
+
+impl<P> Session<'_, '_, P> {
+    fn ordinary_player_action<E>(&self, player: i32) -> Result<(), Error<E>> {
+        self.check()?;
+        let controls = self
+            .state()
+            .partial_player_controls(player)
+            .map_err(|_| Error::DecisionBoundary("current player controls unavailable"))?;
+        if controls.turn_active != Some(true) {
+            return Err(Error::DecisionBoundary("requested player is not active"));
+        }
+        match self.pending_choice() {
+            Some(choice)
+                if choice.player == player
+                    && choice.kind == PolicyKind::PlayerActions
+                    && self.update.pending_player_effect()
+                        == Some(c6_core::game_update::PlayerEffect::ActiveControl { player }) =>
+            {
+                Ok(())
+            }
+            Some(_) => Err(Error::DecisionBoundary(
+                "request differs from suspended player-action owner",
+            )),
+            None if controls.slot_status == 3 && self.update.pending_player_effect().is_none() => {
+                Ok(())
+            }
+            None => Err(Error::DecisionBoundary(
+                "ordinary human action or suspended player action required",
+            )),
+        }
+    }
+    /// Replace an externally selected technology queue at an ordinary player
+    /// action site. This leaves any suspended PlayerActions callback in place;
+    /// use resume_research for a source-positioned acquisition/activation choice.
+    pub fn request_technology(
+        &mut self,
+        player: i32,
+        index: i32,
+        definitions: &crate::research::Definitions,
+        choices: &super::choose_tech::Definitions,
+        culture: Option<&stock_notifications::research::CultureInputs<'_>>,
+    ) -> Result<(), Error<ResearchError>> {
+        self.request_research(
+            player,
+            index,
+            crate::research::Kind::Technology,
+            definitions,
+            choices,
+            culture,
+        )
+    }
+    /// Replace an externally selected civic queue on the same current research
+    /// and stock owners. Gameplay legality is computed by the existing Context.
+    pub fn request_civic(
+        &mut self,
+        player: i32,
+        index: i32,
+        definitions: &crate::research::Definitions,
+        choices: &super::choose_tech::Definitions,
+        culture: Option<&stock_notifications::research::CultureInputs<'_>>,
+    ) -> Result<(), Error<ResearchError>> {
+        self.request_research(
+            player,
+            index,
+            crate::research::Kind::Civic,
+            definitions,
+            choices,
+            culture,
+        )
+    }
+    fn request_research(
+        &mut self,
+        player: i32,
+        index: i32,
+        kind: crate::research::Kind,
+        definitions: &crate::research::Definitions,
+        choices: &super::choose_tech::Definitions,
+        culture: Option<&stock_notifications::research::CultureInputs<'_>>,
+    ) -> Result<(), Error<ResearchError>> {
+        self.ordinary_player_action(player)?;
+        let mut effects = stock_notifications::research::Effects {
+            backend: &mut self.context.notifications.backend,
+            runtime: &mut self.research,
+            choices,
+            choice_graph: None,
+            culture,
+        };
+        let mut research = crate::research::Context {
+            state: self.context.notifications.state,
+            definitions,
+            effects: &mut effects,
+        };
+        let result = match kind {
+            crate::research::Kind::Technology => {
+                research.request_technology(player, index, crate::research::InsertMode::Replace)
+            }
+            crate::research::Kind::Civic => {
+                research.request_civic(player, index, crate::research::InsertMode::Replace)
+            }
+        };
+        let partial_failure = !matches!(
+            result,
+            Err(crate::research::Error::IllegalTechnology(_)
+                | crate::research::Error::IllegalCivic(_))
+        );
+        self.retain(result, partial_failure)
     }
 }
