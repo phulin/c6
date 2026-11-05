@@ -2,6 +2,7 @@
 //! synchronous consumers retain their native state prefix and return an error.
 pub mod effects;
 pub mod objects;
+pub mod stock;
 
 use crate::{loaded_upkeep, unit_placement_services as services, unit_sight_state as sight};
 use c6_core::{

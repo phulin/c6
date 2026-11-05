@@ -155,15 +155,14 @@ impl<P: super::Providers, C: Services<P>> kernel::Context for Context<'_, P, C> 
         object: u64,
         set: u64,
     ) -> Result<(), Self::Error> {
-        self.effects
-            .unsubscribe_unit_requirement(
-                self.state,
-                self.sight,
-                self.providers,
-                receiver,
-                object,
-                set,
-            )
+        self.effects.unsubscribe_unit_requirement(
+            self.state,
+            self.sight,
+            self.providers,
+            receiver,
+            object,
+            set,
+        )
     }
     fn release_requirement(&mut self, set: u64) -> Result<(), Self::Error> {
         self.effects
@@ -260,8 +259,8 @@ pub fn detach_unit<P: super::Providers, C: Services<P>>(
     dispatch(state, sight, providers, effects, definitions, &handles)
 }
 /// Source-only ability-revoked GameEffects leaf. Resolves the existing wrapper
-/// by CURRENT Unit CID and configured ability hash. An empty-owned wrapper may
-/// have expired; that factory/liveness case is explicit rather than guessed.
+/// by CURRENT Unit CID and configured ability hash. A directly observed empty
+/// cache can use the shared factory; an unimported cache remains missing input.
 pub fn revoke_ability<P: super::Providers, C: Services<P>>(
     state: &mut LoadedState,
     sight: &mut sight::Runtime,
@@ -279,26 +278,14 @@ pub fn revoke_ability<P: super::Providers, C: Services<P>>(
         .abilities()
         .type_hash(index)
         .ok_or(Error::Missing("revoked ability definition hash"))?;
-    let runtime = effects
-        .unit_cleanup_runtime()
+    let handle = effects
+        .unit_cleanup_runtime_mut()
+        .map_err(Error::CleanupQuery)?
+        .make_current_unit_object(
+            state,
+            c6_core::map::UnitReference::from_component_id(actor),
+            [1, hash as i32],
+        )
         .map_err(Error::CleanupQuery)?;
-    let mut found = None;
-    for (handle, object) in runtime.objects() {
-        if matches!(object.kind,ContextObject::Unit(reference) if reference.component_id()==actor)
-            && object.unit_sort_suffix == Some([1, hash as i32])
-        {
-            if found.replace(*handle).is_some() {
-                return Err(Error::Missing("duplicate ability wrapper key"));
-            }
-            let life = object
-                .unit_lifecycle
-                .as_ref()
-                .ok_or(Error::Missing("ability wrapper lifecycle"))?;
-            if life.owned_modifiers.is_empty() {
-                return Err(Error::Missing("revoked ability wrapper factory/liveness"));
-            }
-        }
-    }
-    let handle = found.ok_or(Error::Missing("revoked ability Unit.MakeObject creation"))?;
     dispatch(state, sight, providers, effects, definitions, &[handle])
 }

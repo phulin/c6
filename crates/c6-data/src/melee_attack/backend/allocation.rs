@@ -15,11 +15,13 @@ pub(super) struct State {
     modifier_ids: Vec<i32>,
     initial_units: Vec<(i32, Option<Vec<u32>>)>,
     initial_cities: Vec<(i32, Vec<u32>)>,
+    absent_unit_wrappers: Vec<(UnitReference, [i32; 2])>,
 }
 impl State {
     pub(super) fn from_initial(state: &LoadedState) -> Self {
         Self {
             pool: None,
+            absent_unit_wrappers: Vec::new(),
             modifier_next: None,
             modifier_ids: Vec::new(),
             initial_units: state
@@ -184,6 +186,36 @@ impl EffectRuntime {
         pool.next_order = next_order;
         Ok(handle)
     }
+    /// Supply a directly observed empty cache entry for an existing Unit.
+    /// Missing cache input remains unknown. This does not create a wrapper or
+    /// advance the pool; the ordinary factory does that at its source callsite.
+    pub fn initialize_unit_wrapper_cache_miss(
+        &mut self,
+        state: &LoadedState,
+        unit: UnitReference,
+        suffix: [i32; 2],
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        if !matches!(suffix[0], 0 | 1) || (suffix[0] == 0 && suffix[1] != 0) {
+            return Err(QueryError::Unsupported("Unit wrapper subtype"));
+        }
+        crate::melee_attack::actor(state, unit)
+            .map_err(|_| QueryError::Missing("current Unit wrapper target"))?;
+        if self
+            .objects
+            .iter()
+            .any(|r| r.1.kind == ContextObject::Unit(unit) && r.1.unit_sort_suffix == Some(suffix))
+        {
+            return Err(QueryError::Unsupported(
+                "observed empty Unit wrapper cache is occupied",
+            ));
+        }
+        let key = (unit, suffix);
+        if !self.allocations.absent_unit_wrappers.contains(&key) {
+            self.allocations.absent_unit_wrappers.push(key);
+        }
+        Ok(())
+    }
     /// Ordinary Unit/ability wrapper sharing. Existing wrappers keep identity;
     /// new canonical Units have constructor-established empty wrapper caches.
     /// An unimported BEFORE cache is missing input, never assumed empty.
@@ -206,7 +238,12 @@ impl EffectRuntime {
         {
             return Ok(row.0);
         }
-        if self.allocations.has_initial_unit(unit)? {
+        if self.allocations.has_initial_unit(unit)?
+            && !self
+                .allocations
+                .absent_unit_wrappers
+                .contains(&(unit, suffix))
+        {
             return Err(QueryError::Missing("current BEFORE Unit wrapper cache"));
         }
         let life = c6_core::unit_kill::objects::Object {
