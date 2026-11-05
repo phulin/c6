@@ -471,7 +471,18 @@ pub struct PlayerVisibility {
     pub player: i32,
     pub visibility: Visibility,
 }
+/// A packed ComponentID reference from the map's Unit allocation.
+/// Construct typed identities with [`Self::from_component_id`]; the public
+/// fields retain the existing wire representation and read access.
+///
+/// External callers cannot accidentally place a plain player number in the
+/// packed owner/type word using a struct literal.
+/// ```compile_fail,E0639
+/// use c6_core::map::UnitReference;
+/// let unit = UnitReference { owner: 0, id: 7 };
+/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub struct UnitReference {
     /// Raw first ComponentID wire word: signed owner low16, component type high16.
     /// Retained for wire compatibility; this is not a plain PlayerTypes value.
@@ -479,6 +490,15 @@ pub struct UnitReference {
     pub id: u32,
 }
 impl UnitReference {
+    /// Preserve the two raw wire words, including the component type in the
+    /// high 16 bits of `owner_and_component_type`. This is for wire decoding;
+    /// ordinary actors should use [`Self::from_component_id`].
+    pub const fn from_raw_words(owner_and_component_type: i32, id: u32) -> Self {
+        Self {
+            owner: owner_and_component_type,
+            id,
+        }
+    }
     pub fn component_id(self) -> crate::unit::ComponentId {
         crate::unit::ComponentId {
             owner: self.owner as i16,
@@ -528,12 +548,7 @@ impl UnitContainer {
             for _ in 0..count {
                 cells.push(UnitCell {
                     plot_index: r.u32()?,
-                    units: r.list(8, |r| {
-                        Ok(UnitReference {
-                            owner: r.i32()?,
-                            id: r.u32()?,
-                        })
-                    })?,
+                    units: r.list(8, |r| Ok(UnitReference::from_raw_words(r.i32()?, r.u32()?)))?,
                 });
             }
             Ok(UnitLayer {

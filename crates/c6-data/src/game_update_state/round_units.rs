@@ -90,10 +90,13 @@ impl Frame {
 fn actor(state: &LoadedState, a: (i32, u32)) -> Result<&Unit, Error> {
     state
         .world()
-        .unit(UnitReference {
-            owner: a.0,
-            id: a.1,
-        })
+        .unit(UnitReference::from_component_id(
+            c6_core::unit::ComponentId {
+                owner: a.0 as i16,
+                component_type: 1,
+                id: a.1,
+            },
+        ))
         .map_err(Error::World)?
         .map(|u| u.record)
         .ok_or(Error::Missing("round current Unit.Find"))

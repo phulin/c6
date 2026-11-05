@@ -669,10 +669,11 @@ mod tests {
             unit_ids: vec![17],
         };
         ActorRecords::checked(
-            UnitReference {
-                owner: 1 << 16,
+            UnitReference::from_component_id(c6_core::unit::ComponentId {
+                owner: 0,
+                component_type: 1,
                 id: 17,
-            },
+            }),
             unit,
             formation,
         )
@@ -703,10 +704,11 @@ mod tests {
     #[test]
     fn rejects_wrong_component_kind_and_public_record_tampering() {
         let r = records();
-        let wrong_kind = UnitReference {
-            owner: (i32::from(FORMATION_COMPONENT_TYPE) << 16) | r.reference.player(),
+        let wrong_kind = UnitReference::from_component_id(c6_core::unit::ComponentId {
+            owner: r.reference.player() as i16,
+            component_type: FORMATION_COMPONENT_TYPE,
             id: r.reference.id,
-        };
+        });
         assert_eq!(wrong_kind.player(), r.reference.player());
         assert_eq!(wrong_kind.id, r.reference.id);
         assert!(matches!(
@@ -843,10 +845,11 @@ mod tests {
             fr,
         )
         .unwrap();
-        let wrong_kind = UnitReference {
-            owner: i32::from(FORMATION_COMPONENT_TYPE) << 16,
+        let wrong_kind = UnitReference::from_component_id(c6_core::unit::ComponentId {
+            owner: 0,
+            component_type: FORMATION_COMPONENT_TYPE,
             id: before.reference.id,
-        };
+        });
         assert!(matches!(
             ActorSnapshot::checked(
                 before.binding.clone(),

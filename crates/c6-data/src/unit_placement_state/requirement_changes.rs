@@ -462,10 +462,7 @@ impl<S: Services> m::EffectContext for ModifierContext<'_, S> {
             .map_err(Error::Context)?;
         let m = modifier(r, self.id)?;
         let o = object(r, self.object_id()?)?;
-        let unit = UnitReference {
-            owner: i32::from(o.key.component.owner),
-            id: o.key.component.id,
-        };
+        let unit = UnitReference::from_component_id(o.key.component);
         effect::apply(self.state, Some(unit), m.effect).map_err(Error::Effect)
     }
     fn log_failed(&mut self) -> Result<(), Self::Error> {

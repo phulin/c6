@@ -367,7 +367,13 @@ mod destruction_tests {
     };
     fn object() -> Object {
         Object {
-            kind: ContextObject::Unit(UnitReference { owner: 0, id: 7 }),
+            kind: ContextObject::Unit(UnitReference::from_component_id(
+                c6_core::unit::ComponentId {
+                    owner: 0,
+                    component_type: 1,
+                    id: 7,
+                },
+            )),
             instance_id: 11,
             unit_sort_suffix: Some([0, 0]),
             unit_lifecycle: Some(k::Object {

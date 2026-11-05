@@ -89,18 +89,12 @@ mod identity_tests {
     fn delayed_wrapper_matches_packed_unit_component_word() {
         // A normal Unit wrapper stores the full first CID word, not PlayerTypes.
         // These bytes identify owner0/type1/unit65536 in the reached contract.
-        let retained = UnitReference {
-            owner: i32::from_le_bytes([0, 0, 1, 0]),
-            id: 65536,
-        };
+        let retained = UnitReference::from_raw_words(i32::from_le_bytes([0, 0, 1, 0]), 65536);
         assert_eq!(wrapper_reference((0, 65536)), retained);
         assert_eq!(wrapper_reference((63, 7)).owner, 0x0001_003f);
         assert_ne!(
             wrapper_reference((0, 65536)),
-            UnitReference {
-                owner: 0,
-                id: 65536
-            }
+            UnitReference::from_raw_words(0, 65536)
         );
     }
 }
