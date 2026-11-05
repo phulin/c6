@@ -41,3 +41,11 @@ multiplayer combat notifications, positive rewards/yields/boosts and positive er
 score continuations. This adapter does not compose melee combat. Definition,
 observer, promotion, notification and callback inputs must describe the actual
 initialized world; absent inputs are errors when reached.
+
+The retained native representative cases cover an ordinary Archer attacking a
+barbarian Warrior that survives, and the same attack killing a wounded Warrior.
+Both pass through the public Session to `HeadlessMessagesProcessed`, matching the
+compared gameplay state, visibility, callback effects, history, modifier lifetimes
+and ordered GameSync draws. A controlled missing-report case also verifies that
+the failed prefix and Session freeze survive extraction and reassembly. These
+comparisons do not establish arbitrary ranged configurations or complete turns.
