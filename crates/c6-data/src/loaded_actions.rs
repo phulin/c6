@@ -37,6 +37,8 @@ pub mod notifications;
 pub mod policy_actions;
 pub mod purchase_actions;
 pub mod upgrade_actions;
+pub mod promotion_actions;
+pub mod trade_route_actions;
 pub mod reporting;
 pub mod scripting;
 pub mod session;
@@ -228,6 +230,7 @@ type RangeHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, c6_core::unit::PlotCoo
     + 'a;
 type FarmHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, u32, bool, &mut Q) -> Result<bool, Error> + 'a;
 type FortifyHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, &mut Q) -> Result<bool, Error> + 'a;
+type TradeHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, OperationParameters, bool, &mut Q) -> Result<bool, Error> + 'a;
 struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     state: &'a LoadedState,
     expected_actor: &'a Unit,
@@ -238,11 +241,15 @@ struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
     farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
     fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
+    trade_handler: Option<&'q mut TradeHandler<'q, Q>>,
 }
 pub(super) trait TypedParameters {
     fn location(&self) -> Result<Option<c6_core::unit::PlotCoord>, Error>;
     fn improvement(&self) -> Result<u32, Error> {
         Err(Error::Unsupported("typed BuildImprovement parameters"))
+    }
+    fn trade_route(&self) -> Result<OperationParameters, Error> {
+        Err(Error::Unsupported("typed MakeTradeRoute parameters"))
     }
 }
 impl TypedParameters for () {
@@ -251,6 +258,10 @@ impl TypedParameters for () {
     }
 }
 impl TypedParameters for OperationParameters {
+    fn trade_route(&self) -> Result<OperationParameters, Error> {
+        match self { Self::MakeTradeRoute { .. } => Ok(self.clone()),
+            _ => Err(Error::Unsupported("MakeTradeRoute parameter type")) }
+    }
     fn improvement(&self) -> Result<u32, Error> {
         match self {
             Self::BuildImprovement { improvement_hash, .. } => Ok(*improvement_hash),
@@ -474,6 +485,11 @@ where
                 "script changed Unit before world-backed placement; effects retained",
             ));
         }
+        if h.identity().operation_hash == OperationHash(c6_core::unit::MAKE_TRADE_ROUTE_HASH) {
+            let parameters = s.operation.parameters.trade_route()?;
+            return self.trade_handler.as_mut().ok_or(Error::Unsupported("MakeTradeRoute handler composition"))?(
+                self.state, s.unit, parameters, visible_only, self.external);
+        }
         if h.identity().operation_hash == OperationHash(c6_core::unit::FORTIFY_HASH) {
             return self.fortify_handler.as_mut().ok_or(Error::Unsupported("Fortify handler composition"))?(self.state, s.unit, self.external);
         }
@@ -636,6 +652,7 @@ pub(super) fn can_start_for_actor<
             range_handler: None,
             farm_handler: None,
             fortify_handler: None,
+            trade_handler: None,
         },
     );
     if (actor.e_owner, actor.id) != identity {
@@ -732,6 +749,21 @@ pub(crate) fn can_start_typed_with_fortify<'q,
     farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
     fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
 ) -> Result<bool, Error> {
+    can_start_typed_with_trade(state, reference, inputs, external, handlers, operation,
+        found_city, range_handler, farm_handler, fortify_handler, None)
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn can_start_typed_with_trade<'q,
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>>(
+    state: &mut LoadedState, reference: UnitReference, inputs: &Inputs<'_, '_>,
+    external: &'q mut Q, handlers: &handlers::BoundHandlers<'_>,
+    operation: &mut ManagerOperation<OperationParameters>,
+    found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
+    range_handler: Option<&'q mut RangeHandler<'q, Q>>,
+    farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
+    fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
+    trade_handler: Option<&'q mut TradeHandler<'q, Q>>,
+) -> Result<bool, Error> {
     handlers
         .validate_execution(state, inputs.handlers, inputs.operations)
         .map_err(Error::HandlerObservation)?;
@@ -757,6 +789,7 @@ pub(crate) fn can_start_typed_with_fortify<'q,
             range_handler,
             farm_handler,
             fortify_handler,
+            trade_handler,
         },
     );
     if (actor.e_owner, actor.id) != identity {

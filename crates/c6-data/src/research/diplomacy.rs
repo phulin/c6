@@ -178,21 +178,46 @@ pub fn recheck<E>(
         let active = match source.active {
             Active::Dynamic => dynamic().next().is_some(),
             Active::Trader => {
-                // CountOutgoingRoutesTo walks source Cities, then the viewed
-                // player's Cities. Either empty current roster returns zero
-                // before any Graph/route getter, even when the viewer has a City.
-                if !player.cities.records.entries.is_empty() {
-                    let viewed = state
-                        .retained()
-                        .players
-                        .iter()
-                        .find(|p| p.header.owner == other)
-                        .ok_or(Error::Missing("viewed trade-route player"))?;
-                    if !viewed.cities.records.entries.is_empty() {
-                        return Err(Error::Missing("current outgoing trade routes"));
+                // CountOutgoingRoutesTo visits the current source and viewed
+                // city rosters, testing each ordered pair's active graph edge.
+                let viewed = state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == other)
+                    .ok_or(Error::Missing("viewed trade-route player"))?;
+                if player.cities.records.entries.is_empty()
+                    || viewed.cities.records.entries.is_empty()
+                {
+                    false
+                } else {
+                    let graph = state.trade_graph().map_err(Error::State)?;
+                    let mut count = 0i32;
+                    for a in &player.cities.records.entries {
+                        for b in &viewed.cities.records.entries {
+                            let vertex = |p: i32, id: u32| {
+                                c6_core::trade_graph_state::city_vertex(
+                                    c6_core::trade::ComponentId {
+                                        owner: p as i16,
+                                        component_type: 2,
+                                        id,
+                                    },
+                                )
+                            };
+                            if graph
+                                .graph()
+                                .get_edge(
+                                    vertex(owner, a.value.header.id),
+                                    vertex(other, b.value.header.id),
+                                )
+                                .is_some_and(|edge| edge.has_active_route)
+                            {
+                                count = count.wrapping_add(1);
+                            }
+                        }
                     }
+                    count > 0
                 }
-                false
             }
             Active::Delegate => {
                 *player
@@ -241,7 +266,6 @@ pub fn recheck<E>(
         if !active && source.trade_post && dynamic().next().is_some() {
             return Err(Error::Missing("current trade-post trait visibility"));
         }
-        last = u32::MAX;
         if active {
             if source.dynamic {
                 if let Some(first) = dynamic().next() {

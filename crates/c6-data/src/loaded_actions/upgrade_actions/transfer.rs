@@ -98,7 +98,7 @@ pub fn preflight<P>(
 }
 /// Exact early-return predicates of the reached stock gossip/achievement
 /// consumers. Positive publication remains explicit unsupported gameplay work.
-fn promotion_leaf(
+pub(crate) fn promotion_leaf(
     input: &Inputs<'_>,
     consumer: PromotionConsumer,
     unit_type: u32,

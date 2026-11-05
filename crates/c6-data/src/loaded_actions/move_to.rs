@@ -160,6 +160,15 @@ pub trait Movement<E: OperationReports> {
     ) -> Result<Option<bool>, Self::Error> {
         Ok(None)
     }
+    fn trade_can_start(&mut self, _state: &LoadedState, _unit: &Unit,
+        _parameters: &OperationParameters, _visible_only: bool, _effects: &mut E)
+        -> Result<Option<bool>, Self::Error> { Ok(None) }
+    fn start_trade(&mut self, _state: &mut LoadedState,
+        _actor: (i32, u32), _node: &OperationNode, _effects: &mut E)
+        -> Result<Option<skip_turn::StartData>, Self::Error> { Ok(None) }
+    fn trade_move(&mut self, _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime, _formation: (i32,u32),
+        _destination: PlotCoord, _effects: &mut E) -> Result<Option<()>, Self::Error> { Ok(None) }
     fn fortify_turn_max(&self) -> i32;
     fn is_fortifyable(&self, state: &LoadedState, actor: (i32, u32)) -> Result<bool, Self::Error>;
     fn alert_enemy_visible(
@@ -671,7 +680,7 @@ where
         } else {
             let node = front(state, actor)?;
             let target_before = if matches!(node.operation_hash,
-                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::FORTIFY_HASH | c6_core::unit::SKIP_TURN_HASH) {
+                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::FORTIFY_HASH | c6_core::unit::SKIP_TURN_HASH | c6_core::unit::MAKE_TRADE_ROUTE_HASH) {
                 None
             } else {
                 Some(target(&node)?)
@@ -694,6 +703,15 @@ where
                 };
                 super::can_start_typed_with_fortify(state, reference, inputs, effects,
                     handlers, &mut operation, None, None, None, Some(&mut handler))
+            } else if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+                let mut trade_handler = |state: &LoadedState, unit: &Unit, parameters: OperationParameters,
+                    visible_only: bool, effects: &mut E| {
+                    movement.trade_can_start(state, unit, &parameters, visible_only, effects)
+                        .map_err(|_| super::Error::Unsupported("MakeTradeRoute CanStart dependency"))?
+                        .ok_or(super::Error::Unsupported("MakeTradeRoute CanStart composition"))
+                };
+                super::can_start_typed_with_trade(state, reference, inputs, effects, handlers,
+                    &mut operation, None, None, None, None, Some(&mut trade_handler))
             } else if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
                 let mut farm_handler = |state: &LoadedState, unit: &Unit, improvement: u32,
                     visible_only: bool, effects: &mut E| {
@@ -769,9 +787,11 @@ where
                 // Start selects CURRENT front after activity subscribers.
                 let node = front(state, actor)?;
                 if matches!(node.operation_hash,
-                    c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH) {
+                    c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::MAKE_TRADE_ROUTE_HASH) {
                     let hash = node.operation_hash;
-                    let data = if hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
+                    let data = if hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+                        movement.start_trade(state, actor, &node, effects)
+                    } else if hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
                         movement.start_farm(state, runtime.visibility, actor, &node, effects)
                     } else {
                         movement.start_found_city(state, runtime.visibility, actor, effects)
@@ -908,9 +928,7 @@ fn update<E: Effects, M: Movement<E>>(
         return Err(Error::Unsupported("Spy Update Unit.FinishMoves"));
     }
     if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
-        return Err(Error::Unsupported(
-            "MakeTradeRoute Update and Trade.Movement.MoveTo",
-        ));
+        return trade::update(state, actor, &node, runtime.visibility, effects, movement);
     }
     let (destination, modifiers) = target(&node)?;
     if node.push_turn == state.retained().core.current_turn {
@@ -1306,7 +1324,7 @@ where
             });
         Ok(city.map(|e| c6_core::trade::ComponentId {
             owner: e.value.header.owner as i16,
-            component_type: 5,
+            component_type: 2,
             id: e.value.header.id,
         }))
     }
@@ -1521,6 +1539,7 @@ pub enum OperationRequest {
     FoundCity,
     Fortify,
     BuildImprovement { improvement_hash: u32, modifiers: u32 },
+    MakeTradeRoute { destination: PlotCoord },
 }
 #[allow(clippy::too_many_arguments)]
 fn request_operation_active_player<E, M>(
@@ -1608,6 +1627,12 @@ where
             effects,
             movement,
         ),
+        OperationRequest::MakeTradeRoute { destination } => {
+            let origin = unit(state, actor)?.k_location;
+            execute_queued_manager(state, actor, c6_core::unit::MAKE_TRADE_ROUTE_HASH,
+                OperationParameters::MakeTradeRoute { modifiers: 0, location0: destination,
+                    location1: origin, resource_hash: u32::MAX }, inputs, handlers, runtime, effects, movement)
+        }
         OperationRequest::Fortify => execute_queued_manager(state, actor, c6_core::unit::FORTIFY_HASH,
             OperationParameters::None, inputs, handlers, runtime, effects, movement),
         OperationRequest::FoundCity => {

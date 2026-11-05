@@ -28,13 +28,38 @@ impl std::error::Error for Error {}
 pub struct Runtime {
     instance: ActionStamp,
     temporary_routes: Vec<Route>,
+    next_route_id: Option<i32>,
 }
 impl Runtime {
     pub fn from_initial(state: &LoadedState, temporary_routes: Vec<Route>) -> Self {
         Self {
             instance: state.action_stamp(),
             temporary_routes,
+            next_route_id: None,
         }
+    }
+    /// Bind the actual unsaved manager route counter from the same initial
+    /// state. It is independent of Graph.total_edges_created and Route IDs.
+    pub fn from_initial_with_route_id(
+        state: &LoadedState,
+        temporary_routes: Vec<Route>,
+        next_route_id: i32,
+    ) -> Self {
+        let mut runtime = Self::from_initial(state, temporary_routes);
+        runtime.next_route_id = Some(next_route_id);
+        runtime
+    }
+    pub fn next_route_id(&self) -> Option<i32> {
+        self.next_route_id
+    }
+    pub(crate) fn allocate_route_id(&mut self) -> Result<i32, Error> {
+        let value = self
+            .next_route_id
+            .as_mut()
+            .ok_or(Error::Missing("Trade next route ID"))?;
+        let id = *value;
+        *value = value.wrapping_add(1);
+        Ok(id)
     }
     pub fn temporary_routes(&self) -> &[Route] {
         &self.temporary_routes

@@ -9,6 +9,7 @@
 //! rejected by this supported contract, without claiming native Read rejects them.
 
 use std::collections::{HashMap, HashSet};
+mod insertion;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct Vertex {

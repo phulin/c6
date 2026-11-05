@@ -7,6 +7,7 @@
 use crate::trade::{self, ComponentId, Graph, Vertex};
 use crate::trade_read_order::vertex_hash;
 pub mod edge;
+pub mod initiation;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {

@@ -2,6 +2,43 @@
 use super::LoadedState;
 use crate::{city_build_initialization::Error, player_ai_city_manager::CityManager};
 impl LoadedState {
+    /// AI.Trade.City.StartTradeRouteFrom21b5020 updates its bookkeeping even
+    /// when all player policy decisions are supplied externally.
+    pub fn observe_city_trade_route_started(
+        &mut self,
+        owner: i32,
+        city_ai_id: u32,
+        origin: crate::trade::ComponentId,
+    ) -> Result<(), Error> {
+        let manager = self
+            .retained
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .and_then(|p| p.ai_city_manager.as_ref())
+            .ok_or(Error::MissingManager(owner))?;
+        let city = manager
+            .city_ais
+            .entries
+            .iter()
+            .find(|e| e.city_build.city_ai_id == city_ai_id)
+            .ok_or(Error::Owner)?;
+        let id = &city.city_build.city_trade.city;
+        if (id.owner, id.component_type, id.id) != (origin.owner, origin.component_type, origin.id)
+        {
+            return Ok(());
+        }
+        let manager = self.city_build_manager_mut(owner)?;
+        let city = manager
+            .city_ais
+            .entries
+            .iter_mut()
+            .find(|e| e.city_build.city_ai_id == city_ai_id)
+            .unwrap();
+        city.city_build.city_trade.current_routes =
+            city.city_build.city_trade.current_routes.wrapping_add(1);
+        Ok(())
+    }
     /// Mark native production analyses unavailable when production decisions
     /// are supplied externally. This changes no controller or contract owner.
     pub fn omit_city_build_planning(&mut self, owner: i32) -> Result<(), Error> {
