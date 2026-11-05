@@ -314,17 +314,18 @@ impl<P> Runtime<'_, P> {
         // every player's City roster. The global Victory/relations snapshots
         // read existing manager fields; their output does not visit City yield
         // providers. A foreign City cannot require this owner's City queries.
-        let player = state
+        let _player = state
             .retained()
             .players
             .iter()
             .find(|p| p.header.owner == owner)
             .ok_or(Error::Unsupported("processor activation report player"))?;
-        if !player.cities.records.entries.is_empty() {
-            return Err(Error::Unsupported(
-                "processor activation current City cache queries",
-            ));
-        }
+        // OnPlayerTurnActivated27d29b0 -> PublishCacheUpdate27d2a90 ->
+        // Add27d2520 fills a separate PlayerEntry, copies dynamic properties,
+        // and publishes its cache ID. Fill27e2790 reads score/era/player flags
+        // and agenda visibility only: it does not visit a City's providers,
+        // change gameplay or draw RNG. The InfluenceMap consumer similarly
+        // snapshots the existing map. These DTOs stay outside this boundary.
         self.turn_report_records
             .push(super::turn_reports::Record::ProcessorActivation {
                 player: owner,
