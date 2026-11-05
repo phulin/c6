@@ -264,7 +264,10 @@ impl<P> Runtime<'_, P> {
                 formation_definitions,
                 self,
             )
-            .map_err(|_| Error::Unsupported("activation current Unit restore suffix"))?;
+            .map_err(|error| {
+                self.last_error=Some(format!("activation restore unit {owner}/{id}: {error:?}"));
+                Error::Unsupported("activation current Unit restore suffix")
+            })?;
         }
         let mut effects = crate::loaded_upkeep::RulesEffects {
             definitions: formation_definitions,
