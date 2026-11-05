@@ -685,7 +685,7 @@ where
         } else {
             let node = front(state, actor)?;
             let target_before = if matches!(node.operation_hash,
-                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::FORTIFY_HASH | c6_core::unit::SKIP_TURN_HASH | c6_core::unit::MAKE_TRADE_ROUTE_HASH) {
+                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::FORTIFY_HASH | c6_core::unit::SKIP_TURN_HASH | c6_core::unit::MAKE_TRADE_ROUTE_HASH | c6_core::unit::PILLAGE_HASH) {
                 None
             } else {
                 Some(target(&node)?)
