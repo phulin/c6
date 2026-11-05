@@ -30,7 +30,7 @@ pub struct Inputs<'a, 'q, 'c> {
     pub npc_services: Option<NpcServices<'a>>,
 }
 pub struct NpcServices<'a> {
-    pub visibility: &'a crate::unit_sight_state::Runtime,
+    pub visibility: &'a std::cell::RefCell<crate::unit_sight_state::Runtime>,
     pub maintenance: &'a super::maintenance::Definitions,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -275,7 +275,11 @@ pub fn finish_completed_human_pass<P>(
                     c.state,
                     c.runtime,
                     owner,
-                    services.visibility,
+                    &*services.visibility.try_borrow().map_err(|_| {
+                        Error::Prefix(game_update::Error::Unsupported(
+                            "current NPC deactivation sight borrow",
+                        ))
+                    })?,
                     services.maintenance.maintenance.unit_registry(),
                 )
                 .map_err(Error::NpcControl)?

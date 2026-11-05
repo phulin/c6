@@ -13,7 +13,7 @@ use c6_core::{
 pub struct InfluenceInputs<'a, 'r> {
     pub definitions: &'a crate::influence_map_update::Definitions,
     pub capabilities: &'a c6_core::game_capabilities::Membership,
-    pub visibility: &'a crate::unit_sight_state::Runtime,
+    pub visibility: &'a std::cell::RefCell<crate::unit_sight_state::Runtime>,
     pub movement: &'a crate::formation_movement_cost::Definitions<'r>,
     pub formation: &'a crate::formation_rules::Definitions,
     pub cities: &'a crate::loaded_actions::city_range_attack::Queries<'a>,
@@ -162,13 +162,18 @@ impl<P> Runtime<'_, P> {
             .ok_or(c6_core::influence_map_update::Error::Backend(
                 crate::influence_map_update::Error::Missing("current Influence alive order"),
             ))?;
+        let visibility = input.visibility.try_borrow().map_err(|_| {
+            c6_core::influence_map_update::Error::Backend(
+                crate::influence_map_update::Error::Missing("current Influence sight borrow"),
+            )
+        })?;
         crate::influence_map_update::update(
             state,
             input.definitions,
             &crate::influence_map_update::Queries {
                 alive_players: alive,
                 capabilities: Some(input.capabilities),
-                visibility: input.visibility,
+                visibility: &visibility,
                 movement: input.movement,
                 formation: input.formation,
                 city_range: input.cities,

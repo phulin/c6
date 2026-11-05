@@ -72,6 +72,7 @@ pub type Controller<'s, 'a, P> = dyn FnMut(
         &mut stock_notifications::Runtime<'a, P>,
         &mut research::Runtime,
         &super::cityless_managers::Runtime,
+        &mut super::requirement_changes::Runtime,
         i32,
     ) -> Result<ActivationOutcome, Error>
     + 's;
@@ -211,6 +212,7 @@ impl<P> Context<'_, '_, P> {
                 self.backend,
                 self.research,
                 self.managers,
+                signal.requirements,
                 owner,
             )? {
                 ActivationOutcome::Choice(choice) => {
@@ -232,7 +234,11 @@ impl<P> Context<'_, '_, P> {
                 tail.global_ai_initialized,
                 tail.scout,
                 true,
-                tail.influence.visibility,
+                &*tail
+                    .influence
+                    .visibility
+                    .try_borrow()
+                    .map_err(|e| failure("human controller sight", e))?,
             )
             .map_err(|e| failure("human controller activation", e))?;
         }
