@@ -430,6 +430,7 @@ pub struct Provider<'a> {
     range_attack_handler: Option<i32>,
     farm_handler: Option<i32>,
     fortify_handler: Option<i32>,
+    trade_route_handler: Option<i32>,
     damage_changed_bound: bool,
     pub damage_changes: Vec<c6_core::unit_healing::DamageChangedReport>,
     snapshots: Vec<SnapshotObservation>,
@@ -458,6 +459,7 @@ impl<'a> Provider<'a> {
             range_attack_handler: None,
             farm_handler: None,
             fortify_handler: None,
+            trade_route_handler: None,
             damage_changed_bound: false,
             damage_changes: Vec::new(),
             snapshots: Vec::new(),
@@ -594,6 +596,16 @@ impl<'a> Provider<'a> {
         operations: &crate::unit_operation_manager::OperationDefinitions) -> Result<(), Error> {
         self.fortify_handler = Some(Self::checked_handler(state, authority, operations,
             c6_core::unit::FORTIFY_HASH)?);
+        Ok(())
+    }
+    /// MakeTradeRoute's ClassParameters vtable+0x28 resolves to the inherited
+    /// empty SharedParameters.Write(map)28199e0. Its wire coordinates remain
+    /// canonical operation state, independently of that presentation map.
+    pub fn bind_trade_route_handler(&mut self, state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions) -> Result<(), Error> {
+        self.trade_route_handler = Some(Self::checked_handler(state, authority, operations,
+            c6_core::unit::MAKE_TRADE_ROUTE_HASH)?);
         Ok(())
     }
     /// Charge-change's stock Unit cache callback observes the current actor;
@@ -1082,6 +1094,7 @@ impl<'a> Provider<'a> {
             OPERATION_STARTED
                 if (report.subtype == c6_core::unit::SKIP_TURN_HASH
                     || (report.subtype == c6_core::unit::FORTIFY_HASH && self.fortify_handler.is_some())
+                    || (report.subtype == c6_core::unit::MAKE_TRADE_ROUTE_HASH && self.trade_route_handler.is_some())
                     || (report.subtype == c6_core::unit::MOVE_TO_HASH
                         && self.move_to_handler.is_some())
                     || (report.subtype == c6_core::unit::RANGE_ATTACK_HASH
@@ -1225,6 +1238,11 @@ impl<'a> Provider<'a> {
                         "actual RangeAttack facade handler binding unavailable",
                     ))?;
                     c6_core::unit::RANGE_ATTACK_HASH
+                }
+                Some(node) if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH
+                    && matches!(node.parameters, c6_core::unit::OperationParameters::MakeTradeRoute { .. }) => {
+                    self.trade_route_handler.ok_or(Error::Provider("actual MakeTradeRoute facade handler binding unavailable"))?;
+                    c6_core::unit::MAKE_TRADE_ROUTE_HASH
                 }
                 Some(node) if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH
                     && matches!(node.parameters, c6_core::unit::OperationParameters::BuildImprovement { .. }) => {
