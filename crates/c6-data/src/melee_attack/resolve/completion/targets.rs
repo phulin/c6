@@ -170,32 +170,44 @@ pub fn unit_killed(
     };
     Ok(())
 }
-/// Unit/District branch of Targets::UnitKilled. Only the two participants
-/// inspect their current CityKnowledge; an unknown city has no tally effect.
+/// A source-qualified native planner observation. CityAttacked only adjusts
+/// WarKnowledge.current_tally_q8 using CityValue and consumes no RNG; external
+/// policies own targeting, so this planning score is emitted rather than updated.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CityAttackPlanningObservation {
+    pub observer: i32,
+    pub previous_owner: i32,
+    pub city_id: u32,
+    pub defending: bool,
+}
 pub fn unit_district_combat(
-    state: &mut LoadedState,
+    state: &LoadedState,
     defs: &Definitions,
     placement: &unit_placement_state::Definitions<'_, '_>,
     observer: i32,
     members: &crate::melee_attack::city::Generated,
-) -> Result<(), Error> {
+) -> Result<Option<CityAttackPlanningObservation>, Error> {
     if defs.binding != *state.binding() {
         return Err(Error::Binding);
     }
     let previous_owner = i32::from(members.defender.owner);
     if observer != members.attacker.player() && observer != previous_owner {
-        return Ok(());
+        return Ok(None);
     }
     if dead(state, placement, members.attacker)? {
         return Err(Error::Missing("District combat attacker death bookkeeping"));
     }
-    let city_id = state
+    let district = state
         .district(previous_owner, members.defender.id)
-        .map_err(Error::District)?
-        .city_id;
+        .map_err(Error::District)?;
+    let city_id = district.city_id;
     let current = state
-        .combat_ai_targets_mut(observer)
-        .map_err(Error::Knowledge)?;
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == observer)
+        .and_then(|p| p.ai_targets.as_ref())
+        .ok_or(Error::Missing("current Targets knowledge"))?;
     if current.player_id != observer || current.knowledge_base.owner != observer {
         return Err(Error::Binding);
     }
@@ -205,11 +217,17 @@ pub fn unit_district_combat(
         .iter()
         .any(|city| city.owner == previous_owner && city.id == city_id)
     {
-        return Ok(());
+        return Ok(None);
     }
-    Err(Error::Missing(
-        "known CityValue and CityAttacked continuation",
-    ))
+    if district.garrison_damage >= members.defender_maximum_damage {
+        return Err(Error::Missing("City lost planning observation"));
+    }
+    Ok(Some(CityAttackPlanningObservation {
+        observer,
+        previous_owner,
+        city_id,
+        defending: i32::from(members.defender.owner) == observer,
+    }))
 }
 /// Player.Signals+78 observes the current attacking Unit in the same canonical
 /// ArmyKnowledge used by creation and visibility. Removed attacker locations

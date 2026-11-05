@@ -42,6 +42,7 @@ pub enum Scope {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Output {
+    CityAttackPlanningObservation(targets::CityAttackPlanningObservation),
     CombatSummary,
     GeneralPlayerSummary,
     CombatAchievementObservation,

@@ -47,6 +47,11 @@ pub struct State<'a> {
     pub city_strike_report_scope: Option<crate::city_strike::reports::Scope>,
 }
 impl<'a> State<'a> {
+    /// Semantic observations emitted by the reached stock combat callbacks.
+    pub fn completion_outputs(&self) -> Option<&[resolve::completion::stock::Output]> {
+        self.bindings.as_ref().map(|bindings| bindings.outputs())
+    }
+
     /// Qualified Unit lifecycle/report callbacks without attack execution.
     /// Mutable effects and requirements stay in the existing ModifierOwners.
     /// Attack inputs, completion bindings and configuration remain unavailable;

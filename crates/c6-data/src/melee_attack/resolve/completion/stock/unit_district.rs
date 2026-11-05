@@ -94,14 +94,21 @@ impl<E: Effects> Dispatch<'_, '_, '_, '_, E> {
                     ));
                 }
             }
-            Callback::Targets(observer) => targets::unit_district_combat(
-                self.state,
-                self.inputs.targets,
-                self.inputs.placement,
-                observer,
-                self.members,
-            )
-            .map_err(Error::Targets)?,
+            Callback::Targets(observer) => {
+                if let Some(observation) = targets::unit_district_combat(
+                    self.state,
+                    self.inputs.targets,
+                    self.inputs.placement,
+                    observer,
+                    self.members,
+                )
+                .map_err(Error::Targets)?
+                {
+                    self.bindings
+                        .outputs
+                        .push(Output::CityAttackPlanningObservation(observation));
+                }
+            }
             Callback::History => {
                 history::general_battle(
                     self.state,
