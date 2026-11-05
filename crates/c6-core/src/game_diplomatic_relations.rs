@@ -5,6 +5,8 @@
 //! Player.Diplomacy is a separate owner; no complete turn equivalence is implied.
 use crate::unit::Limits;
 
+pub mod grievances;
+
 pub const VERSION: i32 = 16;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -85,6 +87,7 @@ pub struct GameDiplomaticRelations {
     current_contacts: Option<Vec<BoolRelationship>>,
     current_friendships: Option<Vec<BoolRelationship>>,
     current_permanent_alliances: Option<Vec<BoolRelationship>>,
+    current_grievances: Option<(Relationships, Relationships)>,
 }
 
 pub struct DecodedPrefix<'a> {
@@ -134,6 +137,7 @@ impl GameDiplomaticRelations {
             current_contacts: None,
             current_friendships: None,
             current_permanent_alliances: None,
+            current_grievances: None,
         })
     }
     /// Complete current native enum values, with each companion changed turn.
@@ -164,6 +168,7 @@ impl GameDiplomaticRelations {
             current_contacts: None,
             current_friendships: None,
             current_permanent_alliances: None,
+            current_grievances: None,
         })
     }
     /// Apply the original Read enum initialization using complete, admitted
@@ -273,6 +278,7 @@ impl GameDiplomaticRelations {
             current_contacts: None,
             current_friendships: None,
             current_permanent_alliances: None,
+            current_grievances: None,
         };
         value.initialize_current_contacts(player_count, values)?;
         Ok(value)
@@ -504,6 +510,7 @@ impl GameDiplomaticRelations {
                 current_contacts: None,
                 current_friendships: None,
                 current_permanent_alliances: None,
+                current_grievances: None,
                 read_prefix: Some(ReadPrefixFields {
                     at_c8,
                     at_f0,

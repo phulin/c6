@@ -21,6 +21,7 @@ pub mod player_governors;
 pub mod activation_managers;
 pub mod player_treasury;
 pub mod notification_snapshot;
+pub mod game_grievances;
 pub mod observed_controls;
 pub mod research;
 pub mod turn_completion;
