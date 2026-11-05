@@ -31,6 +31,8 @@ pub struct Initial {
     pub constructed: Vec<Subscriber>,
     pub camp_created_count: usize,
     pub history_special_improvements: Vec<i32>,
+    /// Current configuration type hashes: player, civilization, leader.
+    pub history_configuration: Vec<(i32, u32, u32)>,
     pub economic: Economic,
 }
 #[derive(Clone, Copy, Debug)]
@@ -53,7 +55,7 @@ pub struct Current<'a> {
     camp_index: i32,
     camp_hash: u32,
     camp_has_modifiers: bool,
-    camp_has_trait: bool,
+    camp_trait_owners: Vec<i32>,
     beach_index: Option<i32>,
     pub alive_major_ids: &'a [i32],
     pub reports: Vec<Report>,
@@ -94,11 +96,50 @@ impl<'a> Current<'a> {
             .rows()
             .find(|r| r.row_id() == Some(entry.database_rowid))
             .ok_or(Error::Unsupported("camp service definition row"))?;
-        let camp_has_trait = !matches!(
-            row.get("TraitType")
-                .map_err(|_| Error::Unsupported("camp trait"))?,
-            crate::SqlValue::Null
-        );
+        let trait_name = row.text("TraitType").ok();
+        let mut camp_trait_owners = Vec::new();
+        if let Some(trait_name) = trait_name {
+            let civilizations = rules
+                .gameplay()
+                .table("Civilizations")
+                .ok_or(Error::Unsupported("camp history civilizations"))?;
+            let leaders = rules
+                .gameplay()
+                .table("Leaders")
+                .ok_or(Error::Unsupported("camp history leaders"))?;
+            let civ_traits = rules
+                .gameplay()
+                .table("CivilizationTraits")
+                .ok_or(Error::Unsupported("camp history civilization traits"))?;
+            let leader_traits = rules
+                .gameplay()
+                .table("LeaderTraits")
+                .ok_or(Error::Unsupported("camp history leader traits"))?;
+            for &(owner, civ_hash, leader_hash) in &initial.history_configuration {
+                let civ = civilizations
+                    .rows()
+                    .filter_map(|r| r.text("CivilizationType").ok())
+                    .find(|name| crate::registry::linux_type_hash(name.as_bytes()) == civ_hash);
+                let leader = leaders
+                    .rows()
+                    .filter_map(|r| r.text("LeaderType").ok())
+                    .find(|name| crate::registry::linux_type_hash(name.as_bytes()) == leader_hash);
+                // 29ea537/543 requires both definition references before
+                // testing either collection for the improvement trait.
+                if let (Some(civ), Some(leader)) = (civ, leader) {
+                    let owns = civ_traits.rows().any(|r| {
+                        r.text("CivilizationType").ok() == Some(civ)
+                            && r.text("TraitType").ok() == Some(trait_name)
+                    }) || leader_traits.rows().any(|r| {
+                        r.text("LeaderType").ok() == Some(leader)
+                            && r.text("TraitType").ok() == Some(trait_name)
+                    });
+                    if owns {
+                        camp_trait_owners.push(owner);
+                    }
+                }
+            }
+        }
         let modifiers = rules
             .gameplay()
             .table("ImprovementModifiers")
@@ -171,7 +212,7 @@ impl<'a> Current<'a> {
             camp_index,
             camp_hash,
             camp_has_modifiers,
-            camp_has_trait,
+            camp_trait_owners,
             beach_index: registry
                 .find_index(crate::registry::linux_type_hash(
                     b"IMPROVEMENT_BEACH_RESORT",
@@ -234,7 +275,9 @@ impl<P> Services<P> for Current<'_> {
             // 29ea460: trait moment, natural-feature moment (requires owning
             // City), then eight cached improvement-type comparisons.
             0x29ea410
-                if !self.camp_has_trait
+                if !self
+                    .camp_trait_owners
+                    .contains(&i32::from(p.improvement_owner))
                     && p.city_attributes
                         .as_ref()
                         .is_none_or(|a| a.owning_city == u32::MAX)
