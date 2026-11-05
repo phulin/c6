@@ -174,6 +174,13 @@ fn compile(db: &Database, policy: &[u8]) -> Result<Vec<Recipe>, String> {
             subject_stack_limit: 0,
         }));
     }
+    // Unit and City destruction currently use separate typed adapters. Mixed
+    // policies need their native interleaved owned-modifier order first.
+    if out.iter().any(|r| matches!(r, Recipe::Units { .. }))
+        && out.iter().any(|r| matches!(r, Recipe::City(_)))
+    {
+        return Err("mixed City/Unit Policy modifier destruction order".into());
+    }
     Ok(out)
 }
 
@@ -215,6 +222,11 @@ mod tests {
     }
     #[test]
     fn unsupported_requirements_flags_and_dynamic_arguments_fail_explicitly() {
+        assert!(compile(
+            &database("INSERT INTO PolicyModifiers VALUES('P','D');"),
+            b"P"
+        )
+        .is_err());
         assert!(compile(&database("UPDATE Modifiers SET NewOnly=1;"), b"D").is_err());
         assert!(compile(
             &database("UPDATE Modifiers SET SubjectRequirementSetId='X';"),
