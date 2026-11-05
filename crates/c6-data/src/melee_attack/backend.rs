@@ -476,6 +476,8 @@ pub enum Error<O, R> {
     ),
 }
 impl<O, R> Backend<O, R> {
+    /// Borrow the cached immutable configuration and calendar definitions.
+    pub fn inputs(&self) -> &Inputs { &self.inputs }
     /// Lend a different reporting view while retaining the exact requirement,
     /// effect and configuration owners. No initialization/admission is replayed.
     pub fn with_reporting<N>(self,reporting:N)->(O,Backend<N,R>){

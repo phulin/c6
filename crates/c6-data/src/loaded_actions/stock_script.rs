@@ -161,6 +161,15 @@ pub struct Runtime<P = c6_core::unit::OperationParameters> {
 }
 impl<P> Runtime<P> {
     pub fn new(state: &LoadedState, script: ScriptState) -> Result<Self, Error> {
+        Self::from_parts(state, script, Synchronization::exclusive())
+    }
+    /// Transfer an existing script and synchronization owner between action
+    /// services without resetting its lock depth or registry state.
+    pub fn from_parts(
+        state: &LoadedState,
+        script: ScriptState,
+        synchronization: Synchronization,
+    ) -> Result<Self, Error> {
         if !script.matches(state) {
             return Err(Error::Identity);
         }
@@ -168,7 +177,7 @@ impl<P> Runtime<P> {
             script,
             parameters: std::marker::PhantomData,
             last_error: None,
-            synchronization: Synchronization::exclusive(),
+            synchronization,
         })
     }
     /// Borrow this SAME registry/RNG/synchronization owner for another action
