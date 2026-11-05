@@ -412,14 +412,9 @@ impl<P> Services<P> for Current<'_> {
         )
         .map_err(|_| Error::Unsupported("camp notification plot"))?
         .ok_or(Error::Unsupported("camp notification plot"))? as usize;
-        if state.world().map().visibility.iter().any(|v| {
-            v.visibility
-                .outgoing_visibility
-                .iter()
-                .any(|grant| grant.count != 0)
-        }) {
-            return Err(Error::Unsupported("camp shared revelation grants"));
-        }
+        // IsRevealed2849c10 calls GetGroupRevealedStateArray1fe6b40,
+        // which ignores the group argument and returns the single +170
+        // revealed-byte array. Sharing updates that SAME canonical array.
         for &player in self.alive_major_ids {
             let revealed = state
                 .world()
