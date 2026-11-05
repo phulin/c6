@@ -21,7 +21,8 @@ use c6_core::{
 #[derive(Clone, Copy, Debug)]
 pub enum Constructed {
     Barbarian,
-    Gameplay(u64),
+    /// Index into the retained constructed subscription vector.
+    Gameplay(usize),
 }
 /// Remaining constructed/camp callbacks and current yield providers. These
 /// methods have no successful defaults; stock handlers must preserve their own
@@ -33,7 +34,7 @@ pub trait Services<P> {
         state: &mut LoadedState,
         backend: &mut stock::Runtime<'_, P>,
         plot: usize,
-        receiver: u64,
+        slot: usize,
     ) -> Result<(), Error>;
     fn spawn_turns(&self, state: &LoadedState, turns: i32) -> Result<i32, Error>;
     fn local_food(&self, state: &LoadedState, location: PlotCoord) -> Result<i32, Error>;
@@ -249,10 +250,10 @@ impl<P, S: Services<P>> placement::Context for Current<'_, '_, '_, '_, '_, P, S>
             match item {
                 Constructed::Barbarian => placement::on_created(state, self, rules, plot)
                     .map_err(|e| fail(self.backend, "Barbarian improvement created", e))?,
-                Constructed::Gameplay(receiver) => {
+                Constructed::Gameplay(slot) => {
                     self.camps
                         .services
-                        .constructed_gameplay(state, self.backend, plot, receiver)?
+                        .constructed_gameplay(state, self.backend, plot, slot)?
                 }
             }
         }
