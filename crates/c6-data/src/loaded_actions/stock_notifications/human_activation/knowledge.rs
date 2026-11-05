@@ -18,19 +18,133 @@ pub fn observe_visible_units(
         .find(|p| p.header.owner == observer)
         .and_then(|p| p.ai_targets.as_ref())
         .ok_or(Error::Unsupported("current Targets knowledge owner"))?;
-    if !targets.knowledge_base.known_cities.is_empty()
-        || !targets.knowledge_base.barbarians.is_empty()
-        || targets.knowledge_base.player_armies.0.iter().any(|army| {
-            army.army_size
-                .value
-                .as_ref()
-                .is_some_and(|types| types.iter().any(|r| !r.value.is_empty()))
-        })
-    {
-        return Err(Error::Unsupported(
-            "current historical knowledge aging continuation",
-        ));
+    let normal = visibility
+        .shared(observer)
+        .map_err(Error::Unsupported)?
+        .0
+        .iter()
+        .find(|l| l.type_hash == BASE_LAYER_HASH)
+        .ok_or(Error::Unsupported("current knowledge normal visibility"))?;
+    let map = state.world().map();
+    let width = map.header.width as usize;
+    if width == 0 {
+        return Err(Error::Unsupported("current knowledge map width"));
     }
+    let seen = |location: (i32, i32)| -> Result<Option<usize>, Error> {
+        let (Ok(x), Ok(y)) = (usize::try_from(location.0), usize::try_from(location.1)) else {
+            return Ok(None);
+        };
+        if x >= width || y >= map.header.height as usize {
+            return Ok(None);
+        }
+        let index = y * width + x;
+        let visible = *normal
+            .values
+            .get(y * normal.grid_width as usize + x)
+            .ok_or(Error::Unsupported("current knowledge visibility extent"))?
+            > 0;
+        let revealed = *state
+            .world()
+            .visibility(observer)
+            .ok_or(Error::Unsupported("current knowledge revealed owner"))?
+            .revealed
+            .get(index)
+            .ok_or(Error::Unsupported("current knowledge revealed extent"))?;
+        if revealed > 1 {
+            return Err(Error::Unsupported("current knowledge revealed byte"));
+        }
+        Ok((visible || revealed == 1).then_some(index))
+    };
+    let mut remove_camps = Vec::new();
+    for camp in &targets.knowledge_base.barbarians {
+        remove_camps.push(
+            seen((camp.camp_location.x, camp.camp_location.y))?.is_some_and(|i| {
+                map.plots[i].improvement_hash != state.retained().barbarian.improvement_hash
+            }),
+        );
+    }
+    let mut remove_cities = Vec::new();
+    for city in &targets.knowledge_base.known_cities {
+        remove_cities.push(seen((city.location.x, city.location.y))?.is_some_and(|i| {
+            map.plots[i]
+                .city_attributes
+                .as_ref()
+                .map(|a| i32::from(a.player))
+                != Some(city.owner)
+        }));
+    }
+    // Runtime-only known-city identities retain the same observation gate.
+    // A disappeared city needs its historical location before it can be pruned.
+    let mut remove_identities = Vec::new();
+    for &(owner, id) in &targets.observed_city_identities {
+        let city = state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .and_then(|p| {
+                p.cities
+                    .records
+                    .entries
+                    .iter()
+                    .find(|c| c.value.header.id == id)
+            })
+            .ok_or(Error::Unsupported(
+                "historical observed city location after destruction",
+            ))?;
+        remove_identities.push(
+            seen((city.value.header.location_x, city.value.header.location_y))?.is_some_and(|i| {
+                map.plots[i]
+                    .city_attributes
+                    .as_ref()
+                    .map(|a| i32::from(a.player))
+                    != Some(owner)
+            }),
+        );
+    }
+    // Player victory-progress and yield-error estimates are native policy
+    // caches. War scores also feed gameplay and require their own decay path.
+    if targets
+        .knowledge_base
+        .war_knowledge
+        .iter()
+        .any(|w| w.opponent != -1)
+    {
+        return Err(Error::Unsupported("current war knowledge decay"));
+    }
+    let targets = state
+        .combat_ai_targets_mut(observer)
+        .map_err(|_| Error::Unsupported("current knowledge owner"))?;
+    for army in &mut targets.knowledge_base.player_armies.0 {
+        if let Some(types) = &mut army.army_size.value {
+            for kind in types {
+                kind.value.retain_mut(|unit| {
+                    let old = unit.turns_since_observation;
+                    unit.turns_since_observation = old.wrapping_add(1);
+                    old < 21
+                });
+            }
+        }
+    }
+    let mut index = 0;
+    targets.knowledge_base.barbarians.retain(|_| {
+        let keep = !remove_camps[index];
+        index += 1;
+        keep
+    });
+    let mut index = 0;
+    targets.knowledge_base.known_cities.retain_mut(|city| {
+        city.turns_since_observation = city.turns_since_observation.wrapping_add(1);
+        let keep = !remove_cities[index];
+        index += 1;
+        keep
+    });
+    let mut index = 0;
+    targets.observed_city_identities.retain(|_| {
+        let keep = !remove_identities[index];
+        index += 1;
+        keep
+    });
     refresh_visible_units(state, observer, units, visibility, combat)
 }
 
