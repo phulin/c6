@@ -151,21 +151,48 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         budget: &mut usize,
     ) -> Result<stock_notifications::skip_turn::Outcome, Error<stock_notifications::skip_turn::Error>>
     {
+        self.skip_turn_with_delivery(issuer, actor, inputs, handlers, budget, false)
+    }
+    /// Deliver an explicit SkipTurn at the current player's ordinary policy
+    /// boundary, including an active NPC while the local human is inactive.
+    /// This uses UnitOperation.Execute, without the earlier Broadcast helper.
+    pub fn skip_turn_message(
+        &mut self,
+        issuer: i32,
+        actor: UnitReference,
+        inputs: &Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>,
+        budget: &mut usize,
+    ) -> Result<stock_notifications::skip_turn::Outcome, Error<stock_notifications::skip_turn::Error>>
+    {
+        self.skip_turn_with_delivery(issuer, actor, inputs, handlers, budget, true)
+    }
+    fn skip_turn_with_delivery(
+        &mut self,
+        issuer: i32,
+        actor: UnitReference,
+        inputs: &Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>,
+        budget: &mut usize,
+        message: bool,
+    ) -> Result<stock_notifications::skip_turn::Outcome, Error<stock_notifications::skip_turn::Error>>
+    {
         self.check()?;
+        if message {
+            self.ordinary_player_action(issuer)?;
+        }
         if matches!(
             self.pending_choice().map(|choice| choice.kind),
             Some(PolicyKind::Research(_))
         ) {
             return Err(Error::PendingResearch);
         }
-        let result = stock_notifications::skip_turn::execute(
-            &mut self.context,
-            issuer,
-            actor,
-            inputs,
-            handlers,
-            budget,
-        );
+        let execute = if message {
+            stock_notifications::skip_turn::execute_message
+        } else {
+            stock_notifications::skip_turn::execute
+        };
+        let result = execute(&mut self.context, issuer, actor, inputs, handlers, budget);
         let partial_failure = matches!(
             result,
             Err(stock_notifications::skip_turn::Error::Manager(_)

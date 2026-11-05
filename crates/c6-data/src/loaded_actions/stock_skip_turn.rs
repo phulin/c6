@@ -64,6 +64,62 @@ pub fn execute<P>(
     handlers: &handlers::BoundHandlers<'_>,
     budget: &mut usize,
 ) -> Result<Outcome, Error> {
+    execute_with_delivery(
+        context,
+        issuer,
+        actor,
+        inputs,
+        handlers,
+        budget,
+        Delivery::Request,
+    )
+}
+/// Execute an already delivered UnitOperation SkipTurn message for an active
+/// owner. The native Execute body has no Broadcast/RequestTurnUnready phase.
+/// Manager, synchronous reports, diplomacy and notification aftermath use the
+/// same ongoing owners as ordinary requests. Inactive owners remain unsupported.
+pub fn execute_message<P>(
+    context: &mut current_aftermath::Context<'_, stock_notifications::Runtime<'_, P>>,
+    issuer: i32,
+    actor: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    handlers: &handlers::BoundHandlers<'_>,
+    budget: &mut usize,
+) -> Result<Outcome, Error> {
+    execute_with_delivery(
+        context,
+        issuer,
+        actor,
+        inputs,
+        handlers,
+        budget,
+        Delivery::Message,
+    )
+}
+#[derive(Clone, Copy)]
+enum Delivery {
+    Request,
+    Message,
+}
+fn check_local_request(
+    delivery: Delivery,
+    local: i32,
+    active: impl FnOnce(i32) -> Result<bool, Error>,
+) -> Result<(), Error> {
+    if matches!(delivery, Delivery::Request) && (local < 0 || !active(local)?) {
+        return Err(Error::Unsupported("local player unready continuation"));
+    }
+    Ok(())
+}
+fn execute_with_delivery<P>(
+    context: &mut current_aftermath::Context<'_, stock_notifications::Runtime<'_, P>>,
+    issuer: i32,
+    actor: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    handlers: &handlers::BoundHandlers<'_>,
+    budget: &mut usize,
+    delivery: Delivery,
+) -> Result<Outcome, Error> {
     if let Some(stage) = context.failed_at() {
         return Err(Error::Aftermath(
             current_aftermath::Error::FailedContinuation(stage),
@@ -88,9 +144,9 @@ pub fn execute<P>(
         return Err(Error::Unsupported("inactive requested player continuation"));
     }
     let local = state.retained().core.local_player;
-    if local < 0 || !state.turn_active(local).map_err(Error::State)? {
-        return Err(Error::Unsupported("local player unready continuation"));
-    }
+    check_local_request(delivery, local, |owner| {
+        state.turn_active(owner).map_err(Error::State)
+    })?;
     let exists = state
         .world()
         .player(issuer)
@@ -122,4 +178,27 @@ pub fn execute<P>(
         events,
         boundary: Some(transition::ExecutionBoundary::HeadlessMessagesProcessed),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn delivered_npc_order_does_not_enter_local_broadcast_unready() {
+        // The local human has handed off; a different active owner is acting.
+        let mut local_reads = Vec::new();
+        assert!(matches!(
+            check_local_request(Delivery::Request, 1, |owner| {
+                local_reads.push(owner);
+                Ok(false)
+            }),
+            Err(Error::Unsupported("local player unready continuation"))
+        ));
+        assert_eq!(local_reads, [1]);
+        check_local_request(Delivery::Message, 1, |_| {
+            panic!("delivered Execute must not enter Broadcast")
+        })
+        .unwrap();
+        check_local_request(Delivery::Request, 1, |_| Ok(true)).unwrap();
+    }
 }
