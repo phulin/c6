@@ -5,6 +5,7 @@ pub mod deactivation;
 pub mod activation;
 pub mod round_units;
 pub mod round_cities;
+pub mod round_climate;
 use crate::{
     loaded_actions::{command_units, reporting},
     unit_placement_services,
@@ -182,3 +183,5 @@ pub fn advance_current_player<B: crate::loaded_actions::notifications::processin
         PlayerProgress::MoreSelectedPlayers(progress)
     })
 }
+
+pub mod round_random_events;
