@@ -539,12 +539,17 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::Planning => {
-                no_units(state, backend, owner, kind)?;
                 if p.ai_planning.is_none() {
                     return Err(Error::Unsupported("NPC Planning owner"));
                 }
-                // 21b9280 creates planners and writes units only within the
-                // current unit roster; RunPlanningJobs evaluates policy jobs.
+                // 21b9280 attaches native planner pointers; all direct
+                // GetAiPlanner consumers are AI policy routines. Execute and
+                // BFS fill move/target scores, not Unit orders or Formation
+                // paths. Preview simulations21b7ef9/8148 pass (true,true);
+                // CalculateUnitVsUnitDamage2bd8c08 stores true as bUseAverage
+                // (+44), the existing RNG-free average damage kernel.
+                // This external-policy boundary omits that planning storage,
+                // balanced job locks and scores, not a gameplay transition.
                 Ok(())
             }
             Kind::Economic => {
@@ -573,10 +578,36 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::Espionage => {
-                no_units(state, backend, owner, kind)?;
+                for slot in state
+                    .world()
+                    .player(owner)
+                    .map_err(|_| Error::Unsupported("Espionage current unit owner"))?
+                    .unit_records()
+                    .map_err(|_| Error::Unsupported("Espionage current unit roster"))?
+                {
+                    let unit = &slot.value;
+                    if unit.e_type_index == u32::MAX
+                        || unit.b_delayed_death
+                        || unit.ai_controller != u32::MAX
+                    {
+                        continue;
+                    }
+                    let definitions = backend
+                        .unit_creation
+                        .as_ref()
+                        .ok_or(Error::Unsupported("Espionage current unit definitions"))?
+                        .definitions;
+                    if definitions
+                        .is_spy(state, unit)
+                        .map_err(|_| Error::Unsupported("Espionage current spy query"))?
+                    {
+                        return Err(Error::Unsupported("NPC Spy gameplay continuation"));
+                    }
+                }
                 // 20b2040's city/discount vectors are policy analyses and
-                // logging. Actual promotion, AiEvent requests and processed
-                // stores are inside the current unit roster traversal.
+                // logging. 20b2443..2480 rejects invalid type, delayed death,
+                // assigned controller and non-Spy definitions before any
+                // promotion, AiEvent request or processed-turn write.
                 Ok(())
             }
             Kind::Military => {
@@ -672,8 +703,18 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 {
                     return Err(Error::Unsupported("NPC Religious contract activation"));
                 }
-                no_units(state, backend, owner, kind)?;
-                // No religious Unit exists for the Delete command traversal.
+                let level = backend
+                    .player_services
+                    .as_ref()
+                    .and_then(|s| s.players.iter().find(|p| p.owner == owner))
+                    .and_then(|p| p.civilization_level)
+                    .ok_or(Error::Unsupported("Religious current civilization level"))?;
+                // 2173c48 bypasses the complete Delete-unit traversal for
+                // barbarians before consulting any Unit or issuing a command.
+                if level != 0xd959_ec24 {
+                    no_units(state, backend, owner, kind)?;
+                }
+                // The barbarian guard skips the Delete command traversal.
                 // PurchaseGreatPeople2175d90 evaluates CanPatronize and
                 // GetActivationPlots before choosing a new PlayerOperation;
                 // external PlayerActions own that choice and any faith spend.

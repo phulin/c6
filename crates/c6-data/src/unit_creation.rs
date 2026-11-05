@@ -66,6 +66,20 @@ pub struct Definitions {
     unit_domains: Vec<u32>,
 }
 impl Definitions {
+    pub(crate) fn is_spy(
+        &self,
+        state: &LoadedState,
+        unit: &Unit,
+    ) -> Result<bool, Error<std::convert::Infallible>> {
+        if state.binding().inputs != self.identities {
+            return Err(Error::Missing("spy definition binding"));
+        }
+        let index = self
+            .units
+            .find_index(unit.e_type_index)
+            .ok_or(Error::Missing("spy unit definition"))?;
+        Ok(self.properties[index].spy)
+    }
     pub fn continent_index(&self, hash: u32) -> Option<usize> {
         self.continents.find_index(hash)
     }
