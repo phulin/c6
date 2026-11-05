@@ -15,6 +15,7 @@ use c6_core::{
 };
 pub use research_turn::{InsertMode, Kind};
 pub mod barbarian;
+mod city_tourism;
 mod culture_turn;
 pub mod diplomacy;
 pub mod districts;
@@ -193,6 +194,7 @@ pub struct Definitions {
     resource_tech_prerequisites: Vec<u32>,
     barbarian: barbarian::Definitions,
     district_costs: districts::Definitions,
+    city_tourism: city_tourism::Definitions,
     diplomatic_visibility: diplomacy::Definitions,
     chronology: Vec<i32>,
     era_percent: [Option<i32>; 4],
@@ -464,8 +466,10 @@ impl Definitions {
         let district_costs =
             districts::Definitions::from_rules(rules, bound, unit_costs.economic())
                 .map_err(Error::DistrictCosts)?;
+        let city_tourism = city_tourism::Definitions::from_rules(rules)?;
         Ok(Self {
             barbarian: barbarian::Definitions::from_rules(rules)?,
+            city_tourism,
             binding: bound.destination_binding().clone(),
             route_prerequisites,
             technology_modifiers,

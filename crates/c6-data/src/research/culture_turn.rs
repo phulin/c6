@@ -62,7 +62,7 @@ impl<E: Effects> Context<'_, E> {
         Ok(total)
     }
     fn record_tourism(&mut self, owner: i32) -> Result<(), Error<E::Error>> {
-        let cities = &self
+        let cities = self
             .state
             .retained()
             .players
@@ -71,9 +71,13 @@ impl<E: Effects> Context<'_, E> {
             .ok_or(Error::Missing("current Culture player"))?
             .cities
             .records
-            .entries;
-        if !cities.is_empty() {
-            return Err(Error::Missing("current City.Culture.RecordTourism"));
+            .entries
+            .iter()
+            .map(|c| c.value.header.id)
+            .collect::<Vec<_>>();
+        let definitions = &self.definitions.city_tourism;
+        for city in cities {
+            definitions.record(self, owner, city)?;
         }
         match self.query(Query::NationalParkCount)? {
             0 => Ok(()),
