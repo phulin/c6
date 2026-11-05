@@ -14,6 +14,7 @@ pub mod resources;
 pub mod tiles;
 pub mod yield_definitions;
 pub mod yield_calculation;
+pub mod upkeep;
 
 #[derive(Debug)]
 pub enum Error {
@@ -22,6 +23,8 @@ pub enum Error {
     State(c6_core::loaded_state::Error),
     PlotYield(c6_core::plot_yield::Error),
     Production(crate::city_production_turn::Error),
+    Power(crate::city_power::Error),
+    CityCombat(Box<crate::loaded_actions::Error>),
     ReligionCallback(religion_callbacks::Error),
     Unsupported(&'static str),
 }

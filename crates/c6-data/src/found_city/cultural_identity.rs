@@ -123,7 +123,7 @@ fn no_nearby_effects(state: &LoadedState, owner: i32) -> Result<(), Error> {
     }
     Ok(())
 }
-fn always_loyal(state: &LoadedState, owner: i32, id: u32) -> Result<bool, Error> {
+pub(crate) fn always_loyal(state: &LoadedState, owner: i32, id: u32) -> Result<bool, Error> {
     let c = city(state, owner, id)?;
     if c.cultural_identity.always_loyal_flag_count > 0 {
         return Ok(true);
@@ -149,7 +149,7 @@ fn capital(state: &LoadedState, owner: i32) -> Result<Option<&City>, Error> {
         .map(|c| &c.value)
         .find(|c| c.header.capital))
 }
-fn identity_for(
+pub(crate) fn identity_for(
     state: &LoadedState,
     defs: &Definitions,
     cx: &mut impl Context,
@@ -253,7 +253,7 @@ fn identity_for(
     no_nearby_effects(state, source)?;
     Ok(result)
 }
-fn pressure(
+pub(crate) fn pressure(
     state: &LoadedState,
     defs: &Definitions,
     cx: &mut impl Context,

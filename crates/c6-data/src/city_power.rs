@@ -49,6 +49,26 @@ pub struct Definitions {
 impl Definitions {
     pub fn from_rules(rules: &Rules, authority: &ResourceAuthority<'_>) -> Result<Self, Error> {
         ResourceDefinitions::validate_resources(rules, authority).map_err(Error::Resources)?;
+        Self::from_bound_rules(rules, authority.destination_binding().clone())
+    }
+    /// Cache the current admitted Linux Rules directly for canonical city
+    /// upkeep. No Unit runtime/resource projection is needed by these queries.
+    pub fn from_current_rules(
+        state: &c6_core::loaded_state::LoadedState,
+        rules: &Rules,
+    ) -> Result<Self, Error> {
+        if !matches!(
+            rules.profile(),
+            crate::RulesProfile::LinuxXp2Base | crate::RulesProfile::LinuxXp2ActivatedDiagnostic
+        ) {
+            return Err(Error::Missing("current Linux Power rules"));
+        }
+        Self::from_bound_rules(rules, state.binding().clone())
+    }
+    fn from_bound_rules(
+        rules: &Rules,
+        binding: c6_core::core_player::initialization::WireBinding,
+    ) -> Result<Self, Error> {
         let buildings = collection(rules, "Buildings", "BuildingType").map_err(Error::Resources)?;
         let projects = collection(rules, "Projects", "ProjectType").map_err(Error::Resources)?;
         let xp_buildings =
@@ -129,7 +149,7 @@ impl Definitions {
             })
             .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
-            binding: Some(authority.destination_binding().clone()),
+            binding: Some(binding),
             buildings,
             projects,
             xp_projects,

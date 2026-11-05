@@ -60,6 +60,17 @@ impl Definitions {
         }
         unit_initialization_definitions::Definitions::validate_resources(rules, bound)
             .map_err(|_| Error::Unsupported("CityRangeAttack admitted rules/resources"))?;
+        Self::from_current_rules(state, rules)
+    }
+    /// Static combat/sight definitions from the actual current Linux Rules.
+    /// Normal city restoration does not need a Unit resource runtime projection.
+    pub fn from_current_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
+        if !matches!(
+            rules.profile(),
+            crate::RulesProfile::LinuxXp2Base | crate::RulesProfile::LinuxXp2ActivatedDiagnostic
+        ) {
+            return Err(Error::Unsupported("current Linux city combat rules"));
+        }
         fn values(
             rules: &Rules,
             table: &'static str,
@@ -444,20 +455,34 @@ pub fn attack_strength_q8(
     district: &c6_core::player_districts::District,
     queries: &Queries<'_>,
 ) -> Result<i32, Error> {
-    if state.binding() != &queries.definitions.binding {
+    attack_strength_current_q8(
+        state,
+        district,
+        queries.definitions,
+        queries.civilization_level_types,
+    )
+}
+/// Same CanAttack computation used by normal City.Combat.Restore, without
+/// unrelated command-phase/sight runtime inputs.
+pub fn attack_strength_current_q8(
+    state: &LoadedState,
+    district: &c6_core::player_districts::District,
+    definitions: &Definitions,
+    civilization_level_types: &[(i32, u32)],
+) -> Result<i32, Error> {
+    if state.binding() != &definitions.binding {
         return Err(Error::ConfigurationIdentity);
     }
-    let hp = queries
-        .definitions
+    let hp = definitions
         .districts
         .find_index(district.district_hash)
-        .and_then(|i| queries.definitions.district_hit_points.get(i))
+        .and_then(|i| definitions.district_hit_points.get(i))
         .copied()
         .flatten()
         .unwrap_or(0);
     let maximum = if hp > 0 {
         let owning_city = district_city(state, district)?;
-        outer_defense_hit_points(state, owning_city, queries)?
+        outer_defense_hit_points_current(state, owning_city, definitions, civilization_level_types)?
     } else {
         0
     };
@@ -480,17 +505,17 @@ pub fn attack_strength_q8(
     Ok(trained_attack_strength_q8(
         owning_city,
         &player.stats,
-        queries.definitions,
+        definitions,
     ))
 }
 
-fn outer_defense_hit_points(
+fn outer_defense_hit_points_current(
     state: &LoadedState,
     city: &c6_core::city::City,
-    queries: &Queries<'_>,
+    definitions: &Definitions,
+    civilization_level_types: &[(i32, u32)],
 ) -> Result<i32, Error> {
-    let mut levels = queries
-        .civilization_level_types
+    let mut levels = civilization_level_types
         .iter()
         .filter(|(owner, _)| *owner == city.header.owner);
     let level = levels
@@ -528,10 +553,10 @@ fn outer_defense_hit_points(
             .cities
             .urban_defenses
     };
-    ordinary_outer_defense_hit_points(city, urban, queries.definitions)
+    ordinary_outer_defense_hit_points(city, urban, definitions)
 }
 
-fn district_city_optional<'a>(
+pub(crate) fn district_city_optional<'a>(
     state: &'a LoadedState,
     district: &c6_core::player_districts::District,
 ) -> Result<Option<&'a c6_core::city::City>, Error> {

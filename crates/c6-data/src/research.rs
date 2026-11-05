@@ -204,6 +204,47 @@ fn parameter(rules: &Rules, name: &str) -> Option<i32> {
         _ => None,
     }
 }
+/// Install native-index aliases of the saved per-player acquisition flags.
+/// Every current definition must have an explicit saved value; no unknown flag
+/// is treated as unacquired. This input projection performs no research action.
+pub fn install_current_player_flags_from_rules(
+    state: &mut LoadedState,
+    rules: &Rules,
+) -> Result<(), Error<std::convert::Infallible>> {
+    let techs = collection(rules, "Technologies", "TechnologyType").map_err(Error::Definitions)?;
+    let civics = collection(rules, "Civics", "CivicType").map_err(Error::Definitions)?;
+    let mut flags = Vec::new();
+    for player in &state.retained().players {
+        let mut values = Vec::new();
+        for (definitions, pairs) in [
+            (&techs, &player.techs.has_tech.pairs),
+            (&civics, &player.culture.has_civic.pairs),
+        ] {
+            values.push(
+                definitions
+                    .entries()
+                    .iter()
+                    .map(|d| {
+                        let hash = linux_type_hash(&d.type_name);
+                        pairs
+                            .iter()
+                            .rfind(|p| p.definition_hash == hash)
+                            .map(|p| p.value)
+                            .ok_or(Error::Missing("complete current acquired flags"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+        }
+        let civics = values.pop().expect("two acquired vectors");
+        let techs = values.pop().expect("two acquired vectors");
+        flags.push((player.header.owner, techs, civics));
+    }
+    let binding = state.binding().clone();
+    state
+        .install_current_research_flags(&binding, flags)
+        .map_err(Error::State)
+}
+
 impl Definitions {
     pub fn from_rules(
         rules: &Rules,
