@@ -111,6 +111,7 @@ pub struct Context<'s, 'a, P> {
 pub type CityActivation<'s, 'a, P> = dyn FnMut(
         &mut LoadedState,
         &mut stock_notifications::Runtime<'a, P>,
+        &mut super::requirement_changes::Runtime,
         i32,
         u32,
     ) -> Result<crate::city_production_turn::Outcome, crate::city_turn::Error>
@@ -177,7 +178,13 @@ impl<P> Context<'_, '_, P> {
                     owner,
                 )
                 .map_err(|e| failure("turn-start signal", e))?;
-                self.through_activation_signals(owner, major, units, formations)?;
+                self.through_activation_signals(
+                    signal.requirements,
+                    owner,
+                    major,
+                    units,
+                    formations,
+                )?;
             } else {
                 super::cityless_managers::on_congress_turn_started(
                     self.state,
@@ -252,6 +259,7 @@ impl<P> Context<'_, '_, P> {
     /// InfluenceMap and controller activation remain mandatory.
     pub fn through_activation_signals(
         &mut self,
+        requirements: &mut super::requirement_changes::Runtime,
         owner: i32,
         major: bool,
         units: &[u32],
@@ -323,7 +331,7 @@ impl<P> Context<'_, '_, P> {
                 .cities
                 .as_mut()
                 .ok_or_else(|| failure("city activation", "current city services"))?;
-            let outcome = (services.activate)(self.state, self.backend, owner, city)
+            let outcome = (services.activate)(self.state, self.backend, requirements, owner, city)
                 .map_err(|e| failure("city activation", e))?;
             services.outcomes.push((owner, city, outcome));
         }
