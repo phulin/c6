@@ -3,6 +3,7 @@
 //! later unsupported leaves retain that prefix and never count as completion.
 pub mod signals;
 pub mod collections;
+pub mod placement_effects;
 
 use crate::{
     registry::LinuxDefinitionRegistry,
