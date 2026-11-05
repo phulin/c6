@@ -1,6 +1,7 @@
 //! Linux combat capture's bounded noncapital City destroy/reconstruction path.
 //! The same loaded state, sight, territory and stock creation owners survive
 //! every phase. Mandatory continuations have no successful default.
+pub mod callbacks;
 use crate::loaded_actions::stock_notifications::founding;
 use c6_core::{
     city_capture::{self as core, Snapshot},
@@ -35,6 +36,16 @@ pub struct Error {
     pub replacement: Option<ComponentId>,
     pub detail: String,
 }
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "city capture {:?} at {:?}: {}",
+            self.stage, self.replacement, self.detail
+        )
+    }
+}
+impl std::error::Error for Error {}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Disposition {
     Keep,
@@ -42,7 +53,7 @@ pub enum Disposition {
     Return,
     Liberate,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PendingDisposition {
     pub city: ComponentId,
     pub district: ComponentId,
@@ -54,7 +65,7 @@ pub struct PendingDisposition {
 /// construction, state copy, ordering and pending decisions belong to capture.
 /// Implementations must mutate the ongoing owners rather than importing native
 /// post-state or accepting an unsupported callback as a successful empty call.
-pub trait Effects<'a>: founding::Effects<'a> {
+pub trait Effects<'a>: founding::Effects<'a> + crate::melee_attack::city::resolve::Effects {
     fn pre_city_conquered(
         &mut self,
         state: &mut LoadedState,
@@ -76,33 +87,22 @@ pub trait Effects<'a>: founding::Effects<'a> {
         territory: &mut crate::city_territory::Runtime,
         old: ComponentId,
     ) -> Result<(), String>;
-    fn check_occupying_cities(
-        &mut self,
-        state: &mut LoadedState,
-        owner: i32,
-        other: i32,
-    ) -> Result<(), String>;
     fn cultural_identity_transferred(
         &mut self,
         state: &mut LoadedState,
         city: ComponentId,
         old_owner: i32,
     ) -> Result<(), String>;
-    fn displace_spies(&mut self, state: &mut LoadedState, city: ComponentId) -> Result<(), String>;
-    fn recalculate_resource_monopolies(&mut self, state: &mut LoadedState) -> Result<(), String>;
     fn transfer_property(
         &mut self,
         state: &mut LoadedState,
         city: ComponentId,
         property: &c6_core::unit::variants::TypedEntry,
     ) -> Result<(), String>;
-    fn reporting_block(
-        &mut self,
-        state: &mut LoadedState,
-        event: u32,
-        begin: bool,
-    ) -> Result<(), String>;
-    fn city_transferred(
+    /// Reporting event e05ec908 with keyed values City23739f42,
+    /// previous-owner5150e7c3 and transfer-type2be74a24. This is not the
+    /// distinct two-argument GameSignals.CityCeded ring at+3d8.
+    fn report_city_transferred(
         &mut self,
         state: &mut LoadedState,
         city: ComponentId,
@@ -120,12 +120,6 @@ pub trait Effects<'a>: founding::Effects<'a> {
         state: &mut LoadedState,
         attacker: UnitReference,
     ) -> Result<(), String>;
-    fn legal_dispositions(
-        &mut self,
-        state: &mut LoadedState,
-        city: ComponentId,
-        old_owner: i32,
-    ) -> Result<Vec<Disposition>, String>;
 }
 
 pub struct Definitions {
@@ -133,6 +127,9 @@ pub struct Definitions {
     damage_percentage: i32,
     population_loss: f32,
     force_keep_cities: bool,
+    raze_any_city: bool,
+    units: crate::registry::LinuxDefinitionRegistry,
+    spies: Vec<bool>,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &crate::Rules) -> Result<Self, String> {
@@ -170,11 +167,32 @@ impl Definitions {
             crate::game_parameters::sql_integer(parameter("COMBAT_KEEP_ALL_CITIES_ON_CAPTURE")?)
                 .ok_or("capture disposition parameter")?
                 != 0;
+        let raze_any_city = crate::game_parameters::sql_integer(parameter("COMBAT_RAZE_ANY_CITY")?)
+            .ok_or("raze-any-city parameter")?
+            != 0;
+        let units = crate::unit_initialization_definitions::collection(rules, "Units", "UnitType")
+            .map_err(|e| format!("{e:?}"))?;
+        let unit_table = rules.gameplay().table("Units").ok_or("capture Units")?;
+        let spies = units
+            .entries()
+            .iter()
+            .map(|entry| {
+                unit_table
+                    .row_by_id(entry.database_rowid)
+                    .and_then(|row| row.get("Spy").ok())
+                    .and_then(crate::game_parameters::sql_integer)
+                    .map(|v| v != 0)
+                    .ok_or_else(|| "capture Spy definition".to_owned())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
             binding: state.binding().clone(),
             damage_percentage,
             population_loss,
             force_keep_cities,
+            raze_any_city,
+            units,
+            spies,
         })
     }
 }
@@ -187,6 +205,7 @@ pub struct Context<'s, 'a, E> {
     pub sight: &'s mut crate::unit_sight_state::Runtime,
     pub territory: &'s mut crate::city_territory::Runtime,
     pub definitions: &'s Definitions,
+    pub economic: &'s mut crate::barbarian_camps::services::Economic,
 }
 impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
     fn error(
@@ -439,8 +458,7 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
         );
         step!(
             Destroy,
-            self.effects
-                .check_occupying_cities(self.state, old_owner, new_owner)
+            check_occupying_major_cities(self.state, old_owner, new_owner, self.founding.levels)
         );
         let fresh = step!(
             Create,
@@ -478,8 +496,16 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
                 false
             )
         );
-        step!(Damage, self.state.district_mut(new_owner, center_id)).garrison_damage =
-            core::captured_center_damage(maximum, self.definitions.damage_percentage);
+        step!(
+            Damage,
+            set_captured_center_damage(
+                self.state,
+                self.effects,
+                center,
+                maximum,
+                self.definitions.damage_percentage
+            )
+        );
         for &plot in &snapshot.purchased_plots {
             let (x, y) = self.state.world().map().coordinates(plot).ok_or_else(|| {
                 Self::error(Stage::Territory, replacement, "purchased plot location")
@@ -517,10 +543,7 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
                 step!(Territory, territory.set_valid_domains(plot));
             }
         }
-        step!(
-            Buildings,
-            self.effects.reporting_block(self.state, 0xe05e_c908, true)
-        );
+        step!(Buildings, transfer_reporting_block(self.effects, true));
         core::copy_buildings(
             &mut step!(Buildings, self.state.city_mut(new_owner, fresh.id)).buildings,
             snapshot.buildings,
@@ -572,7 +595,13 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
                 self.effects
             )
         );
-        step!(Religion, self.effects.displace_spies(self.state, fresh));
+        let alive_majors = self.territory.alive_major_ids.as_deref().ok_or_else(|| {
+            Self::error(Stage::Religion, replacement, "current alive major order")
+        })?;
+        step!(
+            Religion,
+            no_spies_to_displace(self.state, fresh, self.definitions, alive_majors)
+        );
         if step!(Religion, self.state.city(new_owner, fresh.id))
             .header
             .city_ai_id
@@ -605,7 +634,17 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
         }
         step!(
             Monopolies,
-            self.effects.recalculate_resource_monopolies(self.state)
+            recalculate_monopolies_unchanged(
+                self.economic,
+                self.territory
+                    .alive_major_ids
+                    .as_deref()
+                    .ok_or_else(|| Self::error(
+                        Stage::Monopolies,
+                        replacement,
+                        "current alive major order"
+                    ))?
+            )
         );
         if let Some(property) = snapshot
             .properties
@@ -618,14 +657,15 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
                 self.effects.transfer_property(self.state, fresh, property)
             );
         }
+        step!(Properties, transfer_reporting_block(self.effects, false));
         step!(
             Properties,
-            self.effects.reporting_block(self.state, 0xe05e_c908, false)
-        );
-        step!(
-            Properties,
-            self.effects
-                .city_transferred(self.state, fresh, old_owner, core::TRANSFER_COMBAT)
+            self.effects.report_city_transferred(
+                self.state,
+                fresh,
+                old_owner,
+                core::TRANSFER_COMBAT
+            )
         );
         step!(
             Conquered,
@@ -652,8 +692,7 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
             .owner_before_occupation = before_occupation;
         let legal = step!(
             Decision,
-            self.effects
-                .legal_dispositions(self.state, fresh, old_owner)
+            legal_dispositions(self.state, fresh, self.definitions, self.founding.levels)
         );
         // Native policy selection is replaced by an external semantic decision;
         // reached ownership/diplomacy writes are still executed in source order.
@@ -671,8 +710,12 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
         }
         step!(
             Occupation,
-            self.effects
-                .check_occupying_cities(self.state, new_owner, before_occupation)
+            check_occupying_major_cities(
+                self.state,
+                new_owner,
+                before_occupation,
+                self.founding.levels
+            )
         );
         if legal.is_empty() {
             return Err(Self::error(
@@ -688,4 +731,265 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
             legal,
         })
     }
+}
+
+/// Player.Diplomacy.CheckIfOccupyingCities2aac240 for the major-player branch.
+/// IsOccupied(true) reads the stored flag and ignores NoOccupationPenalties.
+/// This writes the real canonical 64-player array even when the value repeats.
+pub fn check_occupying_major_cities(
+    state: &mut LoadedState,
+    owner: i32,
+    other: i32,
+    levels: &[(i32, u32)],
+) -> Result<(), String> {
+    if other == -1 {
+        return Ok(());
+    }
+    state.world().player(other).map_err(|e| format!("{e:?}"))?;
+    if levels.iter().find(|r| r.0 == other).map(|r| r.1)
+        != Some(crate::registry::linux_type_hash(
+            b"CIVILIZATION_LEVEL_FULL_CIV",
+        ))
+    {
+        return Err("occupation check non-major branch".into());
+    }
+    let at = usize::try_from(other)
+        .ok()
+        .filter(|&i| i < 64)
+        .ok_or("occupation target")?;
+    let player = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == owner)
+        .ok_or("occupation owner")?;
+    let occupied = player
+        .cities
+        .records
+        .entries
+        .iter()
+        .any(|r| r.value.header.occupied && r.value.header.owner_before_occupation == other);
+    state
+        .war_diplomacy_mut(owner)
+        .map_err(|e| format!("{e:?}"))?
+        .occupies_original_city[at] = occupied;
+    Ok(())
+}
+
+/// DisplaceSpiesOnCityCapture2be9f80 traverses the current alive-major order,
+/// then each canonical Unit collection. The no-matching-spy branch has no
+/// operation, reset, movement, notification or RNG effect. A matching spy
+/// remains an explicit unsupported continuation rather than staying in place.
+pub fn no_spies_to_displace(
+    state: &LoadedState,
+    city: ComponentId,
+    definitions: &Definitions,
+    alive_majors: &[i32],
+) -> Result<(), String> {
+    if state.binding() != &definitions.binding {
+        return Err("capture Spy binding".into());
+    }
+    state
+        .city(i32::from(city.owner), city.id)
+        .map_err(|e| format!("{e:?}"))?;
+    for &owner in alive_majors {
+        let player = state.world().player(owner).map_err(|e| format!("{e:?}"))?;
+        for slot in player.unit_records().map_err(|e| format!("{e:?}"))? {
+            let unit = &slot.value;
+            if unit.b_delayed_death {
+                continue;
+            }
+            let Some(index) = definitions.units.find_index(unit.e_type_index) else {
+                continue;
+            };
+            if !definitions.spies[index] {
+                continue;
+            }
+            let (_, plot) =
+                match c6_core::movement_world::plot_at(state.world().map(), unit.k_location) {
+                    Ok(value) => value,
+                    Err(c6_core::movement_world::MissingInput::PlotOutsideMap) => continue,
+                    Err(error) => return Err(format!("{error:?}")),
+                };
+            if plot.city_attributes.as_ref().is_some_and(|a| {
+                i32::from(a.player) == i32::from(city.owner) && a.owning_city == city.id
+            }) {
+                return Err("captured-city spy operation reset/displacement".into());
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Reuse the current Economic manager projection shared by supported Farm and
+/// camp actions. Nonpositive wrapped Q8 totals make every HasMonopoly query
+/// false; no summary owned by an alive major means the source loop changes
+/// no fields and dispatches no monopoly callback or random draw.
+pub fn recalculate_monopolies_unchanged(
+    economic: &crate::barbarian_camps::services::Economic,
+    alive_majors: &[i32],
+) -> Result<(), String> {
+    if economic.resource_count != economic.totals.len()
+        || economic.resource_count != economic.summaries.len()
+        || economic.owned.len() != 64
+        || economic
+            .owned
+            .iter()
+            .any(|row| row.len() != economic.resource_count)
+    {
+        return Err("capture Economic resource array dimensions".into());
+    }
+    if economic.totals.iter().any(|v| v.wrapping_shl(8) > 0)
+        || economic
+            .summaries
+            .iter()
+            .any(|(owner, _)| alive_majors.contains(owner))
+    {
+        return Err("positive capture monopoly update".into());
+    }
+    Ok(())
+}
+
+impl Disposition {
+    /// Actual City.Commands.Destroy directive enum values.
+    pub const fn native_directive(self) -> i32 {
+        match self {
+            Self::Liberate => 0,
+            Self::Return => 1,
+            Self::Keep => 2,
+            Self::Raze => 3,
+        }
+    }
+}
+
+/// Rules.Players.CanRaze2bf1820; alliance queries use canonical current
+/// Game.DiplomaticRelations and never a policy or a captured boolean answer.
+pub fn can_raze(
+    state: &LoadedState,
+    city: ComponentId,
+    definitions: &Definitions,
+    levels: &[(i32, u32)],
+) -> Result<bool, String> {
+    if state.binding() != &definitions.binding {
+        return Err("capture raze binding".into());
+    }
+    if definitions.raze_any_city {
+        return Ok(true);
+    }
+    let city = state
+        .city(i32::from(city.owner), city.id)
+        .map_err(|e| format!("{e:?}"))?;
+    let original = city.header.original_owner;
+    let previous = city.header.owner_before_occupation;
+    let owner = city.header.owner;
+    if city.header.original_capital {
+        let major = crate::registry::linux_type_hash(b"CIVILIZATION_LEVEL_FULL_CIV");
+        let level = levels
+            .iter()
+            .find(|r| r.0 == original)
+            .ok_or("original-owner civilization level")?
+            .1;
+        if level == major {
+            return Ok(false);
+        }
+    }
+    if original == owner || previous == owner {
+        return Ok(false);
+    }
+    let relations = state.game_relations().map_err(|e| format!("{e:?}"))?;
+    if relations
+        .is_allied(owner, original)
+        .map_err(|e| format!("{e:?}"))?
+    {
+        return Ok(false);
+    }
+    Ok(!relations
+        .is_allied(owner, previous)
+        .map_err(|e| format!("{e:?}"))?)
+}
+
+/// Capture028d8380's source option count is Keep + previous-owner Return
+/// when different + original-owner Liberate when different + CanRaze. Destroy
+/// CanStart2819cc0 itself returns true; these native directives are distinct
+/// even when Return and Liberate currently target the same player.
+pub fn legal_dispositions(
+    state: &LoadedState,
+    identity: ComponentId,
+    definitions: &Definitions,
+    levels: &[(i32, u32)],
+) -> Result<Vec<Disposition>, String> {
+    let city = state
+        .city(i32::from(identity.owner), identity.id)
+        .map_err(|e| format!("{e:?}"))?;
+    if definitions.force_keep_cities {
+        return Ok(vec![Disposition::Keep]);
+    }
+    let mut legal = Vec::with_capacity(4);
+    if city.header.original_owner != city.header.owner {
+        legal.push(Disposition::Liberate);
+    }
+    if city.header.owner_before_occupation != city.header.owner {
+        legal.push(Disposition::Return);
+    }
+    legal.push(Disposition::Keep);
+    if can_raze(state, identity, definitions, levels)? {
+        legal.push(Disposition::Raze);
+    }
+    Ok(legal)
+}
+
+/// Core reporting uses the same live block stack as visibility. The stock
+/// Linux host Translate ignores this hash (its only active block is5a9a0329).
+/// EndBlock pops the current tail without searching for a matching hash.
+pub fn transfer_reporting_block<E: crate::unit_sight_state::Effects<Error = String>>(
+    effects: &mut E,
+    begin: bool,
+) -> Result<(), String> {
+    let blocks = effects.visibility_reporting_blocks()?;
+    if begin {
+        blocks
+            .try_reserve(1)
+            .map_err(|_| "capture reporting stack allocation")?;
+        blocks.push(0xe05e_c908);
+    } else {
+        blocks.pop();
+    }
+    Ok(())
+}
+
+/// Transfer calls District.SetDamage291f790: clamp the wrapping percentage
+/// result, store it, and synchronously emit DistrictDamageChanged on a change.
+/// It does not execute ChangeDamage's LastTurnDamaged write.
+pub fn set_captured_center_damage<E: crate::melee_attack::city::resolve::Effects>(
+    state: &mut LoadedState,
+    effects: &mut E,
+    identity: ComponentId,
+    maximum: i32,
+    percentage: i32,
+) -> Result<(), String> {
+    if maximum < 0 {
+        return Err("capture District maximum damage".into());
+    }
+    let owner = i32::from(identity.owner);
+    let previous = state
+        .district(owner, identity.id)
+        .map_err(|e| format!("{e:?}"))?
+        .garrison_damage;
+    let current = core::captured_center_damage(maximum, percentage).clamp(0, maximum);
+    state
+        .district_mut(owner, identity.id)
+        .map_err(|e| format!("{e:?}"))?
+        .garrison_damage = current;
+    if current != previous {
+        effects.city_melee_publication(
+            state,
+            crate::melee_attack::city::Publication::DistrictDamageChanged {
+                district: identity,
+                defense_type: 0x5e97_d629,
+                current,
+                previous,
+            },
+        )?;
+    }
+    Ok(())
 }

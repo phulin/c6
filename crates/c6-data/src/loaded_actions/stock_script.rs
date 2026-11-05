@@ -600,3 +600,26 @@ mod tests {
         assert_eq!(sync.core_lock_depth(), 1);
     }
 }
+
+/// Lua.GameSignals.CityConquered2c9cb20 forms its five arguments before the
+/// hook call, then uses the same retained Script registry and synchronization.
+/// The target event string is exactly `CityConquered` (rodata2f79313).
+pub fn on_city_conquered(
+    script: &mut ScriptState,
+    synchronization: &mut Synchronization,
+    state: &LoadedState,
+    previous_owner: i32,
+    identity: c6_core::unit::ComponentId,
+) -> Result<(), Error> {
+    let city = state
+        .city(i32::from(identity.owner), identity.id)
+        .map_err(|_| Error::Identity)?;
+    let arguments = [
+        city.header.owner,
+        previous_owner,
+        city.header.id as i32,
+        city.header.location_x,
+        city.header.location_y,
+    ];
+    synchronization.call(|| call_empty_hook(script, state, "CityConquered", &arguments))
+}
