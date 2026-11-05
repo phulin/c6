@@ -7,6 +7,8 @@ pub mod hold_cycling;
 #[path = "yield_monitor.rs"]
 pub mod yield_monitor;
 
+#[path = "reporting_damage.rs"]
+pub mod damage;
 use super::{arena::ActorRecords, Error, IdentityReport, Reports};
 use crate::resource_binding::ResourceAuthority;
 use crate::{
@@ -428,6 +430,8 @@ pub struct Provider<'a> {
     range_attack_handler: Option<i32>,
     farm_handler: Option<i32>,
     fortify_handler: Option<i32>,
+    damage_changed_bound: bool,
+    pub damage_changes: Vec<c6_core::unit_healing::DamageChangedReport>,
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
     ability_publications: Vec<AbilityPublication>,
@@ -454,6 +458,8 @@ impl<'a> Provider<'a> {
             range_attack_handler: None,
             farm_handler: None,
             fortify_handler: None,
+            damage_changed_bound: false,
+            damage_changes: Vec::new(),
             snapshots: Vec::new(),
             moved_publications: Vec::new(),
             ability_publications: Vec::new(),

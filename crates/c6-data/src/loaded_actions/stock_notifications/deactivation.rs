@@ -69,6 +69,7 @@ pub enum Error {
     RequiresPhaseAdvance,
     UnsupportedAutomation,
     RequiresQueuedHandler,
+    QueuedOperation(String),
     SelectedOwnerStillActive(i32),
     UnsupportedNextSelection(loaded::activation::Selection),
     Budget,
@@ -245,7 +246,9 @@ pub fn finish_completed_human_pass<P>(
             {
                 data::automation::IdleProgress::Advanced => units_advanced += 1,
                 data::automation::IdleProgress::RequiresQueuedHandler => {
-                    return Err(Error::RequiresQueuedHandler)
+                    backend.continue_queued_operation(c.state, &mut frame, inputs.readiness)
+                        .map_err(Error::QueuedOperation)?;
+                    units_advanced += 1;
                 }
                 data::automation::IdleProgress::NoUnit => break,
             }

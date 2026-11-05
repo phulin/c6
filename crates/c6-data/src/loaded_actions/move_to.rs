@@ -798,6 +798,9 @@ where
                     data.delete
                 } else if node.operation_hash == c6_core::unit::FORTIFY_HASH {
                     fortify::start(state, actor, effects)?;
+                    // Activate2da2867 rereads activity after Start callbacks;
+                    // a depleted unit remains queued/HOLD without looping Start.
+                    if unit(state, actor)?.e_activity != 0x490cc8e1 { return Ok(()); }
                     false
                 } else if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
                     false

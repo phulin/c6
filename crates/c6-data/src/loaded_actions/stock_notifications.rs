@@ -13,6 +13,7 @@ use super::{
 #[path = "stock_activation.rs"]
 mod activation;
 pub mod city_production;
+pub mod growth;
 pub mod unit_creation;
 pub mod city_queries;
 #[path = "stock_resource_revelation.rs"]
@@ -36,6 +37,7 @@ pub mod movement;
 pub mod npc_activation;
 pub mod npc_deactivation;
 pub mod npc_leaves;
+pub mod queued_operations;
 #[path = "stock_research.rs"]
 pub mod research;
 pub mod round_ai;
@@ -89,6 +91,8 @@ pub enum Notice {
 }
 pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub script: stock_script::Runtime<P>,
+    growth: Option<growth::Inputs>,
+    queued_operations: Option<Box<dyn queued_operations::Services<P> + 'a>>,
     pub reporting: reporting::Provider<'a>,
     pub decisions: Vec<Decision>,
     pub notices: Vec<Notice>,
@@ -115,6 +119,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
     pub(super) research_acquisition: Option<research::acquisition::Binding>,
+    pub(super) research_unit_updates: Option<&'a crate::unit_movement_state::Definitions>,
     pub(crate) turn_progress: Option<turn_loop::Progress>,
     pub(crate) completion_inflight: Option<i32>,
     round_unit_healed: Option<round_end::UnitHealedSignals>,
@@ -156,18 +161,21 @@ impl<'a, P> Runtime<'a, P> {
             player_services: None,
             unit_creation: None,
             modifier_owners: None,
+            growth: None,
             unit_production_signals: None,
             movement: None,
             resource_revelation: None,
             city_queries: None,
             gold_signals: None,
             research_acquisition: None,
+            research_unit_updates: None,
             activation_progress: None,
             turn_progress: None,
             completion_inflight: None,
             round_unit_healed: None,
             round_services: None,
             turn_messages: std::collections::VecDeque::new(),
+            queued_operations: None,
         })
     }
     /// Semantic stock informational publication. The source caller has run its
