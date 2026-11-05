@@ -130,7 +130,12 @@ fn no_cities(state: &LoadedState, owner: i32) -> Result<(), Error> {
     }
     Ok(())
 }
-fn no_units(state: &LoadedState, owner: i32) -> Result<(), Error> {
+fn no_units<P>(
+    state: &LoadedState,
+    backend: &mut Runtime<'_, P>,
+    owner: i32,
+    kind: Kind,
+) -> Result<(), Error> {
     if !state
         .world()
         .player(owner)
@@ -139,6 +144,9 @@ fn no_units(state: &LoadedState, owner: i32) -> Result<(), Error> {
         .map_err(|_| Error::Unsupported("NPC current unit roster"))?
         .is_empty()
     {
+        backend.last_error = Some(format!(
+            "NPC {kind:?} nonempty unit gameplay continuation for player {owner}"
+        ));
         return Err(Error::Unsupported(
             "NPC nonempty unit gameplay continuation",
         ));
@@ -462,7 +470,7 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     owner,
                     self.definitions.maintenance.unit_registry(),
                     self.visibility(),
-                    backend.movement().ok().map(|m|m.definitions.formation),
+                    backend.movement().ok().map(|m| m.definitions.formation),
                 )?;
                 state
                     .combat_ai_targets_mut(owner)
@@ -495,7 +503,26 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
             }
             Kind::GrandStrategic => {
                 no_cities(state, owner)?;
-                no_units(state, owner)?;
+                // 2121e72..2121fd5 visits units only for great-person
+                // analysis. IsGreatPerson203b890 requires both identifiers;
+                // controlled people also leave before the AiEvent dispatch.
+                // Ordinary units have no writes, callbacks or RNG here.
+                for unit in state
+                    .world()
+                    .player(owner)
+                    .map_err(|_| Error::Unsupported("GrandStrategic current unit owner"))?
+                    .unit_records()
+                    .map_err(|_| Error::Unsupported("GrandStrategic current unit roster"))?
+                {
+                    if unit.value.k_great_person.e_individual != u32::MAX
+                        && unit.value.k_great_person.e_class != u32::MAX
+                        && unit.value.ai_controller == u32::MAX
+                    {
+                        return Err(Error::Unsupported(
+                            "GrandStrategic great-person analysis continuation",
+                        ));
+                    }
+                }
                 let g = p
                     .ai_grand_strategic
                     .as_ref()
@@ -512,7 +539,7 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::Planning => {
-                no_units(state, owner)?;
+                no_units(state, backend, owner, kind)?;
                 if p.ai_planning.is_none() {
                     return Err(Error::Unsupported("NPC Planning owner"));
                 }
@@ -546,14 +573,14 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::Espionage => {
-                no_units(state, owner)?;
+                no_units(state, backend, owner, kind)?;
                 // 20b2040's city/discount vectors are policy analyses and
                 // logging. Actual promotion, AiEvent requests and processed
                 // stores are inside the current unit roster traversal.
                 Ok(())
             }
             Kind::Military => {
-                no_units(state, owner)?;
+                no_units(state, backend, owner, kind)?;
                 let m = p
                     .ai_military
                     .as_ref()
@@ -568,7 +595,7 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::Homeland => {
-                no_units(state, owner)?;
+                no_units(state, backend, owner, kind)?;
                 // 2135230 prepares move priorities/EstablishPriorities;
                 // it does not inspect or execute control_instance_id. Preserve
                 // that owner for the separate control/deactivation path.
@@ -645,7 +672,7 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 {
                     return Err(Error::Unsupported("NPC Religious contract activation"));
                 }
-                no_units(state, owner)?;
+                no_units(state, backend, owner, kind)?;
                 // No religious Unit exists for the Delete command traversal.
                 // PurchaseGreatPeople2175d90 evaluates CanPatronize and
                 // GetActivationPlots before choosing a new PlayerOperation;
