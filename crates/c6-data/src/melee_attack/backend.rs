@@ -44,6 +44,11 @@ pub enum ContextObject {
         district: ComponentId,
         building: u32,
     },
+    /// Objects::District subtype0, the primary context of a building wrapper.
+    District {
+        city: ComponentId,
+        district: ComponentId,
+    },
     /// A real plot object; interface roles remain source-qualified by services.
     Plot(u32),
     Alliance {
@@ -54,7 +59,9 @@ pub enum ContextObject {
 impl ContextObject {
     pub(crate) fn city_component(self) -> Option<ComponentId> {
         match self {
-            Self::City(city) | Self::Building { city, .. } => Some(city),
+            Self::City(city) | Self::Building { city, .. } | Self::District { city, .. } => {
+                Some(city)
+            }
             _ => None,
         }
     }
@@ -295,7 +302,8 @@ impl EffectRuntime {
                     .city(i32::from(city.owner), city.id)
                     .map_err(|_| QueryError::Missing("current registered City"))?;
             }
-            ContextObject::Building { city, district, .. } => {
+            ContextObject::Building { city, district, .. }
+            | ContextObject::District { city, district } => {
                 if city.component_type != 2
                     || district.component_type != 3
                     || city.owner != district.owner
@@ -722,7 +730,9 @@ impl player_strength::Context for EffectContext<'_> {
             | ContextObject::Policy { owner, .. }
             | ContextObject::Government { owner, .. } => owner,
             ContextObject::Unit(u) => i32::from(u.component_id().owner),
-            ContextObject::Building { district, .. } => i32::from(district.owner),
+            ContextObject::Building { district, .. } | ContextObject::District { district, .. } => {
+                i32::from(district.owner)
+            }
             ContextObject::Alliance { .. } => return Ok(None),
             ContextObject::Game | ContextObject::City(_) | ContextObject::Plot(_) => {
                 return Err(QueryError::Unsupported(

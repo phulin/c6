@@ -17,6 +17,7 @@ pub(super) struct State {
     modifier_ids: Vec<i32>,
     initial_units: Vec<(i32, Option<Vec<u32>>)>,
     initial_cities: Vec<(i32, Vec<u32>)>,
+    initial_districts: Vec<ComponentId>,
     absent_unit_wrappers: Vec<(UnitReference, [i32; 2])>,
 }
 impl State {
@@ -40,6 +41,18 @@ impl State {
                     )
                 })
                 .collect(),
+            initial_districts: state
+                .retained()
+                .players
+                .iter()
+                .flat_map(|p| {
+                    p.districts.records.entries.iter().map(|r| ComponentId {
+                        owner: p.header.owner as i16,
+                        component_type: 3,
+                        id: r.value.id,
+                    })
+                })
+                .collect(),
             initial_cities: state
                 .retained()
                 .players
@@ -57,6 +70,9 @@ impl State {
                 })
                 .collect(),
         }
+    }
+    pub(super) fn has_initial_district(&self, district: ComponentId) -> bool {
+        self.initial_districts.contains(&district)
     }
     pub(super) fn has_initial_city(&self, city: ComponentId) -> Result<bool, QueryError> {
         self.initial_cities

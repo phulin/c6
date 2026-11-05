@@ -6,6 +6,7 @@ pub mod collection;
 pub mod definitions;
 pub mod government;
 pub mod policy;
+mod primary;
 use super::{EffectRuntime, QueryError};
 use c6_core::{
     loaded_state::LoadedState,
@@ -71,6 +72,7 @@ pub(super) struct Creation {
     city_removed_subscriptions: Vec<policy::CitySubscription>,
     modifiers: Vec<Dynamic>,
     government: government::State,
+    primary: primary::State,
     objects: Vec<Object>,
     loyalty: ListenerRing<LoyaltyListener>,
     loyalty_subscriptions: Vec<(u64, Subscription)>,
@@ -120,6 +122,7 @@ impl EffectRuntime {
             city_removed_subscriptions: Vec::new(),
             modifiers: Vec::new(),
             government: government::State::default(),
+            primary: primary::State::default(),
             objects,
             loyalty,
             loyalty_subscriptions: Vec::new(),
@@ -567,9 +570,12 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .subject_requirements
             .clone()
             .ok_or(Error::Missing("subject definition"))?;
+        let primary = self
+            .runtime
+            .primary_district_context(self.state, owner, true)?;
         let context = self
             .runtime
-            .object(owner)
+            .object(primary)
             .map_err(Error::Query)?
             .instance_id;
         c6_core::melee_attack::proposals::subject_sets::get_or_create_subject(
@@ -800,6 +806,9 @@ impl EffectRuntime {
             .as_mut()
             .ok_or(Error::Missing("current City creation domain"))?;
         creation.object_mut(owner)?;
+        // DynamicModifierFactory::Create2327e28 resolves the primary context
+        // for effect/collection Initialize before constructing the modifier.
+        let primary = self.primary_district_context(state, owner, false)?;
         let mut subjects = match definition.collection {
             definitions::Collection::Owner => vec![owner],
             definitions::Collection::PlayerCities | definitions::Collection::PlayerCapitalCity => {
@@ -908,6 +917,7 @@ impl EffectRuntime {
                     capital: definition.collection == definitions::Collection::PlayerCapitalCity,
                 });
         }
+        self.release_factory_primary(primary)?;
         // Factory hooks for these classes are BaseEffect single-RET methods.
         // GetItems has already produced the ordered snapshot before Activate.
         let mut factory = collection::MissingRequirements;
