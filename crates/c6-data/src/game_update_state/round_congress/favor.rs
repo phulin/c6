@@ -12,6 +12,7 @@ pub struct Definitions {
     binding: WireBinding,
     baseline: i32,
     governments: BTreeMap<u32, i32>,
+    government_slot_count: usize,
     co2: Penalty,
     grievances: Penalty,
     grievance_start: i32,
@@ -72,6 +73,14 @@ impl Definitions {
             binding: state.binding().clone(),
             baseline: parameter("WORLD_CONGRESS_BASELINE_FAVOR_PER_TURN")?,
             governments,
+            government_slot_count: crate::unit_initialization_definitions::collection(
+                rules,
+                "GovernmentSlots",
+                "GovernmentSlotType",
+            )
+            .map_err(|_| Error::Unsupported("favor GovernmentSlots definition order"))?
+            .entries()
+            .len(),
             co2: penalty("FAVOR_CO2")?,
             grievances: penalty("FAVOR_GRIEVANCES")?,
             grievance_start: parameter("FAVOR_GRIEVANCES_START")?,
@@ -90,6 +99,30 @@ fn player(state: &LoadedState, owner: i32) -> Result<&RetainedPlayer, Error> {
 // wrapping shift/add is observable even when the final result is an integer.
 fn add(raw: &mut i32, value: i32) {
     *raw = raw.wrapping_add(value.wrapping_shl(8));
+}
+
+/// Native GovernmentSlot definition order; vacant policy positions count too.
+/// Nonpositive per-slot modifiers are skipped before querying their count.
+fn government_favor(
+    mut amount: i32,
+    modifiers: &[i32],
+    active: &[c6_core::player_culture::GovernmentSlot],
+    definition_count: usize,
+) -> Result<i32, Error> {
+    for index in 0..definition_count {
+        let extra = *modifiers
+            .get(index)
+            .ok_or(Error::Unsupported("favor current government slot index"))?;
+        if extra <= 0 {
+            continue;
+        }
+        let count = active
+            .iter()
+            .filter(|slot| slot.slot_ordinal == index as i32)
+            .fold(0i32, |count, _| count.wrapping_add(1));
+        amount = amount.wrapping_add(extra.wrapping_mul(count));
+    }
+    Ok(amount)
 }
 
 pub fn calculate(
@@ -185,9 +218,12 @@ pub fn calculate(
             .favor_from_government_slots
             .as_ref()
             .ok_or(Error::Unsupported("favor current government slot amounts"))?;
-        if slots.iter().any(|&amount| amount > 0) {
-            return Err(Error::Unsupported("positive government slot favor"));
-        }
+        let government = government_favor(
+            government,
+            slots,
+            &current.culture.active_policies.entries,
+            defs.government_slot_count,
+        )?;
         if government > 0 {
             add(&mut raw, government);
         }
@@ -243,6 +279,30 @@ pub fn calculate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn government_slot_favor_counts_current_slots_including_vacant_positions() {
+        use c6_core::player_culture::GovernmentSlot;
+        let active = [
+            GovernmentSlot {
+                policy_hash: u32::MAX,
+                slot_ordinal: 1,
+            },
+            GovernmentSlot {
+                policy_hash: 99,
+                slot_ordinal: 1,
+            },
+            GovernmentSlot {
+                policy_hash: 99,
+                slot_ordinal: 0,
+            },
+        ];
+        assert_eq!(government_favor(-1, &[-7, 3, 100], &active, 2), Ok(5));
+        assert_eq!(government_favor(0, &[1, 0], &active, 2), Ok(1));
+        assert_eq!(
+            government_favor(4, &[1], &active, 2),
+            Err(Error::Unsupported("favor current government slot index"))
+        );
+    }
     #[test]
     fn penalties_truncate_signed_division_before_clamping() {
         let penalty = Penalty {
