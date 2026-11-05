@@ -128,13 +128,18 @@ fn city_exists<E>(state: &LoadedState, id: ComponentId) -> Result<bool, Error<E>
     if id.component_type != 2 {
         return Err(Error::Missing("current barbarian target city identity"));
     }
-    Ok(state
+    let player = state
         .retained()
         .players
         .iter()
-        .filter(|p| p.header.owner == i32::from(id.owner))
-        .flat_map(|p| p.cities.records.entries.iter())
-        .any(|c| c.value.header.id == id.id))
+        .find(|p| p.header.owner == i32::from(id.owner))
+        .ok_or(Error::Missing("current barbarian target player"))?;
+    Ok(player
+        .cities
+        .records
+        .entries
+        .iter()
+        .any(|city| city.value.header.id == id.id))
 }
 
 fn clean_trees<E>(state: &mut LoadedState, index: usize) -> Result<(), Error<E>> {
@@ -187,7 +192,13 @@ fn spawn<C: Context>(
         context
             .create_tag(state, index, plot, &tag, 1, 1)
             .map_err(Error::Effect)?;
-        edit(state, index)?.needed_unit_tags.remove(0);
+        let tags = &mut edit(state, index)?.needed_unit_tags;
+        if tags.is_empty() {
+            return Err(Error::Missing(
+                "barbarian tag removed during creation callback",
+            ));
+        }
+        tags.remove(0);
         return Ok(());
     }
     for kind in [
@@ -329,6 +340,9 @@ pub fn after_camps<C: Context>(
     capabilities: &Membership,
     full_turn: bool,
 ) -> Result<(), Error<C::Error>> {
+    if !full_turn {
+        return Ok(());
+    }
     let count = state.retained().barbarian.instances.len();
     for index in 0..count {
         activate_instance(state, context, parameters, capabilities, index)?;
