@@ -190,18 +190,20 @@ impl<P> super::Effects for Current<'_, '_, '_, '_, P> {
                         .find(|b| b.row == boost_row)
                         .ok_or_else(|| err("boost", "missing rule"))?;
                     if boost.improvement == Some(improvement) {
-                        let count = state
-                            .world()
-                            .map()
-                            .plots
-                            .iter()
-                            .filter(|p| {
-                                p.improvement_hash == improvement
-                                    && !p.flags.get(c6_core::map::PlotFlag::ImprovementPillaged)
-                                    && crate::movement_placement_state::plot_owner(p).ok()
-                                        == Some(owner)
-                            })
-                            .count() as i32;
+                        let mut count = 0i32;
+                        for current in &state.world().map().plots {
+                            let current_owner =
+                                crate::movement_placement_state::plot_owner(current)
+                                    .map_err(|e| err("boost current plot owner", e))?;
+                            if current_owner == owner
+                                && !current
+                                    .flags
+                                    .get(c6_core::map::PlotFlag::ImprovementPillaged)
+                                && current.improvement_hash == improvement
+                            {
+                                count = count.wrapping_add(1);
+                            }
+                        }
                         if count >= boost.items
                             && (!boost.requires_resource || p.resource_hash != u32::MAX)
                             && (!boost.resource_specific || boost.resource == Some(p.resource_hash))
