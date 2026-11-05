@@ -1,6 +1,6 @@
 //! Founding CulturalIdentity.DoCityCreated2872f00 / conversion trends2872f10.
 //! Domestic citizen pressure uses current cities, wrapped map distances and Q8
-//! population/ownership/age/modifier fields. Nearby foreign pressure is unsupported.
+//! population/ownership/age/modifier fields, including eligible foreign cities.
 use crate::{
     city_turn::Error, game_parameters::sql_integer, unit_initialization_definitions::collection,
     Rules,
@@ -14,6 +14,8 @@ pub struct Definitions {
     binding: WireBinding,
     parameters: BTreeMap<String, i32>,
     happiness_loyalty: Vec<i32>,
+    culture_alliance: i32,
+    pressure_ratios: (i32, i32),
 }
 impl Definitions {
     /// Identity of the loaded state used to build these loyalty definitions.
@@ -54,7 +56,34 @@ impl Definitions {
                     .ok_or(Error::Unsupported("happiness loyalty definition"))?,
             });
         }
+        let alliances =
+            collection(rules, "Alliances", "AllianceType").map_err(Error::Definitions)?;
+        let float_parameter = |name: &'static str| -> Result<i32, Error> {
+            let row = rules
+                .gameplay()
+                .table("GlobalParameters")
+                .unwrap()
+                .rows()
+                .find(|r| r.text("Name").ok() == Some(name))
+                .ok_or(Error::Unsupported(name))?;
+            let value = match row.get("Value").map_err(|_| Error::Unsupported(name))? {
+                crate::SqlValue::Integer(v) => *v as f32,
+                crate::SqlValue::RealBits(v) => f64::from_bits(*v) as f32,
+                crate::SqlValue::Text(v) => std::str::from_utf8(v)
+                    .ok()
+                    .and_then(|v| v.parse::<f32>().ok())
+                    .ok_or(Error::Unsupported(name))?,
+                _ => return Err(Error::Unsupported(name)),
+            };
+            Ok(c6_core::city_production::execution::from_float(value))
+        };
+        let pressure_ratios = (
+            float_parameter("LOYALTY_PER_TURN_FROM_NEARBY_CITIZEN_PRESSURE_MAX_RATIO")?,
+            float_parameter("LOYALTY_PER_TURN_FROM_NEARBY_CITIZEN_PRESSURE_NEUTRAL_RATIO")?,
+        );
         Ok(Self {
+            culture_alliance: alliances.find_index(0x40c39831).map_or(-1, |i| i as i32),
+            pressure_ratios,
             binding: state.binding().clone(),
             parameters,
             happiness_loyalty,
@@ -76,6 +105,33 @@ impl Definitions {
 pub trait Context {
     fn alive_ids(&self) -> &[i32];
     fn civilization_level(&self, owner: i32) -> Result<u32, Error>;
+    /// Any defensible district with HasGarrisonedUnit, in district order.
+    fn has_martial_law_garrison(
+        &mut self,
+        _state: &LoadedState,
+        _owner: i32,
+        _city: u32,
+    ) -> Result<bool, Error> {
+        Err(Error::Unsupported("occupied city district garrison query"))
+    }
+    /// Native AI city-event fanout, before conversion trends.
+    fn combat_transfer_events(
+        &mut self,
+        _state: &mut LoadedState,
+        _owner: i32,
+        _city: u32,
+    ) -> Result<(), Error> {
+        Err(Error::Unsupported("combat city transfer event subscribers"))
+    }
+    /// Qualified SetLogIdentity output, after conversion trends.
+    fn combat_transfer_output(
+        &mut self,
+        _state: &mut LoadedState,
+        _owner: i32,
+        _city: u32,
+    ) -> Result<(), Error> {
+        Err(Error::Unsupported("combat city transfer identity output"))
+    }
     fn food_surplus_q8(&mut self, state: &LoadedState, owner: i32, city: u32)
         -> Result<i32, Error>;
     fn happiness(&mut self, state: &LoadedState, owner: i32, city: u32) -> Result<i32, Error>;
@@ -175,11 +231,28 @@ pub(crate) fn identity_for(
         } else {
             "OWNERSHIP_IDENTITY_PRESSURE_FROM_CITY_TO_DOMESTIC_CITY"
         })?);
-        if c.header.occupied {
-            return Err(Error::Unsupported("martial law identity"));
+        let no_occupation = player(state, owner)?.diplomacy.no_occupation_penalties;
+        if c.header.occupied && !no_occupation && cx.has_martial_law_garrison(state, owner, id)? {
+            result = result
+                .wrapping_add(defs.q8("IDENTITY_PER_TURN_FROM_MARTIAL_LAW")?)
+                .wrapping_add(
+                    player(state, owner)?
+                        .cultural_identity
+                        .martial_law_modifier
+                        .wrapping_shl(8),
+                );
         }
-        if c.header.original_owner != owner {
-            return Err(Error::Unsupported("occupation identity"));
+        if c.header.original_owner != owner && state.player_alive(c.header.original_owner)? {
+            let grievances = state
+                .game_relations()?
+                .grievance_score(c.header.original_owner, owner)
+                .map_err(|_| Error::Unsupported("occupation current grievances"))?;
+            result = result.wrapping_add(occupation_pressure(
+                grievances,
+                defs.parameter("IDENTITY_PER_TURN_FROM_OCCUPATION_MULTIPLIER")?,
+                defs.q8("IDENTITY_PER_TURN_FROM_OCCUPATION_MIN")?,
+                defs.q8("IDENTITY_PER_TURN_FROM_OCCUPATION_MAX")?,
+            ));
         }
         if !free {
             let surplus = cx.food_surplus_q8(state, owner, id)?;
@@ -276,6 +349,7 @@ pub(crate) fn pressure(
         return Err(Error::Unsupported("nonpositive citizen pressure radius"));
     }
     let mut total = 0i32;
+    let mut foreign = 0i32;
     let ids = cx.alive_ids().to_vec();
     let origin = c6_core::unit::PlotCoord {
         x: target.header.location_x,
@@ -309,7 +383,33 @@ pub(crate) fn pressure(
                 continue;
             }
             if source != owner {
-                return Err(Error::Unsupported("nearby foreign citizen pressure"));
+                let relations = state.game_relations()?;
+                let alliance = relations
+                    .alliance_type(owner, source)
+                    .map_err(|_| Error::Unsupported("citizen pressure current alliance"))?;
+                if defs.culture_alliance != -1 && alliance == defs.culture_alliance {
+                    continue;
+                }
+                if player(state, owner)?.governors.entries.iter().any(|g| {
+                    g.governor.ignore_identity_pressure > 0
+                        && i32::from(g.governor.assigned_city.owner) == source
+                }) {
+                    continue;
+                }
+                if state.player_team(owner)? == state.player_team(source)? {
+                    continue;
+                }
+                let level = cx.civilization_level(source)?;
+                if level == 0x04e6b0a0 {
+                    return Err(Error::Unsupported("free city difficulty citizen pressure"));
+                }
+                if level != crate::registry::linux_type_hash(b"CIVILIZATION_LEVEL_FULL_CIV")
+                    || !relations
+                        .has_met(source, owner)
+                        .map_err(|_| Error::Unsupported("citizen pressure current contact"))?
+                {
+                    continue;
+                }
             }
             let population = if c.header.population > 0 {
                 if c.culture.loyalty_from_great_works_citizen_modifier > 0 {
@@ -341,20 +441,41 @@ pub(crate) fn pressure(
                     per_citizen =
                         per_citizen.wrapping_add(defs.q8("CITIZEN_IDENTITY_PRESSURE_CAPITAL")?);
                 }
+                if source != owner {
+                    let dominant = player(state, source)?
+                        .culture
+                        .dominant_over
+                        .get(owner as u32 as usize)
+                        .copied()
+                        .ok_or(Error::Unsupported(
+                            "foreign citizen current cultural dominance",
+                        ))?;
+                    if dominant {
+                        return Err(Error::Unsupported(
+                            "cultural dominance citizen pressure modifier",
+                        ));
+                    }
+                }
                 population_pressure(c.header.population, per_citizen, distance, cutoff)
             } else {
                 0
             };
             let ownership = defs
-                .q8(if c.header.capital {
-                    "OWNERSHIP_IDENTITY_PRESSURE_FROM_CAPITAL_TO_DOMESTIC_CITY"
-                } else {
-                    "OWNERSHIP_IDENTITY_PRESSURE_FROM_CITY_TO_DOMESTIC_CITY"
+                .q8(match (source == owner, c.header.capital) {
+                    (true, true) => "OWNERSHIP_IDENTITY_PRESSURE_FROM_CAPITAL_TO_DOMESTIC_CITY",
+                    (true, false) => "OWNERSHIP_IDENTITY_PRESSURE_FROM_CITY_TO_DOMESTIC_CITY",
+                    (false, true) => "OWNERSHIP_IDENTITY_PRESSURE_FROM_CAPITAL_TO_FOREIGN_CITY",
+                    (false, false) => "OWNERSHIP_IDENTITY_PRESSURE_FROM_CITY_TO_FOREIGN_CITY",
                 })?
                 .max(0);
             // CityIdentityPressure.GetIdentityPressureTotal27130a0 adds in
             // this order; each add wraps the signed Q8 backing integer.
-            total = total.wrapping_add(
+            let accumulator = if source == owner {
+                &mut total
+            } else {
+                &mut foreign
+            };
+            *accumulator = accumulator.wrapping_add(
                 ownership
                     .wrapping_add(population)
                     .wrapping_add(
@@ -366,14 +487,63 @@ pub(crate) fn pressure(
             );
         }
     }
-    // 2873f7d: both zero returns0; 287406f sees foreign==0 and
-    // chooses MAX_LOYALTY before ratio interpolation, even for negative total.
-    if total == 0 {
-        Ok(0)
+    Ok(pressure_ratio(
+        total,
+        foreign,
+        defs.q8("LOYALTY_PER_TURN_FROM_NEARBY_CITIZEN_PRESSURE_MAX_LOYALTY")?,
+        defs.q8("LOYALTY_PER_TURN_FROM_NEARBY_CITIZEN_PRESSURE_NEUTRAL_LOYALTY")?,
+        defs.pressure_ratios.0,
+        defs.pressure_ratios.1,
+    ))
+}
+fn occupation_pressure(grievances: i32, multiplier: i32, minimum: i32, maximum: i32) -> i32 {
+    let factor = c6_core::city_production::execution::from_float(multiplier as f32 / 100.0);
+    c6_core::city_production::execution::multiply(grievances.wrapping_shl(8), factor)
+        .max(minimum)
+        .min(maximum)
+        .wrapping_neg()
+}
+fn pressure_ratio(
+    domestic: i32,
+    foreign: i32,
+    maximum: i32,
+    neutral: i32,
+    max_ratio: i32,
+    neutral_ratio: i32,
+) -> i32 {
+    if domestic == 0 && foreign == 0 {
+        return 0;
+    }
+    if domestic == 0 {
+        return maximum.wrapping_neg();
+    }
+    if foreign == 0 {
+        return maximum;
+    }
+    if max_ratio == neutral_ratio {
+        return 0;
+    }
+    let ratio = divide(domestic.max(foreign), domestic.min(foreign))
+        .max(neutral_ratio)
+        .min(max_ratio);
+    let factor = divide(
+        ratio.wrapping_sub(neutral_ratio),
+        max_ratio.wrapping_sub(neutral_ratio),
+    );
+    let value = neutral
+        .wrapping_add(c6_core::city_production::execution::multiply(
+            factor,
+            maximum.wrapping_sub(neutral),
+        ))
+        .max(neutral)
+        .min(maximum);
+    if foreign > domestic {
+        value.wrapping_neg()
     } else {
-        defs.q8("LOYALTY_PER_TURN_FROM_NEARBY_CITIZEN_PRESSURE_MAX_LOYALTY")
+        value
     }
 }
+
 fn distance(state: &LoadedState, a: &City, b: &City) -> i32 {
     let map = state.world().map();
     c6_core::geometry::plot_distance(
@@ -439,6 +609,49 @@ fn trend(loyalty: i32, maximum: i32, rate: i32) -> (i32, i32) {
 fn emission(old: (Option<i32>, Option<i32>), new: (i32, i32)) -> Option<bool> {
     old.0.zip(old.1).map(|old| old != new)
 }
+/// Combat transfer for a living major previous owner. Native fresh-city identity
+/// is reset before loyalty selection; saved accumulated identity is not restored
+/// on this transfer type. Caller preserves the native owner-before-occupation
+/// value at this point and supplies the actual reached event consumers.
+pub fn do_combat_city_transferred(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    cx: &mut impl Context,
+    owner: i32,
+    id: u32,
+    old_owner: i32,
+) -> Result<(), Error> {
+    if state.binding() != &defs.binding {
+        return Err(Error::Unsupported("cultural identity definition binding"));
+    }
+    if cx.civilization_level(old_owner)?
+        != crate::registry::linux_type_hash(b"CIVILIZATION_LEVEL_FULL_CIV")
+        || !state.player_alive(old_owner)?
+    {
+        return Err(Error::Unsupported(
+            "combat transfer without surviving major previous owner",
+        ));
+    }
+    let c = city(state, owner, id)?;
+    let loyalty = defs.q8(if owner == c.header.original_owner {
+        "LOYALTY_AFTER_TRANSFERRED_BY_COMBAT_ORIGINAL_OWNER"
+    } else if owner == c.header.owner_before_occupation {
+        "LOYALTY_AFTER_TRANSFERRED_BY_COMBAT_OWNER_BEFORE_OCCUPATION"
+    } else {
+        "LOYALTY_AFTER_TRANSFERRED_BY_COMBAT"
+    })?;
+    let c = state.city_mut(owner, id)?;
+    c.cultural_identity.transfer_to = -1;
+    c.cultural_identity.identities_present.clear();
+    c.cultural_identity.loyalty_raw_q8 = loyalty;
+    // BeginMartialLaw checks major status and owner inequality, not occupied.
+    if old_owner != owner && old_owner != -1 {
+        c.cultural_identity.martial_law_target = old_owner;
+    }
+    cx.combat_transfer_events(state, owner, id)?;
+    do_city_created(state, defs, cx, owner, id)?;
+    cx.combat_transfer_output(state, owner, id)
+}
 pub fn do_city_created(
     state: &mut LoadedState,
     defs: &Definitions,
@@ -499,6 +712,23 @@ pub fn do_city_created(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn foreign_pressure_ratio_interpolation_and_signed_endpoints() {
+        assert_eq!(pressure_ratio(0, 0, 5120, 0, 768, 256), 0);
+        assert_eq!(pressure_ratio(-1, 0, 5120, 0, 768, 256), 5120);
+        assert_eq!(pressure_ratio(0, 256, 5120, 0, 768, 256), -5120);
+        assert_eq!(pressure_ratio(512, 256, 5120, 0, 768, 256), 2560);
+        assert_eq!(pressure_ratio(256, 512, 5120, 0, 768, 256), -2560);
+        assert_eq!(pressure_ratio(256, 256, 5120, 0, 768, 256), 0);
+        assert_eq!(pressure_ratio(1024, 256, 5120, 0, 768, 256), 5120);
+    }
+    #[test]
+    fn occupation_uses_float_factor_before_q8_multiply_and_clamps_before_negation() {
+        assert_eq!(occupation_pressure(0, 5, 2560, 5120), -2560);
+        assert_eq!(occupation_pressure(300, 5, 2560, 5120), -3600);
+        assert_eq!(occupation_pressure(1000, 5, 2560, 5120), -5120);
+        assert_eq!(occupation_pressure(-100, 5, 2560, 5120), -2560);
+    }
     #[test]
     fn citizen_pressure_truncates_factor_before_population_multiply() {
         assert_eq!(population_pressure(3, 256, 0, 9), 768);
