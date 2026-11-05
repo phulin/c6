@@ -20,6 +20,14 @@ fn promotion_absent<E, P>(state: &LoadedState, owner: i32) -> Result<(), Error<E
     }
     Ok(())
 }
+fn wrapper_reference(actor: (i32, u32)) -> UnitReference {
+    UnitReference::from_component_id(c6_core::unit::ComponentId {
+        owner: actor.0 as i16,
+        component_type: 1,
+        id: actor.1,
+    })
+}
+
 /// Source branch used by Player.Units.DoEndTurn's gathered delayed list.
 /// All UnitRemoved consumers must already have run; they are never dispatched
 /// twice here. Destruction releases the normal object only after real cleanup.
@@ -64,13 +72,7 @@ where
     continuations
         .unit_cleanup_runtime_mut()
         .map_err(Error::CleanupQuery)?
-        .release_destroyed_unit_wrapper(
-            state,
-            UnitReference {
-                owner: actor.0,
-                id: actor.1,
-            },
-        )
+        .release_destroyed_unit_wrapper(state, wrapper_reference(actor))
         .map_err(Error::CleanupQuery)?;
     // Unit destructor validation233dde0 is diagnostic object/reference logging;
     // stock component/archive/owned-vector destruction has no gameplay RNG.
@@ -78,4 +80,27 @@ where
     state
         .release_destroyed_unit_storage(actor.0, actor.1)
         .map_err(Error::Roster)
+}
+
+#[cfg(test)]
+mod identity_tests {
+    use super::*;
+    #[test]
+    fn delayed_wrapper_matches_packed_unit_component_word() {
+        // A normal Unit wrapper stores the full first CID word, not PlayerTypes.
+        // These bytes identify owner0/type1/unit65536 in the reached contract.
+        let retained = UnitReference {
+            owner: i32::from_le_bytes([0, 0, 1, 0]),
+            id: 65536,
+        };
+        assert_eq!(wrapper_reference((0, 65536)), retained);
+        assert_eq!(wrapper_reference((63, 7)).owner, 0x0001_003f);
+        assert_ne!(
+            wrapper_reference((0, 65536)),
+            UnitReference {
+                owner: 0,
+                id: 65536
+            }
+        );
+    }
 }
