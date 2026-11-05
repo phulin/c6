@@ -642,9 +642,11 @@ impl<'a> Reader<'a> {
     }
     fn religion(&mut self) -> Result<Religion, Error> {
         self.version(7)?;
+        // Linux operator>>2a15820 reads wrapper+0xf8 (next founder)
+        // before wrapper+0xe0 (minimum faith; value+0xf0).
         Ok(Religion {
-            minimum_faith_for_next_pantheon: self.i32()?,
             next_pantheon_founder: self.i32()?,
+            minimum_faith_for_next_pantheon: self.i32()?,
             records: self.list(51, Self::religion_data)?,
         })
     }
@@ -3546,6 +3548,33 @@ pub(crate) mod tests {
         (value, snapshots)
     }
     #[test]
+    fn game_religion_linux_wire_orders_founder_before_minimum_faith() {
+        // Independent Linux wire contract: version, next founder, minimum
+        // whole faith, empty religion list. Distinct values expose swapping.
+        let bytes: Vec<u8> = [7i32, 1, 25, 0]
+            .into_iter()
+            .flat_map(i32::to_le_bytes)
+            .collect();
+        let (religion, used, _) =
+            Religion::decode_prefix_with_items(&bytes, Limits::default()).unwrap();
+        assert_eq!(religion.next_pantheon_founder, 1);
+        assert_eq!(religion.minimum_faith_for_next_pantheon, 25);
+        assert_eq!(used, bytes.len());
+        let mut writer = Writer {
+            bytes: Vec::new(),
+            items: 0,
+            limits: Limits::default(),
+        };
+        writer
+            .religion(&Religion {
+                next_pantheon_founder: 1,
+                minimum_faith_for_next_pantheon: 25,
+                records: Vec::new(),
+            })
+            .unwrap();
+        assert_eq!(writer.bytes, bytes);
+    }
+    #[test]
     fn standalone_game_religion_stops_without_manager_header() {
         let mut bytes = Vec::new();
         for v in [7i32, i32::MIN, -1, 0] {
@@ -3556,8 +3585,8 @@ pub(crate) mod tests {
             max_items: 0,
         };
         let (religion, used, items) = Religion::decode_prefix_with_items(&bytes, exact).unwrap();
-        assert_eq!(religion.minimum_faith_for_next_pantheon, i32::MIN);
-        assert_eq!(religion.next_pantheon_founder, -1);
+        assert_eq!(religion.next_pantheon_founder, i32::MIN);
+        assert_eq!(religion.minimum_faith_for_next_pantheon, -1);
         assert_eq!((used, items), (16, 0));
         bytes.extend([0xff; 4]);
         assert_eq!(
@@ -5242,8 +5271,9 @@ impl Writer {
     }
     fn religion(&mut self, v: &Religion) -> Result<(), Error> {
         self.word(7)?;
-        self.int(v.minimum_faith_for_next_pantheon)?;
+        // Linux operator<<2a157c0 follows the same wrapper order.
         self.int(v.next_pantheon_founder)?;
+        self.int(v.minimum_faith_for_next_pantheon)?;
         self.count(v.records.len())?;
         for v in &v.records {
             self.word(7)?;
