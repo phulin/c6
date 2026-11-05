@@ -28,6 +28,8 @@ pub mod government;
 pub mod purchase;
 #[path = "session_district.rs"]
 pub mod district;
+#[path = "session_upgrade.rs"]
+pub mod upgrade;
 
 #[derive(Debug)]
 pub enum Error<E> {
