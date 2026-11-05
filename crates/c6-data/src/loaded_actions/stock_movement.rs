@@ -22,6 +22,7 @@ pub enum Error {
     Script(super::stock_script::Error),
     Requirement(String),
     UnsupportedPlacementReport(u32),
+    RemovalReport(super::turn_reports::Error),
     RequirementChanged { receiver: u64, old: i32, new: i32 },
 }
 impl std::fmt::Display for Error {
@@ -312,6 +313,9 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
                     )
                     .map_err(Error::Rules)
             }
+            0xd8ad_fd71 | 0x8ee3_1e6f | 0x4ce3_627a => self
+                .deliver_removal_report(state, report, super::turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers)
+                .map_err(Error::RemovalReport),
             _ => Err(Error::UnsupportedPlacementReport(report.event_hash)),
         }
     }

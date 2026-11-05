@@ -70,6 +70,10 @@ impl<P> super::Effects for Current<'_, '_, '_, '_,P> {
                     event:0x3d4006f2,subtype:c6_core::unit::BUILD_IMPROVEMENT_HASH,identity:unit,
                     first:Some(improvement),second:None}).map_err(|e|err("operation reporting",e))?;
             },
+            Report::LastCharge(unit)=>crate::loaded_upkeep::OperationReports::placement_report(self.backend,state,
+                c6_core::unit_placement_transition::PlacementReport{event_hash:0xc1300ee7,identity:unit,
+                    payload:c6_core::unit_placement_transition::PlacementPayload::Visibility{state:0,initial_placement:None}})
+                .map_err(|e|err("last-charge visibility reporting",e))?,
             Report::ChargesChanged{unit,..}=>self.backend.reporting.observe_builder_charges(state,UnitReference::from_component_id(unit))
                 .map_err(|e|err("charge reporting",e))?,
             // The remaining reached stock reports publish derived city/map/unit

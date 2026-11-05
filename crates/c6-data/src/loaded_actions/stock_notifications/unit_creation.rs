@@ -64,6 +64,9 @@ impl<'a, P> Runtime<'a, P> {
         self.modifier_owners = Some(owners);
         Ok(())
     }
+    pub fn modifier_owners(&self) -> Result<&ModifierOwners, movement::Error> {
+        self.modifier_owners.as_ref().ok_or(movement::Error::Missing("canonical modifier owners"))
+    }
     pub fn modifier_owners_mut(&mut self) -> Result<&mut ModifierOwners, movement::Error> {
         self.modifier_owners
             .as_mut()
