@@ -249,9 +249,7 @@ impl<'a, P> Runtime<'a, P> {
                 id: current.header.id,
             }),
         };
-        if !self.decisions.contains(&decision) {
-            self.decisions.push(decision);
-        }
+        research::insert_pending_decision(&mut self.decisions, decision);
         Ok(())
     }
     /// Publish a decision already established by the source gameplay caller
@@ -278,9 +276,7 @@ impl<'a, P> Runtime<'a, P> {
             location,
             component,
         };
-        if !self.decisions.contains(&decision) {
-            self.decisions.push(decision);
-        }
+        research::insert_pending_decision(&mut self.decisions, decision);
         Ok(())
     }
     pub fn into_current<'s>(
@@ -315,9 +311,7 @@ impl<'a, P> Runtime<'a, P> {
             component: (!(record.component.owner == -1 && record.component.id == u32::MAX))
                 .then_some(record.component),
         };
-        if !self.decisions.contains(&decision) {
-            self.decisions.push(decision);
-        }
+        research::insert_pending_decision(&mut self.decisions, decision);
     }
 }
 
@@ -348,9 +342,7 @@ impl<P> lifecycle::Backend for Runtime<'_, P> {
                     component: (!(record.component.owner == -1 && record.component.id == u32::MAX))
                         .then_some(record.component),
                 };
-                if !self.decisions.contains(&decision) {
-                    self.decisions.push(decision);
-                }
+                research::insert_pending_decision(&mut self.decisions, decision);
                 // Stock plain headless publication exposes the semantic decision;
                 // native client cache/DTO playback has no policy role here.
                 return Ok(());
@@ -360,10 +352,15 @@ impl<P> lifecycle::Backend for Runtime<'_, P> {
                     .player_notifications()?
                     .record_by_object(object)
                     .map_err(lifecycle::Error::Owner)?;
+                let expired = Decision {
+                    owner:i32::from(record.id.owner),type_hash:record.type_hash,location:record.location,
+                    component:(!(record.component.owner == -1 && record.component.id == u32::MAX)).then_some(record.component),
+                };
                 self.decisions.retain(|d| {
+                    !research::same_global_research_choice(d,&expired) && (
                     d.owner != i32::from(record.id.owner)
                         || d.type_hash != record.type_hash
-                        || d.location != record.location
+                        || d.location != record.location)
                 });
                 return Ok(());
             }

@@ -459,6 +459,27 @@ mod current_age_tests {
     }
 }
 
+// A semantic global research choice has no physical target. Native invalid
+// location sentinels are presentation hints, not separate policy requests.
+pub(super) fn insert_pending_decision(
+    decisions: &mut Vec<super::Decision>,
+    decision: super::Decision,
+) {
+    if decisions
+        .iter()
+        .any(|old| old == &decision || same_global_research_choice(old, &decision))
+    {
+        return;
+    }
+    decisions.push(decision);
+}
+pub(super) fn same_global_research_choice(a: &super::Decision, b: &super::Decision) -> bool {
+    a.component.is_none()
+        && b.component.is_none()
+        && a.owner == b.owner
+        && a.type_hash == b.type_hash
+        && matches!(a.type_hash, choose_tech::TYPE_HASH | 0xe1d3_d3ac)
+}
 fn resolve_research_decision(
     decisions: &mut Vec<super::Decision>,
     owner: i32,
@@ -473,6 +494,47 @@ fn resolve_research_decision(
 #[cfg(test)]
 mod decision_tests {
     use super::*;
+    #[test]
+    fn global_research_sentinels_do_not_duplicate_a_policy_choice() {
+        let d = |owner, type_hash, location, component| super::super::Decision {
+            owner,
+            type_hash,
+            location,
+            component,
+        };
+        let mut pending = vec![];
+        let tech = d(0, choose_tech::TYPE_HASH, [-1, -1], None);
+        assert!(same_global_research_choice(
+            &tech,
+            &d(0, choose_tech::TYPE_HASH, [-9999, -9999], None)
+        ));
+        insert_pending_decision(&mut pending, tech.clone());
+        insert_pending_decision(
+            &mut pending,
+            d(0, choose_tech::TYPE_HASH, [-9999, -9999], None),
+        );
+        let other = d(1, choose_tech::TYPE_HASH, [-9999, -9999], None);
+        insert_pending_decision(&mut pending, other.clone());
+        let civic = d(
+            0,
+            culture_notifications::Kind::ChooseCivic.type_hash(),
+            [-9999, -9999],
+            None,
+        );
+        insert_pending_decision(&mut pending, civic.clone());
+        let targeted = d(
+            0,
+            choose_tech::TYPE_HASH,
+            [-1, -1],
+            Some(c6_core::notifications::ComponentId {
+                owner: 0,
+                component_type: 2,
+                id: 65536,
+            }),
+        );
+        insert_pending_decision(&mut pending, targeted.clone());
+        assert_eq!(pending, vec![tech, other, civic, targeted]);
+    }
     #[test]
     fn selected_research_preserves_other_players_civics_and_government_choices() {
         let d = |owner, type_hash| super::super::Decision {
