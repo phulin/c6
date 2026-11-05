@@ -864,6 +864,7 @@ pub mod district_actions;
 pub mod unit_kill;
 
 pub mod city_territory;
+pub mod city_plot_purchase;
 pub mod influence_map_update;
 
 pub mod found_city_requirement_queries;

@@ -18,6 +18,7 @@ use c6_core::{
 };
 
 pub mod advance;
+pub mod combat;
 pub mod initialized;
 pub mod founding;
 #[path = "session_policy.rs"]
@@ -26,6 +27,8 @@ pub mod policy;
 pub mod government;
 #[path = "session_purchase.rs"]
 pub mod purchase;
+#[path = "session_plot_purchase.rs"]
+pub mod plot_purchase;
 #[path = "session_district.rs"]
 pub mod district;
 #[path = "session_upgrade.rs"]
