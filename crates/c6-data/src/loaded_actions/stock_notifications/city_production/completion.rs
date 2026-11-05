@@ -36,6 +36,7 @@ pub enum Listener {
 }
 /// Current registrations and definition owners, borrowed for a production step.
 /// Gameplay owners are supplied by the SAME StockRuntime, never copied here.
+#[derive(Clone, Copy)]
 pub struct Services<'a> {
     pub rules: &'a Rules,
     pub attachments: &'a definitions::Definitions,

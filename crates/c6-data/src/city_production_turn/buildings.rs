@@ -366,7 +366,11 @@ impl Definitions {
             .ok_or(Error::Unsupported("Building definition"))
     }
     pub fn adjusted_base_cost(&self, building: &Building) -> i32 {
-        let raw = building.base_cost.wrapping_shl(8) as i64;
+        self.adjust_cost(building.base_cost)
+    }
+    /// Economic.AdjustForGameSpeed(int), shared by gold purchases.
+    pub fn adjust_cost(&self, cost: i32) -> i32 {
+        let raw = cost.wrapping_shl(8) as i64;
         let speed = self.speed_cost_multiplier.wrapping_shl(8) as i64;
         ((raw * speed / 25_600).clamp(i32::MIN as i64, i32::MAX as i64) as i32) >> 8
     }

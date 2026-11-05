@@ -1,5 +1,6 @@
 //! Explicit City gold purchases on canonical Treasury and unit factory owners.
 //! Faith and specialized placement/resource branches remain explicit.
+pub mod buildings;
 pub mod stock;
 use crate::{
     city_production_turn::{self as production, unit_selection as selection},
@@ -26,6 +27,8 @@ pub enum Error<E> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Rejection {
     CannotTrain,
+    CannotConstruct,
+    AlreadyPresent,
     CannotPlace,
     BannedYield,
     InsufficientGold,

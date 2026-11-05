@@ -7,6 +7,7 @@ use crate::{
 use c6_core::{loaded_state::LoadedState, unit::ComponentId};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Report {
+    BuildingPurchased { city: ComponentId, building: u32 },
     UnitPurchased { city: ComponentId, unit: u32 },
     CommandComplete { city: ComponentId },
 }
@@ -127,3 +128,82 @@ impl<P> Effects for Current<'_, '_, '_, '_, P> {
 }
 // Keep concrete error spelling available to caller-owned request adapters.
 pub type StockError = Error<String>;
+
+/// Building creation borrows the existing completion registrations and SAME
+/// mutable stock modifier/requirement owners.
+pub struct BuildingCurrent<'s, 'a, 'd, P> {
+    pub backend: &'s mut stock_notifications::Runtime<'a, P>,
+    pub definitions: &'d crate::city_production_turn::buildings::Definitions,
+    pub appeal: &'d crate::city_production_turn::appeal::Definitions,
+    pub completion: stock_notifications::city_production::completion::Services<'d>,
+    pub production_reports: &'s mut Vec<stock_notifications::city_production::Record>,
+    pub reports: &'s mut Vec<Report>,
+}
+impl<P> super::buildings::Effects for BuildingCurrent<'_, '_, '_, P> {
+    type Error = String;
+    fn gold_changed(&mut self, state: &mut LoadedState, owner: i32) -> Result<(), String> {
+        crate::game_update_state::activation::treasury_deals::Effects::gold_changed(
+            self.backend,
+            state,
+            owner,
+        )
+        .map_err(|e| format!("purchase GoldChanged: {e:?}"))
+    }
+    fn create_building(
+        &mut self,
+        state: &mut LoadedState,
+        city: ComponentId,
+        building: u32,
+    ) -> Result<bool, String> {
+        let c = state
+            .city(i32::from(city.owner), city.id)
+            .map_err(|e| format!("purchase City: {e:?}"))?;
+        let location = [c.header.location_x, c.header.location_y];
+        let mut effects = stock_notifications::city_production::Effects::new(
+            self.backend,
+            self.definitions,
+            self.appeal,
+            stock_notifications::city_production::Scope::StockPlainHeadlessNoAddedConsumers,
+        )
+        .with_completion(self.completion);
+        let result = crate::city_production_turn::buildings::create_full(
+            state,
+            i32::from(city.owner),
+            city.id,
+            building,
+            location,
+            self.definitions,
+            &mut effects,
+        )
+        .map_err(|e| format!("purchase CreateBuilding: {e:?}"));
+        self.production_reports.append(&mut effects.reports);
+        result
+    }
+    fn purchased_report(
+        &mut self,
+        state: &mut LoadedState,
+        city: ComponentId,
+        building: u32,
+    ) -> Result<(), String> {
+        self.backend
+            .check(state)
+            .map_err(|e| format!("purchase report binding: {e:?}"))?;
+        self.reports
+            .push(Report::BuildingPurchased { city, building });
+        Ok(())
+    }
+    fn command_complete(
+        &mut self,
+        state: &mut LoadedState,
+        city: ComponentId,
+    ) -> Result<(), String> {
+        self.backend
+            .check(state)
+            .map_err(|e| format!("purchase command binding: {e:?}"))?;
+        let local = self.backend.local_player().ok_or("purchase local Player")?;
+        if i32::from(city.owner) == local {
+            self.reports.push(Report::CommandComplete { city });
+        }
+        Ok(())
+    }
+}

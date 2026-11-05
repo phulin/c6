@@ -62,3 +62,70 @@ impl<'a, P> Session<'_, 'a, P> {
         self.retain(result, partial)
     }
 }
+
+impl<'a, P> Session<'_, 'a, P> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn building_purchase_gold_cost(
+        &self,
+        owner: i32,
+        city: u32,
+        building: u32,
+        definitions: &Definitions,
+        construction: &crate::city_production_turn::buildings::Definitions,
+    ) -> Result<i32, Error<purchase_actions::Error<()>>> {
+        self.ordinary_player_action(owner)?;
+        purchase_actions::buildings::gold_cost(
+            self.state(),
+            definitions,
+            construction,
+            owner,
+            city,
+            building,
+        )
+        .map_err(Error::Action)
+    }
+    /// Ordinary empty-queue gold purchase. Building callbacks use the same
+    /// mutable backend and canonical requirement/modifier owner as city turns.
+    #[allow(clippy::too_many_arguments)]
+    pub fn purchase_building_gold<Q: crate::city_production_turn::selection::Queries>(
+        &mut self,
+        owner: i32,
+        city: u32,
+        building: u32,
+        definitions: &Definitions,
+        construction: &crate::city_production_turn::buildings::Definitions,
+        choices: &crate::city_production_turn::selection::Definitions,
+        current: &crate::city_production_turn::selection::Current<'_>,
+        queries: &Q,
+        appeal: &crate::city_production_turn::appeal::Definitions,
+        completion:crate::loaded_actions::stock_notifications::city_production::completion::Services<'_>,
+        production_reports: &mut Vec<
+            crate::loaded_actions::stock_notifications::city_production::Record,
+        >,
+        reports: &mut Vec<stock::Report>,
+    ) -> Result<purchase_actions::buildings::Outcome, Error<purchase_actions::Error<String>>> {
+        self.ordinary_player_action(owner)?;
+        let mut effects = stock::BuildingCurrent {
+            backend: &mut self.context.notifications.backend,
+            definitions: construction,
+            appeal,
+            completion,
+            production_reports,
+            reports,
+        };
+        let result = purchase_actions::buildings::purchase(
+            self.context.notifications.state,
+            definitions,
+            construction,
+            choices,
+            current,
+            queries,
+            owner,
+            city,
+            building,
+            &mut effects,
+        );
+        let partial = matches!(&result, Err(purchase_actions::Error::Effect(_)));
+        self.retain(result, partial)
+    }
+}
