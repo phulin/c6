@@ -197,27 +197,39 @@ impl<P, S: Services<P>> placement::Context for Current<'_, '_, '_, '_, '_, P, S>
         hash: u32,
         radius: u32,
     ) -> Result<bool, Error> {
-        let map = state.world().map();
-        for (i, p) in map.plots.iter().enumerate() {
-            if p.resource_hash != hash || p.city_attributes.as_ref().is_some_and(|a| a.player != -1)
-            {
-                continue;
+        // Source 0x28318d0 remembers the FIRST raw resource match. The
+        // caller tests its owner afterwards; a later unowned match cannot
+        // rescue an earlier owned one. Preserve native wrapped duplicates.
+        let mut first = None;
+        c6_core::unit_placement_tails::neighborhood(at, radius, |at| {
+            if first.is_some() {
+                return Ok(());
             }
-            let other = location(state, i)?;
-            let distance = c6_core::geometry::plot_distance(
-                map.header.width,
-                map.header.wrap_x,
-                at.x,
-                at.y,
-                other.x,
-                other.y,
-            );
-            if distance >= 0 && distance as u32 <= radius {
-                return Ok(true);
+            let Some(plot) = crate::unit_placement_services::plot_index_at::<
+                std::convert::Infallible,
+            >(state, at)
+            .map_err(|_| Error::Unsupported("camp resource neighbor"))?
+            else {
+                return Ok(());
+            };
+            let plot = state
+                .world()
+                .map()
+                .plots
+                .get(plot as usize)
+                .ok_or(Error::Unsupported("camp resource plot"))?;
+            if plot.resource_hash == hash {
+                first = Some(
+                    crate::movement_placement_state::plot_owner(plot)
+                        .map_err(|_| Error::Unsupported("camp resource owner"))?
+                        == -1,
+                );
             }
-        }
-        Ok(false)
+            Ok::<_, Error>(())
+        })?;
+        Ok(first.unwrap_or(false))
     }
+
     fn scaled_spawn_turns(&self, state: &LoadedState, turns: i32) -> Result<i32, Error> {
         self.camps.services.spawn_turns(state, turns)
     }
@@ -314,9 +326,11 @@ impl<P, S: Services<P>> placement::OwnerContext for Current<'_, '_, '_, '_, '_, 
         owner: i32,
         plot: usize,
     ) -> Result<(), Error> {
+        // ComponentID default constructor 0x1fe21f0 writes
+        // 0xffffffff0000ffff: owner=-1, type=0, id=MAX.
         let source = ComponentId {
             owner: -1,
-            component_type: -1,
+            component_type: 0,
             id: u32::MAX,
         };
         let mut context = unit_sight_state::Context {
