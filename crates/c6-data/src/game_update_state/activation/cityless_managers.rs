@@ -252,6 +252,7 @@ pub struct Runtime {
     pub climate: Vec<ClimateConsumption>,
     pub parks: Vec<c6_core::game_national_parks::ParkData>,
     congress: Option<CongressInputs>,
+    emergency_signals: Option<Vec<c6_core::game_emergency::Signal>>,
 }
 impl Runtime {
     pub fn congress(&self, state: &LoadedState) -> Result<&CongressInputs, Error> {
@@ -259,6 +260,36 @@ impl Runtime {
         self.congress
             .as_ref()
             .ok_or(missing("current Congress/Emergency owner"))
+    }
+    /// The signal list belongs to the same live Emergency manager as instances.
+    pub fn initialize_emergency_signals(
+        &mut self,
+        state: &LoadedState,
+        signals: Vec<c6_core::game_emergency::Signal>,
+    ) -> Result<(), Error> {
+        self.validate(state)?;
+        if self.emergency_signals.is_some() {
+            return Err(missing("Emergency signals already initialized"));
+        }
+        self.emergency_signals = Some(signals);
+        Ok(())
+    }
+    pub fn emergency_signals(
+        &self,
+        state: &LoadedState,
+    ) -> Result<&[c6_core::game_emergency::Signal], Error> {
+        self.validate(state)?;
+        self.emergency_signals
+            .as_deref()
+            .ok_or(missing("current Emergency signals"))
+    }
+    pub(crate) fn clear_emergency_signals(&mut self, state: &LoadedState) -> Result<(), Error> {
+        self.validate(state)?;
+        self.emergency_signals
+            .as_mut()
+            .ok_or(missing("current Emergency signals"))?
+            .clear();
+        Ok(())
     }
     pub fn from_initial(
         state: &LoadedState,
@@ -270,6 +301,7 @@ impl Runtime {
             climate,
             parks,
             congress: None,
+            emergency_signals: None,
         }
     }
     pub fn initialize_congress(

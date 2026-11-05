@@ -11,6 +11,7 @@ pub mod round_eras;
 pub mod round_climate;
 pub mod round_map;
 pub mod round_phase;
+pub mod round_emergency;
 use crate::{
     loaded_actions::{command_units, reporting},
     unit_placement_services,
