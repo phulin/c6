@@ -6,6 +6,7 @@ pub mod activation;
 pub mod round_units;
 pub mod round_cities;
 pub mod round_trade;
+pub mod round_religion;
 pub mod round_climate;
 pub mod round_map;
 use crate::{
@@ -187,3 +188,7 @@ pub fn advance_current_player<B: crate::loaded_actions::notifications::processin
 }
 
 pub mod round_random_events;
+
+pub mod round_great_people;
+
+pub mod round_quests;
