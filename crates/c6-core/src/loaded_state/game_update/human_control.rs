@@ -7,10 +7,25 @@ use crate::{game_update::Error, loaded_state::LoadedState};
 /// Execute the unit ownership changes made by Homeland/Tactical.DoTurnEnd.
 /// Their human DoTurn selectors do not recruit/assign; CityBuild.QueueNextBuild
 /// also returns before choosing production for a human. Priority-signal
-/// Planning/Research/Targets consumers only maintain native planning caches;
+/// Targets observations are gameplay-consumed and must execute;
 /// CityBuild.DoTurnDeactivate is empty and Tactical's signal returns for humans.
 /// The profiling-only Control.TurnComplete timer is omitted.
+/// Without current signal consumers this stops at their mandatory dispatch,
+/// retaining the completed drain prefix; it does not complete deactivation.
 pub fn deactivate(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
+    deactivate_with_priority_signal(state, owner, |_, _, _| {
+        Err(Error::Unsupported(
+            "current human priority signal consumers",
+        ))
+    })
+}
+/// Native201eec9 dispatches Player.Signals+228 with -1 after the priority drain
+/// and before controller destruction/FreeUnits. Errors retain that prefix.
+pub fn deactivate_with_priority_signal(
+    state: &mut LoadedState,
+    owner: i32,
+    mut priority_signal: impl FnMut(&mut LoadedState, i32, i32) -> Result<(), Error>,
+) -> Result<(), Error> {
     if state
         .player_slot_status(owner)
         .map_err(|_| Error::Unsupported("current human controls"))?
@@ -59,6 +74,7 @@ pub fn deactivate(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
     // Native DoTurnDeactivate drains each completed priority before DoTurnEnd;
     // IsDoneTurn reads the stored -1, so this is scheduling state, not a score.
     super::human_activation::set_priority(state, owner, -1)?;
+    priority_signal(state, owner, -1)?;
     let player = state
         .retained
         .players
@@ -97,7 +113,11 @@ pub fn deactivate(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
     Ok(())
 }
 
-pub(super) fn release_controller(state: &mut LoadedState, owner: i32, controller: u32) -> Result<(), Error> {
+pub(super) fn release_controller(
+    state: &mut LoadedState,
+    owner: i32,
+    controller: u32,
+) -> Result<(), Error> {
     // Assigning INVALID to already-unowned units has no gameplay effect; native
     // archive-dirty metadata is not part of logical gameplay state.
     if controller == u32::MAX {
@@ -175,7 +195,19 @@ mod tests {
         player.ai_homeland.as_mut().unwrap().control_instance_id = u32::MAX;
         player.ai_tactical.as_mut().unwrap().control_instance_id = u32::MAX;
         assert!(!super::super::human_activation::is_done_turn(&state, owner).unwrap());
-        deactivate(&mut state, owner).unwrap();
+        let mut signals = 0;
+        deactivate_with_priority_signal(&mut state, owner, |state, source_owner, priority| {
+            assert_eq!(source_owner, owner);
+            assert_eq!(priority, -1);
+            assert_eq!(
+                super::super::human_activation::current_priority(state, owner)?,
+                -1
+            );
+            signals += 1;
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(signals, 1);
         assert!(super::super::human_activation::is_done_turn(&state, owner).unwrap());
         assert_eq!(
             super::super::human_activation::current_priority(&state, owner).unwrap(),

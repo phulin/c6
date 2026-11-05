@@ -263,7 +263,25 @@ pub fn finish_completed_human_pass<P>(
             .record(c.state, owner)
             .map_err(Error::Visibility)?;
         if c.state.player_slot_status(owner).map_err(Error::State)? == 3 {
-            loaded::human_control::deactivate(c.state, owner).map_err(Error::Prefix)?;
+            loaded::human_control::deactivate_with_priority_signal(
+                c.state,
+                owner,
+                |state, owner, _priority| {
+                    let services = inputs.npc_services.as_ref().ok_or(
+                        game_update::Error::Unsupported("current human priority signal services"),
+                    )?;
+                    let sight = services.visibility.try_borrow().map_err(|_| {
+                        game_update::Error::Unsupported("current human priority signal sight borrow")
+                    })?;
+                    super::human_activation::knowledge::refresh_visible_units(
+                        state,
+                        owner,
+                        services.maintenance.maintenance.unit_registry(),
+                        &sight,
+                    )
+                },
+            )
+            .map_err(Error::Prefix)?;
         } else {
             let services = inputs.npc_services.as_ref().ok_or(Error::Prefix(
                 game_update::Error::Unsupported("current NPC deactivation services"),

@@ -30,6 +30,17 @@ pub fn observe_visible_units(
             "current historical knowledge aging continuation",
         ));
     }
+    refresh_visible_units(state, observer, units, visibility)
+}
+
+/// UpdateKnowledgeBase at the final control-priority signal does not age or
+/// reset history. It replaces/adds observations using the current visible map.
+pub fn refresh_visible_units(
+    state: &mut LoadedState,
+    observer: i32,
+    units: &LinuxDefinitionRegistry,
+    visibility: &unit_sight_state::Runtime,
+) -> Result<(), Error> {
     let layers = visibility.shared(observer).map_err(Error::Unsupported)?;
     let normal = layers
         .0
