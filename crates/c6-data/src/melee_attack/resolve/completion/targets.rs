@@ -11,6 +11,7 @@ use c6_core::{
 #[derive(Debug)]
 pub enum Error {
     Binding,
+    ArmyKnowledge(super::army_knowledge::Error),
     Missing(&'static str),
     Actor(crate::melee_attack::Error),
     State(c6_core::loaded_state::Error),
@@ -168,15 +169,24 @@ pub fn unit_killed(
     };
     Ok(())
 }
-/// Player.Signals+78 observes the current attacking Unit. CivKnowledge.UpdateUnit
-/// 2001230 first checks PlotCoord.IsValid; removed attackers naturally add no
-/// army record. Live valid-location AddUnit remains a required implementation.
-pub fn observer_attacked(state: &LoadedState, attacker: UnitReference) -> Result<(), Error> {
+/// Player.Signals+78 observes the current attacking Unit in the same canonical
+/// ArmyKnowledge used by creation and visibility. Removed attacker locations
+/// take CivKnowledge.UpdateUnit's source guard in the shared adapter.
+pub fn observer_attacked(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    observer: i32,
+    attacker: UnitReference,
+) -> Result<(), Error> {
+    if defs.binding != *state.binding() {
+        return Err(Error::Binding);
+    }
     let unit = crate::melee_attack::actor(state, attacker).map_err(Error::Actor)?;
     if !c6_core::geometry::plot_valid(unit.k_location.x, unit.k_location.y) {
         return Ok(());
     }
-    Err(Error::Missing("current ArmyKnowledge.AddUnit"))
+    super::army_knowledge::observe(state, &defs.units, observer, attacker)
+        .map_err(Error::ArmyKnowledge)
 }
 #[cfg(test)]
 mod tests {
