@@ -1,6 +1,18 @@
 //! Revision-tracked canonical Player.Techs and Player.Culture access.
 use super::*;
 impl LoadedState {
+    /// Canonical Player.Bonuses storage used by government flat-bonus effects.
+    /// Source setters perform definition lookup before borrowing this owner.
+    pub fn player_bonuses_mut(
+        &mut self,
+        owner: i32,
+    ) -> Result<&mut crate::player_components::Bonuses, Error> {
+        self.world.player(owner).map_err(Error::World)?;
+        let index = self.retained.players.iter().position(|p| p.header.owner == owner)
+            .ok_or(Error::Missing(MissingInput::Player(owner)))?;
+        self.revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        Ok(&mut self.retained.players[index].bonuses)
+    }
     pub fn research_components(
         &self,
         owner: i32,
