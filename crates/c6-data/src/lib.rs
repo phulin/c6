@@ -10,6 +10,7 @@ pub mod city_initialization;
 pub mod city_power;
 pub mod city_movement;
 pub mod city_turn;
+pub mod luxury_allocation;
 pub mod city_production_turn;
 pub mod combat_defender;
 pub mod formation_rules;

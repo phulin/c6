@@ -235,13 +235,12 @@ impl Definitions {
         }
         Ok(result.wrapping_add(self.project(city)?.map_or(0, |p| p.amenities)))
     }
-    pub fn amenities(
+    pub fn from_luxuries(
         &self,
         state: &LoadedState,
         owner: i32,
         id: u32,
         capabilities: &Membership,
-        growth_rules: &GrowthRules,
     ) -> Result<i32, Error> {
         if !capabilities.has(0xc7762424) {
             return Ok(0);
@@ -330,6 +329,23 @@ impl Definitions {
                 }
             }
         }
+        Ok(result)
+    }
+    pub fn amenities(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        id: u32,
+        capabilities: &Membership,
+        growth_rules: &GrowthRules,
+    ) -> Result<i32, Error> {
+        if !capabilities.has(0xc7762424) {
+            return Ok(0);
+        }
+        let player = player(state, owner)?;
+        let city = state.city(owner, id)?;
+        let growth = &city.growth;
+        let mut result = self.from_luxuries(state, owner, id, capabilities)?;
         result = result.wrapping_add(self.entertainment(state, owner, id)?);
         for value in [
             growth.amenities_from_entertainment_modifier,
