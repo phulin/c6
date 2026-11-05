@@ -94,6 +94,54 @@ fn player(
         .find(|p| p.header.owner == owner)
         .ok_or(Error::Missing("current victory Player"))
 }
+/// PlayerDefaultDefeat237d810. The initialized owner and flags belong to the
+/// same Simple requirement; city membership and delayed death are read live.
+/// The positive unit-search branch remains explicit until its caller supplies
+/// the canonical death queries used by the native predicate.
+pub fn test_default_defeat(
+    state: &LoadedState,
+    initialized_owner: i32,
+    subject: Object,
+    no_units_raw: u8,
+    no_cities_raw: u8,
+) -> Result<i32, Error> {
+    if initialized_owner == -1 {
+        return Ok(3);
+    }
+    let Some(owner) = as_player(subject)? else {
+        return Ok(1);
+    };
+    let player = player(state, owner)?;
+    if no_cities_raw == 0 {
+        if let Some(result) = default_defeat_city_result(
+            player.cities.peak_cities,
+            player
+                .cities
+                .records
+                .entries
+                .iter()
+                .map(|entry| entry.value.header.delayed_death),
+        ) {
+            return Ok(result);
+        }
+    }
+    if no_units_raw != 0 || player.units.peak_units == 0 {
+        return Ok(1);
+    }
+    Err(Error::Missing("DefaultDefeat current Unit predicate"))
+}
+fn default_defeat_city_result(
+    peak_cities: u32,
+    delayed_death: impl IntoIterator<Item = bool>,
+) -> Option<i32> {
+    (peak_cities != 0).then(|| {
+        if delayed_death.into_iter().any(|dead| !dead) {
+            1
+        } else {
+            2
+        }
+    })
+}
 pub fn test(
     state: &LoadedState,
     definitions: &Definitions,
@@ -299,6 +347,15 @@ fn highest_score(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn default_defeat_live_city_precedes_units_and_empty_peak_falls_through() {
+        assert_eq!(default_defeat_city_result(1, [false]), Some(1));
+        assert_eq!(default_defeat_city_result(2, [true, false]), Some(1));
+        assert_eq!(default_defeat_city_result(2, [true]), Some(2));
+        assert_eq!(default_defeat_city_result(1, []), Some(2));
+        let unread = std::iter::from_fn(|| panic!("zero peak must skip city iteration"));
+        assert_eq!(default_defeat_city_result(0, unread), None);
+    }
     #[test]
     fn turn_limit_modes_and_wrapping() {
         assert_eq!(game_end_turn(50, 100, -1), 0);
