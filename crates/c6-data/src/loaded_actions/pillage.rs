@@ -173,10 +173,8 @@ pub fn can_start<E: Queries>(
     if plot.flags.get(PlotFlag::Impassable) {
         return Ok(false);
     }
-    let owner = plot
-        .city_attributes
-        .as_ref()
-        .map_or(-1, |a| i32::from(a.player));
+    let owner = crate::movement_placement_state::plot_owner(plot)
+        .map_err(|_| Error::Missing("Pillage political owner"))?;
     if owner != -1 {
         if !effects
             .at_war(state, unit.e_owner, owner)
@@ -316,7 +314,17 @@ pub fn start<E: Effects>(
             .as_ref()
             .filter(|a| a.player != -1 && a.owning_city != u32::MAX)
             .map(|a| (i32::from(a.player), a.owning_city));
-        if actor.player() != -1 && city.is_some_and(|(owner, id)| state.city(owner, id).is_ok()) {
+        let has_city = match city {
+            None => false,
+            Some((owner, id)) => match state.city(owner, id) {
+                Ok(_) => true,
+                Err(c6_core::loaded_state::Error::Missing(
+                    c6_core::loaded_state::MissingInput::City { .. },
+                )) => false,
+                Err(error) => return Err(Error::State(error)),
+            },
+        };
+        if actor.player() != -1 && has_city {
             effect!(
                 "improvement notification",
                 effects.improvement_notification(state, plot, actor.player())
