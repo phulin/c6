@@ -94,7 +94,7 @@ impl<P> Effects<'_, '_, '_, P> {
         self.backend.last_error = Some(format!("human activation: {error:?}"));
         Error::Unsupported("stock human activation; inspect backend.last_error")
     }
-    fn city_callbacks(state: &LoadedState, owner: i32) -> Result<(), Error> {
+    fn city_callbacks(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
         let p = player(state, owner)?;
         if p.cities.records.entries.is_empty() {
             return Ok(());
@@ -112,15 +112,19 @@ impl<P> Effects<'_, '_, '_, P> {
             {
                 return Err(Error::Unsupported("human CityBuild working contract"));
             }
-            if !city.event_trees.is_empty() {
-                return Err(Error::Unsupported("human CityBuild event-tree cleanup"));
-            }
         }
         // 1fdd181..1fdd2c8 refreshes plot/district/food/defender policy
         // evaluations, using current getters and arithmetic without RNG.
         // The actual human guard at1fdd2d0 returns before CheckGrowth,
         // contract requests and QueueNextBuild. Those are external decisions.
         // Off-turn analyzer jobs and these derived scores are not gameplay.
+        // 1fdd220..1fdd23a only writes MAX into stale CityBuild-local tree
+        // references. It never releases or modifies the actual tree/control;
+        // those references are consumed by the native production policies
+        // below the human return. Mark this cache unavailable with the rest.
+        state
+            .omit_city_build_planning(owner)
+            .map_err(|_| Error::Unsupported("human CityBuild planning owner"))?;
         Ok(())
     }
     fn controller_callbacks(state: &LoadedState, owner: i32, kind: Kind) -> Result<(), Error> {

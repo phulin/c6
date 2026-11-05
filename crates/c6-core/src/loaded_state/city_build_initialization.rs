@@ -2,6 +2,16 @@
 use super::LoadedState;
 use crate::{city_build_initialization::Error, player_ai_city_manager::CityManager};
 impl LoadedState {
+    /// Mark native production analyses unavailable when production decisions
+    /// are supplied externally. This changes no controller or contract owner.
+    pub fn omit_city_build_planning(&mut self, owner: i32) -> Result<(), Error> {
+        use crate::player_ai_city_manager::PlanningData;
+        let manager = self.city_build_manager_mut(owner)?;
+        for entry in &mut manager.city_ais.entries {
+            entry.city_build.planning_data = PlanningData::ExternalPolicyOmitted;
+        }
+        Ok(())
+    }
     pub(crate) fn city_founding_strategic_parts(
         &mut self,
         owner: i32,
@@ -60,6 +70,40 @@ impl LoadedState {
 #[cfg(test)]
 mod tests {
     use crate::city_build_initialization::{create, Error, Inputs};
+    #[test]
+    fn external_city_planning_is_unavailable_without_mutating_contract_or_tree_references() {
+        use crate::player_ai_city_manager::{
+            CityBuild, CityBuildEntry, CityManager, PlanningData, RecycledCityBuilds,
+        };
+        let mut state = super::super::tests::state();
+        let city = CityBuild {
+            event_trees: vec![7, u32::MAX],
+            ..Default::default()
+        };
+        let contract = city.managed_working_contract.clone();
+        state.retained.players[0].ai_city_manager = Some(CityManager {
+            player_id: 0,
+            city_ais: RecycledCityBuilds {
+                entries: vec![CityBuildEntry {
+                    index: 0,
+                    city_build: city,
+                }],
+                ..Default::default()
+            },
+        });
+        state.omit_city_build_planning(0).unwrap();
+        let city = &state.retained.players[0]
+            .ai_city_manager
+            .as_ref()
+            .unwrap()
+            .city_ais
+            .entries[0]
+            .city_build;
+        assert_eq!(city.planning_data, PlanningData::ExternalPolicyOmitted);
+        assert!(city.require_retained_planning().is_err());
+        assert_eq!(city.event_trees, [7, u32::MAX]);
+        assert_eq!(city.managed_working_contract, contract);
+    }
     #[test]
     fn uninitialized_guard_and_wrong_state_binding_do_not_mutate() {
         let mut state = super::super::tests::state();
