@@ -29,6 +29,7 @@ impl<'s, 'a> Session<'s, 'a> {
     ) -> Result<strike::Outcome, Error<strike::Error>> {
         self.ordinary_player_action(issuer)?;
         let before = self.state().action_stamp();
+        let mut reached_start = false;
         let result = (|| {
             let attacker = current_district(self.state(), issuer, city_id, district_id)?;
             let admitted = can_start(self.state(), issuer, city_id, attacker, target, queries)?;
@@ -47,6 +48,7 @@ impl<'s, 'a> Session<'s, 'a> {
                     component_type: 1,
                     id: defender.id,
                 });
+                reached_start = true;
                 let generated = self.context.notifications.backend.city_strike(
                     state,
                     sight,
@@ -91,7 +93,7 @@ impl<'s, 'a> Session<'s, 'a> {
                 .map_err(|e| error("messages processed", e))?;
             Ok(outcome)
         })();
-        let partial = self.state().action_stamp() != before;
+        let partial = reached_start || self.state().action_stamp() != before;
         self.retain(result, partial)
     }
 }
