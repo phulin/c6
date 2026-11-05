@@ -12,6 +12,7 @@ use c6_core::{
     unit::{ComponentId, OperationNode, Unit},
 };
 
+pub mod current;
 pub mod plunder;
 
 pub mod stock;
@@ -73,7 +74,7 @@ impl Definitions {
 }
 /// Source gameplay dependencies; implementations borrow persistent owners and
 /// perform the actual callbacks in native registration order.
-pub trait Effects {
+pub trait Queries {
     type Error;
     fn is_combat(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Self::Error>;
     fn at_war(&self, state: &LoadedState, owner: i32, other: i32) -> Result<bool, Self::Error>;
@@ -87,7 +88,10 @@ pub trait Effects {
         plot_owner: i32,
     ) -> Result<bool, Self::Error>;
     fn clans_active(&self) -> Result<bool, Self::Error>;
-    fn barbarian_camp_improvement(&self) -> Result<u32, Self::Error>;
+    fn barbarian_camp_improvement(&self, state: &LoadedState) -> Result<u32, Self::Error>;
+}
+/// Synchronous execution effects, evaluated against the same canonical owners.
+pub trait Effects: Queries {
     fn observer_can_see_owner(&self, state: &LoadedState, owner: i32) -> Result<bool, Self::Error>;
     fn local_unit_visible(
         &self,
@@ -145,7 +149,7 @@ fn check<E>(state: &LoadedState, defs: &Definitions) -> Result<(), Error<E>> {
 /// XP2 CanStart without optional presentation tooltip construction. District
 /// plots remain explicit unsupported inputs; improvement legality does not use
 /// the request's optional improvement hash.
-pub fn can_start<E: Effects>(
+pub fn can_start<E: Queries>(
     state: &LoadedState,
     defs: &Definitions,
     unit: &Unit,
@@ -206,7 +210,10 @@ pub fn can_start<E: Effects>(
         return Ok(false);
     }
     if effects.clans_active().map_err(Error::Query)?
-        && plot.improvement_hash == effects.barbarian_camp_improvement().map_err(Error::Query)?
+        && plot.improvement_hash
+            == effects
+                .barbarian_camp_improvement(state)
+                .map_err(Error::Query)?
     {
         return Ok(false);
     }
