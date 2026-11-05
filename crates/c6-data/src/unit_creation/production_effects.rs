@@ -37,6 +37,18 @@ pub fn player_unit_created<E>(
     if definitions.identities != state.binding().inputs {
         return Err(Error::Missing("production definitions binding"));
     }
+    observe_current_unit(state, &definitions.units, observer, unit)
+}
+
+/// Current UnitInfo update shared by creation and ordinary visibility scans.
+/// The registry retains native definition order; the canonical knowledge owner
+/// and the existing ID-preserving update kernel remain the only authorities.
+pub fn observe_current_unit<E>(
+    state: &mut LoadedState,
+    units: &crate::registry::LinuxDefinitionRegistry,
+    observer: i32,
+    unit: (i32, u32),
+) -> Result<(), Error<E>> {
     let current = actor(state, unit.0, unit.1)?;
     let location = current.k_location;
     // PlotCoord.IsValid1fe2340: both signed coordinates are greater than -9999.
@@ -48,8 +60,7 @@ pub fn player_unit_created<E>(
         .filter(|&v| v < 64)
         .ok_or(Error::Missing("knowledge Unit owner"))?;
     let hash = current.e_type_index;
-    let index = definitions
-        .units
+    let index = units
         .find_index(hash)
         .ok_or(Error::Missing("knowledge Unit definition"))?;
     let targets = state
@@ -70,11 +81,11 @@ pub fn player_unit_created<E>(
         return Err(Error::Missing("knowledge vector presence"));
     }
     // Saved hash remapping must represent the complete native type vector.
-    if buckets.len() != definitions.units.count()
-        || (0..definitions.units.count()).any(|i| {
+    if buckets.len() != units.count()
+        || (0..units.count()).any(|i| {
             buckets
                 .iter()
-                .filter(|b| Some(b.hash) == definitions.units.type_hash(i))
+                .filter(|b| Some(b.hash) == units.type_hash(i))
                 .count()
                 != 1
         })

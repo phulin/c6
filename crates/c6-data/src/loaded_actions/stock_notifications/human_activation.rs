@@ -2,6 +2,7 @@
 //! Native policy scores, job scheduling, planner pointers and target DTOs are
 //! excluded from the external-policy arena. Gameplay ownership and role writes
 //! run at their actual off-turn/priority boundaries.
+pub mod knowledge;
 use super::{maintenance, Runtime};
 use crate::game_update_state::activation::maintenance::ScoutInputs;
 use c6_core::{
@@ -84,6 +85,7 @@ struct Effects<'s, 'a, 'i, P> {
     definitions: &'i maintenance::Definitions,
     units: &'i [u32],
     scout: &'i ScoutInputs,
+    visibility: &'i crate::unit_sight_state::Runtime,
     major: bool,
     initialized: bool,
 }
@@ -248,6 +250,12 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
                     // !IsHuman. External policies own both choices.
                 }
                 Kind::Targets => {
+                    knowledge::observe_visible_units(
+                        state,
+                        owner,
+                        self.definitions.maintenance.unit_registry(),
+                        self.visibility,
+                    )?;
                     let t = player(state, owner)?
                         .ai_targets
                         .as_ref()
@@ -292,6 +300,7 @@ pub fn run<P>(
     initialized: bool,
     scout: &ScoutInputs,
     full_turn: bool,
+    visibility: &crate::unit_sight_state::Runtime,
 ) -> Result<(), Error> {
     if state.binding() != &inputs.binding {
         return Err(Error::Unsupported("human activation runtime binding"));
@@ -307,6 +316,7 @@ pub fn run<P>(
             definitions,
             units,
             scout,
+            visibility,
             major,
             initialized,
         },

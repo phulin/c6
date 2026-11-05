@@ -38,6 +38,9 @@ pub struct Definitions {
     scout_uses: LinuxDefinitionRegistry,
 }
 impl Definitions {
+    pub(crate) fn unit_registry(&self) -> &LinuxDefinitionRegistry {
+        &self.units
+    }
     pub fn from_rules(
         rules: &Rules,
         authority: &ResourceAuthority<'_>,
