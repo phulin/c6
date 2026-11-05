@@ -455,11 +455,18 @@ fn current_raw(
             if level != 0x253718b0 {
                 return Ok(0);
             }
-            global
-                .current_era_scores
-                .as_ref()
-                .and_then(|v| v.iter().find(|p| p.0 == owner))
-                .map(|p| p.1.iter().fold(0i32, |n, v| n.wrapping_add(*v)))
+            // Gameplay callbacks update the canonical Game.Eras owner. The
+            // captured vectors are only for callers without that live domain.
+            let scores = match state.game_era_scores() {
+                Ok(rows) => usize::try_from(owner).ok().and_then(|i| rows.get(i)),
+                Err(_) => global
+                    .current_era_scores
+                    .as_ref()
+                    .and_then(|v| v.iter().find(|p| p.0 == owner))
+                    .map(|p| &p.1),
+            };
+            scores
+                .map(|row| row.iter().fold(0i32, |n, v| n.wrapping_add(*v)))
                 .ok_or(Error::Missing("current era score vector"))
         }
         other => Err(Error::Unsupported(other)),
