@@ -200,8 +200,21 @@ impl<R: RequirementOwner, P: normal::Effects> changes::Context for Release<'_, R
         Ok(())
     }
 }
+fn collection_owner<'s>(
+    state: &'s mut LoadedState,
+    current: Option<&'s mut c6_core::melee_attack::proposals::collections::Runtime>,
+) -> Result<&'s mut c6_core::melee_attack::proposals::collections::Runtime, &'static str> {
+    if let Some(current) = current {
+        return Ok(current);
+    }
+    state
+        .combat_proposals_mut()
+        .map_err(|_| "current proposal owner")?
+        .collections_mut()
+        .map_err(|_| "current collection owner")
+}
 struct UnitItemRemoval<'a> {
-    state: &'a mut LoadedState,
+    collections: &'a mut c6_core::melee_attack::proposals::collections::Runtime,
     effects: &'a EffectRuntime,
     input: &'a Metadata,
 }
@@ -210,20 +223,12 @@ impl c6_core::melee_attack::proposals::collections::Context<u64> for UnitItemRem
     fn collections(
         &self,
     ) -> Result<&c6_core::melee_attack::proposals::collections::Runtime, Error> {
-        self.state
-            .combat_proposals()
-            .map_err(|_| Error::Input("current proposal owner"))?
-            .collections()
-            .map_err(|_| Error::Input("current collection owner"))
+        Ok(self.collections)
     }
     fn collections_mut(
         &mut self,
     ) -> Result<&mut c6_core::melee_attack::proposals::collections::Runtime, Error> {
-        self.state
-            .combat_proposals_mut()
-            .map_err(|_| Error::Input("current proposal owner"))?
-            .collections_mut()
-            .map_err(|_| Error::Input("current collection owner"))
+        Ok(self.collections)
     }
     fn item_changed(&mut self, receiver: u64, object: &mut u64, added: bool) -> Result<(), Error> {
         if added {
@@ -289,6 +294,7 @@ pub struct Stock<'a, R> {
         >,
     >,
     influence: Option<&'a mut Influence<'a>>,
+    collections: Option<&'a mut c6_core::melee_attack::proposals::collections::Runtime>,
 }
 impl<'a, R> Stock<'a, R> {
     pub fn new(
@@ -309,7 +315,17 @@ impl<'a, R> Stock<'a, R> {
             input,
             unit_definitions: None,
             influence: None,
+            collections: None,
         })
+    }
+    /// Borrow an existing generic collection owner when it is not hosted by
+    /// combat proposals. This is the same live owner used by City/Unit callbacks.
+    pub fn with_collections(
+        mut self,
+        collections: &'a mut c6_core::melee_attack::proposals::collections::Runtime,
+    ) -> Self {
+        self.collections = Some(collections);
+        self
     }
     pub fn with_influence(mut self, callback: &'a mut Influence<'a>) -> Self {
         self.influence = Some(callback);
@@ -413,7 +429,8 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> Continuations<P> for S
                         .map_err(kill::Error::CleanupQuery)?;
                     c6_core::melee_attack::proposals::collections::remove_typed_item(
                         &mut UnitItemRemoval {
-                            state,
+                            collections: collection_owner(state, self.collections.as_deref_mut())
+                                .map_err(kill::Error::Missing)?,
                             effects: self.effects,
                             input: self.input,
                         },
@@ -497,13 +514,12 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
             Combat(c6_core::melee_attack::proposals::collection_modifiers::Modifier),
             Unit(c6_core::unit_kill::objects::Modifier),
         }
-        let proposals = state
-            .combat_proposals_mut()
-            .map_err(|_| kill::Error::Missing("current proposal owner"))?;
-        let modifiers = proposals
-            .collection_modifiers_mut()
-            .map_err(|_| kill::Error::Missing("current proposal modifiers"))?;
-        let retained = if let Some(current) = modifiers.modifier(receiver) {
+        let combat = state
+            .combat_proposals()
+            .ok()
+            .and_then(|p| p.collection_modifiers().ok())
+            .and_then(|m| m.modifier(receiver));
+        let retained = if let Some(current) = combat {
             if current.instance != instance
                 || !current.tracked.is_empty()
                 || !current.applied.is_empty()
@@ -513,7 +529,11 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                 ));
             }
             Retained::Combat(
-                modifiers
+                state
+                    .combat_proposals_mut()
+                    .map_err(|_| kill::Error::Missing("current proposal owner"))?
+                    .collection_modifiers_mut()
+                    .map_err(|_| kill::Error::Missing("current proposal modifiers"))?
                     .remove_registration(receiver)
                     .ok_or(kill::Error::Missing("owned combat modifier removal"))?,
             )
@@ -570,12 +590,8 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                 .map_err(|e| kill::Error::Effect(Error::Requirements(e)))?;
         }
         let collection = row.collection;
-        let proposals = state
-            .combat_proposals_mut()
-            .map_err(|_| kill::Error::Missing("current proposal owner"))?;
-        let collections = proposals
-            .collections_mut()
-            .map_err(|_| kill::Error::Missing("current collection owner"))?;
+        let collections = collection_owner(state, self.collections.as_deref_mut())
+            .map_err(kill::Error::Missing)?;
         if row.collection_changed_subscription {
             collections
                 .unsubscribe_changed_receiver(
@@ -628,14 +644,16 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
             .map_err(|e| kill::Error::Effect(Error::Requirements(e)))?;
         }
         if let Some(collection) = collection {
-            let destroyed = state
-                .combat_proposals_mut()
-                .map_err(|_| kill::Error::Missing("current proposals"))?
-                .collections_mut()
-                .map_err(|_| kill::Error::Missing("current collections"))?
+            let destroyed = collection_owner(state, self.collections.as_deref_mut())
+                .map_err(kill::Error::Missing)?
                 .release_owner(collection)
                 .map_err(|_| kill::Error::Missing("current collection lifetime"))?;
             if destroyed {
+                if self.collections.is_some() {
+                    return Err(kill::Error::Missing(
+                        "generic Unit collection destruction continuation",
+                    ));
+                }
                 crate::melee_attack::proposals::collection_modifiers::destroy_unit_combat_collection(state,collection)
                     .map_err(|e|kill::Error::Effect(Error::Collection(e)))?;
             }
