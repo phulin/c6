@@ -105,7 +105,7 @@ where
         match hash {
             // These stock handlers inherit the complete constant-false leaf.
             // No queue mutation, policy selection, report or RNG is performed.
-            SKIP_TURN_HASH | FORTIFY_HASH | MOVE_TO_HASH | MAKE_TRADE_ROUTE_HASH | c6_core::unit::RANGE_ATTACK_HASH | c6_core::unit::PILLAGE_HASH => Ok(false),
+            SKIP_TURN_HASH | FORTIFY_HASH | MOVE_TO_HASH | MAKE_TRADE_ROUTE_HASH | c6_core::unit::RANGE_ATTACK_HASH | c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH => Ok(false),
             c6_core::unit::ALERT_HASH => {
                 let actor = self.movement.unit()?;
                 if !alert_enemy_visible(
