@@ -10,6 +10,7 @@ pub mod placement;
 pub mod services;
 pub mod workers;
 pub mod stock;
+pub mod death;
 
 use c6_core::{
     core_player::initialization::WireBinding,

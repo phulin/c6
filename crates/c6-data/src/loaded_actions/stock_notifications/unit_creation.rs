@@ -69,6 +69,19 @@ impl<'a, P> Runtime<'a, P> {
             .as_mut()
             .ok_or(movement::Error::Missing("canonical modifier owners"))
     }
+    /// Loan the SAME canonical owners during a synchronous lifecycle callback.
+    /// The provider remains borrowed for reports/sight; no owner is cloned or
+    /// rebuilt, and errors restore the mutated owner before returning.
+    pub(crate) fn with_modifier_owners<R>(
+        &mut self,
+        apply: impl FnOnce(&mut Self, &mut ModifierOwners) -> R,
+    ) -> Result<R, movement::Error> {
+        let mut owners=self.modifier_owners.take()
+            .ok_or(movement::Error::Missing("canonical modifier owners"))?;
+        let result=apply(self,&mut owners);
+        self.modifier_owners=Some(owners);
+        Ok(result)
+    }
     /// Execute a synchronous factory scope against the ongoing turn's actual
     /// requirement store. Only immutable factory metadata is joined. All
     /// returned errors preserve mutations and restore the canonical store.

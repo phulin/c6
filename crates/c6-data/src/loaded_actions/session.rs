@@ -366,6 +366,7 @@ impl Session<'_, '_, c6_core::unit::OperationParameters> {
         // The session's current visibility history is the canonical Gossip
         // owner. Reborrow all other services instead of copying/replacing them.
         let mut current = crate::builder_improvement::stock::Dispatcher {
+            death: dispatcher.death,
             definitions: dispatcher.definitions, cached: dispatcher.cached,
             services: &mut *dispatcher.services,
             legality: crate::builder_improvement::legality::Inputs {

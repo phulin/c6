@@ -25,6 +25,7 @@ impl Cached {
     }
 }
 pub struct Dispatcher<'a,'d> {
+    pub death: Option<&'a super::death::Inputs<'a,'d>>,
     pub definitions:&'a Definitions,
     pub cached:&'a Cached,
     pub services:&'a mut services::Current,
@@ -111,8 +112,9 @@ impl<P> super::Effects for Current<'_, '_, '_, '_,P> {
         crate::loaded_upkeep::finish_unit_moves(state,actor.player(),actor.id,self.dispatcher.upkeep,self.backend)
             .map_err(|e|err("FinishMoves",e))
     }
-    fn delayed_destroy(&mut self,_:&mut LoadedState,_:UnitReference)->Result<(),Error>{
-        Err(err("last-charge delayed destruction","not composed"))
+    fn delayed_destroy(&mut self,state:&mut LoadedState,actor:UnitReference)->Result<(),Error>{
+        let inputs=self.dispatcher.death.ok_or_else(||err("last-charge delayed destruction","current lifecycle services"))?;
+        super::death::delayed_destroy(state,self.sight,self.backend,inputs,(actor.player(),actor.id))
     }
 }
 impl<P> shared::OwnerContext for Current<'_, '_, '_, '_,P> {
