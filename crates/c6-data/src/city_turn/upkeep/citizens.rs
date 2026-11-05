@@ -2,11 +2,18 @@
 //! Capacity/yield and changed-report callbacks share the caller's current rules,
 //! territory, Script and modifier owners. No captured worker scores are inputs.
 use crate::city_turn::Error;
-use c6_core::{city_citizen_assignment as workers, loaded_state::LoadedState, unit::PlotCoord};
+use c6_core::{
+    city_citizen_assignment as workers, loaded_state::LoadedState,
+    movement_world::DefinitionLookup, unit::PlotCoord,
+};
 
 pub struct Definitions {
     improvements: crate::registry::LinuxDefinitionRegistry,
     workable: Vec<bool>,
+    districts: crate::registry::LinuxDefinitionRegistry,
+    district_slots: Vec<i32>,
+    buildings: crate::registry::LinuxDefinitionRegistry,
+    building_slots: Vec<i32>,
 }
 impl Definitions {
     pub fn from_rules(rules: &crate::Rules) -> Result<Self, Error> {
@@ -32,11 +39,46 @@ impl Definitions {
                     .ok_or(Error::Unsupported("Improvement.Workable"))
             })
             .collect::<Result<Vec<_>, Error>>()?;
+        let (districts, district_slots) = citizen_slots(rules, "Districts", "DistrictType")?;
+        let (buildings, building_slots) = citizen_slots(rules, "Buildings", "BuildingType")?;
         Ok(Self {
             improvements,
             workable,
+            districts,
+            district_slots,
+            buildings,
+            building_slots,
         })
     }
+}
+/// Both native getters return Optional<int>; an absent value contributes zero.
+fn citizen_slots(
+    rules: &crate::Rules,
+    table_name: &'static str,
+    type_column: &'static str,
+) -> Result<(crate::registry::LinuxDefinitionRegistry, Vec<i32>), Error> {
+    let registry =
+        crate::unit_initialization_definitions::collection(rules, table_name, type_column)
+            .map_err(Error::Definitions)?;
+    let table = rules
+        .gameplay()
+        .table(table_name)
+        .ok_or(Error::Unsupported(table_name))?;
+    let slots = registry
+        .entries()
+        .iter()
+        .map(|entry| {
+            let row = table
+                .row_by_id(entry.database_rowid)
+                .ok_or(Error::Unsupported("worker slot definition"))?;
+            match row.get("CitizenSlots").map_err(Error::Rules)? {
+                crate::SqlValue::Null => Ok(0),
+                value => crate::game_parameters::sql_integer(value)
+                    .ok_or(Error::Unsupported("CitizenSlots")),
+            }
+        })
+        .collect::<Result<Vec<_>, Error>>()?;
+    Ok((registry, slots))
 }
 pub struct Current<'a> {
     pub definitions: &'a crate::city_turn::yield_calculation::Definitions,
@@ -112,7 +154,76 @@ pub fn capacity(
         }
     }
     if a.district != u32::MAX {
-        return Err(Error::Unsupported("specialist worker capacity"));
+        let player = state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Unsupported("worker district owner"))?;
+        // Player.Districts.Find uses the recycled low slot. Plot.GetDistrictType
+        // returns NO_DISTRICT when that slot is absent.
+        let find = |id: u32| {
+            (id != u32::MAX)
+                .then(|| {
+                    player
+                        .districts
+                        .records
+                        .entries
+                        .iter()
+                        .find(|entry| entry.index as u32 == id & 0xffff)
+                        .map(|entry| &entry.value)
+                })
+                .flatten()
+        };
+        if let Some(district) = find(a.district).filter(|d| d.district_hash != u32::MAX) {
+            if !district.is_complete {
+                return Ok(0);
+            }
+            // GetDistrictAt visits this city's district IDs in their stored
+            // order; the plot attribute need not name the first location match.
+            if c.districts
+                .district_ids
+                .iter()
+                .filter_map(|&id| find(id))
+                .find(|d| d.location == (point.x, point.y))
+                .is_some_and(|d| d.pillaged)
+            {
+                return Ok(0);
+            }
+            let mut slots = defs
+                .districts
+                .find_index(district.district_hash)
+                .map_or(0, |index| defs.district_slots[index]);
+            // GetBuildingsAtLocation iterates the native definition order and
+            // tests signed current locations before checking pillage.
+            for (index, _) in defs.buildings.entries().iter().enumerate() {
+                let hash = defs
+                    .buildings
+                    .type_hash(index)
+                    .ok_or(Error::Unsupported("worker Building definition"))?;
+                let location = c
+                    .buildings
+                    .building_locations
+                    .iter()
+                    .rfind(|v| v.definition_hash == hash)
+                    .ok_or(Error::Unsupported("current worker Building location"))?
+                    .value;
+                if i32::from(location) != plot as i32 {
+                    continue;
+                }
+                let pillaged = c
+                    .buildings
+                    .pillaged
+                    .iter()
+                    .rfind(|v| v.definition_hash == hash)
+                    .ok_or(Error::Unsupported("current worker Building pillage"))?
+                    .value;
+                if !pillaged {
+                    slots = slots.wrapping_add(defs.building_slots[index]);
+                }
+            }
+            return Ok(slots);
+        }
     }
     Ok(current.definitions.tiles.normal_worker_capacity())
 }
