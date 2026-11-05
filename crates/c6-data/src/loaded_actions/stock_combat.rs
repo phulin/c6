@@ -1,4 +1,4 @@
-//! Qualified ordinary ranged combat services on the persistent stock owner.
+//! Qualified combat and Unit lifecycle services on the persistent stock owner.
 //! Current gameplay callbacks execute in source order. Presentation statuses,
 //! XP caches and platform achievements become typed output in this stock scope.
 use super::{movement::Error, unit_creation::ModifierOwners, Runtime};
@@ -32,7 +32,7 @@ pub struct State<'a> {
     inputs: Option<backend::Inputs>,
     bindings: Option<resolve::completion::stock::Bindings>,
     pub observer: Option<i32>,
-    configuration: crate::loaded_actions::configuration::RawGameConfiguration,
+    configuration: Option<crate::loaded_actions::configuration::RawGameConfiguration>,
     pub promotion: &'a dyn PromotionQuery,
     pub experience_events: Vec<experience::reporting::Event>,
     pub statuses: Vec<resolve::surviving::Status>,
@@ -40,6 +40,29 @@ pub struct State<'a> {
     pub resolved: Vec<resolve::completion::ResolvedCombat>,
 }
 impl<'a> State<'a> {
+    /// Qualified Unit lifecycle/report callbacks without attack execution.
+    /// Mutable effects and requirements stay in the existing ModifierOwners.
+    /// Attack inputs, completion bindings and configuration remain unavailable;
+    /// requesting a ranged attack on this context returns an explicit error.
+    pub fn for_unit_cleanup(
+        state: &LoadedState,
+        observer: Option<i32>,
+        promotion: &'a dyn PromotionQuery,
+        _: Scope,
+    ) -> Self {
+        Self {
+            origin: state.action_stamp(),
+            inputs: None,
+            bindings: None,
+            observer,
+            configuration: None,
+            promotion,
+            experience_events: Vec::new(),
+            statuses: Vec::new(),
+            deaths: Vec::new(),
+            resolved: Vec::new(),
+        }
+    }
     /// Split an initialized backend once; install returned stores in the SAME
     /// stock ModifierOwners, alongside the current collection/factory owners.
     pub fn from_backend(
@@ -54,7 +77,7 @@ impl<'a> State<'a> {
         let configuration = inputs.configuration;
         (
             Self {
-                configuration,
+                configuration: Some(configuration),
                 origin,
                 inputs: Some(inputs),
                 bindings: Some(bindings),
@@ -109,6 +132,10 @@ impl<'a, P> Runtime<'a, P> {
             .combat
             .take()
             .ok_or_else(|| missing("combat services"))?;
+        if combat.inputs.is_none() || combat.bindings.is_none() || combat.configuration.is_none() {
+            self.combat = Some(combat);
+            return Err(missing("ranged action services unavailable in cleanup context"));
+        }
         let Some(owners) = self.modifier_owners.take() else {
             self.combat = Some(combat);
             return Err(missing("canonical modifier owners"));
@@ -198,7 +225,9 @@ impl<P> ranged_attack::Effects for Runtime<'_, P> {
         let combat = self.combat_current(state)?;
         // Configuration lives in the loaned backend while resolving. Preserve
         // the explicit multiplayer gate using the current stock runtime facts.
-        let configuration = combat.configuration;
+        let configuration = combat
+            .configuration
+            .ok_or(Error::Missing("combat configuration unavailable in cleanup context"))?;
         let _ = combat;
         let location = melee::actor(state, defender)
             .map_err(|e| Error::Requirement(format!("{e:?}")))?
