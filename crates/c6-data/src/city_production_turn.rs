@@ -23,6 +23,7 @@ use c6_core::{
 #[derive(Debug)]
 pub enum Error {
     Binding,
+    DistrictInitialization(Box<crate::district_initialization::Error<Error>>),
     Rules(crate::Error),
     Definitions(crate::unit_initialization_definitions::Error),
     District(c6_core::loaded_state::district_initialization::DistrictError),

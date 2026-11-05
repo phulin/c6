@@ -30,6 +30,8 @@ struct Definition {
     model: u32,
     parameter: i32,
     specialty: bool,
+    technology: Option<u32>,
+    civic: Option<u32>,
 }
 pub struct Definitions {
     binding: WireBinding,
@@ -70,12 +72,19 @@ impl Definitions {
                 SqlValue::Null => 0,
                 _ => return Err(Error::Missing("district progression model")),
             };
+            let prerequisite = |column| match row.get(column).map_err(Error::Rules)? {
+                SqlValue::Null => Ok(None),
+                SqlValue::Text(name) => Ok(Some(crate::registry::linux_type_hash(name))),
+                _ => Err(Error::Missing("district prerequisite type")),
+            };
             items.push(Definition {
                 hash: crate::registry::linux_type_hash(&entry.type_name),
                 cost,
                 model,
                 parameter,
                 specialty: integer(row, "RequiresPopulation")? != 0,
+                technology: prerequisite("PrereqTech")?,
+                civic: prerequisite("PrereqCivic")?,
             });
         }
         let eras = collection(rules, "Eras", "EraType").map_err(Error::Definitions)?;
@@ -170,7 +179,7 @@ impl Definitions {
         percent: i32,
         start_era: Option<u32>,
     ) -> Result<(), Error> {
-        self.recompute(state, owner, percent, start_era, false)
+        self.recompute(state, owner, percent, start_era, false, None)
     }
     /// Stats.GetAverageNumConstructableDistricts2b82530 sums only specialty
     /// districts (Economic.IsSpecialty = RequiresPopulation). With no such
@@ -184,7 +193,60 @@ impl Definitions {
         percent: i32,
         start_era: Option<u32>,
     ) -> Result<(), Error> {
-        self.recompute(state, owner, percent, start_era, true)
+        self.recompute(state, owner, percent, start_era, true, None)
+    }
+    /// Recompute one newly zoned specialty when current prerequisite flags and
+    /// the real replacement map prove it is the only constructible specialty.
+    /// Native average then equals this type's count, so its under-average input
+    /// is exactly zero, including positive counts. Other eligibility sets stop
+    /// explicitly instead of assuming the specialty discount is absent.
+    #[allow(clippy::too_many_arguments)]
+    pub fn recompute_only_constructible_type(
+        &self,
+        state: &mut LoadedState,
+        owner: i32,
+        hash: u32,
+        percent: i32,
+        start_era: Option<u32>,
+        map: &crate::city_production_turn::selection::DistrictMap,
+    ) -> Result<(), Error> {
+        if state.binding() != &self.binding || map.owner != owner {
+            return Err(Error::Binding);
+        }
+        let (techs, culture) = state.research_components(owner).map_err(Error::State)?;
+        let acquired = |hash: Option<u32>, civic: bool| -> Result<bool, Error> {
+            let Some(hash) = hash else { return Ok(true) };
+            let values = if civic {
+                &culture.has_civic.pairs
+            } else {
+                &techs.has_tech.pairs
+            };
+            values
+                .iter()
+                .rfind(|p| p.definition_hash == hash)
+                .map(|p| p.value)
+                .ok_or(Error::Missing("current district prerequisite flag"))
+        };
+        let mut eligible = Vec::new();
+        for item in self.items.iter().filter(|d| d.specialty) {
+            if !acquired(item.technology, false)? || !acquired(item.civic, true)? {
+                continue;
+            }
+            let replacement = map
+                .values
+                .iter()
+                .rfind(|p| p.definition_hash == item.hash)
+                .ok_or(Error::Missing("current district replacement cell"))?;
+            if replacement.value == Some(item.hash) {
+                eligible.push(item.hash);
+            }
+        }
+        if eligible.as_slice() != [hash] {
+            return Err(Error::Missing(
+                "positive specialty average/discount eligibility",
+            ));
+        }
+        self.recompute(state, owner, percent, start_era, true, Some(hash))
     }
     fn recompute(
         &self,
@@ -193,6 +255,7 @@ impl Definitions {
         percent: i32,
         start_era: Option<u32>,
         allow_non_specialty: bool,
+        single: Option<u32>,
     ) -> Result<(), Error> {
         if state.binding() != &self.binding {
             return Err(Error::Binding);
@@ -203,7 +266,7 @@ impl Definitions {
             .iter()
             .find(|p| p.header.owner == owner)
             .ok_or(Error::Missing("district owner"))?;
-        if !player.districts.records.entries.is_empty() {
+        if single.is_none() && !player.districts.records.entries.is_empty() {
             if !allow_non_specialty {
                 return Err(Error::NonemptyDistricts);
             }
@@ -242,7 +305,11 @@ impl Definitions {
         // No synchronous callback occurs within this native loop. Validate the
         // actual destination cells before reserving/writing the current owner.
         let mut updates = Vec::new();
-        for item in &self.items {
+        for item in self
+            .items
+            .iter()
+            .filter(|d| single.is_none_or(|hash| d.hash == hash))
+        {
             let slot = player
                 .districts
                 .current_district_cost

@@ -1006,6 +1006,21 @@ impl<E: Effects> Context<'_, E> {
         let percent=self.percentage(player,Kind::Technology)?.max(self.percentage(player,Kind::Civic)?);
         self.definitions.district_costs.recompute_no_specialty(self.state,player,percent,self.effects.runtime().start_era_hash).map_err(Error::DistrictCosts)
     }
+    /// Placement locks its cost first, then recomputes this current type using
+    /// actual prerequisite flags and the canonical replacement map.
+    pub fn recompute_placed_district_cost(
+        &mut self,
+        player: i32,
+        hash: u32,
+        map: &crate::city_production_turn::selection::DistrictMap,
+    ) -> Result<(), Error<E::Error>> {
+        self.check()?;
+        let percent = self.percentage(player, Kind::Technology)?
+            .max(self.percentage(player, Kind::Civic)?);
+        self.definitions.district_costs.recompute_only_constructible_type(
+            self.state, player, hash, percent, self.effects.runtime().start_era_hash, map,
+        ).map_err(Error::DistrictCosts)
+    }
     fn check(&self) -> Result<(), Error<E::Error>> {
         if self.state.binding() != &self.definitions.binding
             || self.state.binding() != &self.effects.runtime().binding
