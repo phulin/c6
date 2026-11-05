@@ -27,6 +27,11 @@ pub struct Inputs<'a, 'q, 'c> {
     pub game_speed_type: u32,
     pub game_uninitializing: bool,
     pub visibility_messages_disabled: bool,
+    pub npc_services: Option<NpcServices<'a>>,
+}
+pub struct NpcServices<'a> {
+    pub visibility: &'a crate::unit_sight_state::Runtime,
+    pub maintenance: &'a super::maintenance::Definitions,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Completed {
@@ -52,6 +57,8 @@ pub enum Error {
     Unit(data::automation::PlayerError<Infallible, Infallible>),
     Diplomacy(loaded::automation::diplomacy::Error<DiplomacyError>),
     Visibility(data::deactivation::Error),
+    NpcControl(game_update::Error),
+    IncompleteNpcControl(i32),
     UnsupportedSelection(Vec<i32>),
     RequiresPhaseAdvance,
     UnsupportedAutomation,
@@ -225,7 +232,20 @@ pub fn finish_completed_human_pass<P>(
         let visibility_records = visibility
             .record(c.state, owner)
             .map_err(Error::Visibility)?;
-        loaded::human_control::deactivate(c.state, owner).map_err(Error::Prefix)?;
+        if c.state.player_slot_status(owner).map_err(Error::State)? == 3 {
+            loaded::human_control::deactivate(c.state, owner).map_err(Error::Prefix)?;
+        } else {
+            let services = inputs.npc_services.as_ref().ok_or(Error::Prefix(
+                game_update::Error::Unsupported("current NPC deactivation services"),
+            ))?;
+            match c.services.effects.deactivate_npc_control(c.state, c.runtime, owner,
+                services.visibility, services.maintenance.maintenance.unit_registry())
+                .map_err(Error::NpcControl)? {
+                super::npc_deactivation::Progress::Complete => {}
+                super::npc_deactivation::Progress::Pending =>
+                    return Err(Error::IncompleteNpcControl(owner)),
+            }
+        }
         let resources_changed = c
             .services
             .effects
