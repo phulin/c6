@@ -29,6 +29,7 @@ impl PromotionQuery for crate::formation_movement_cost::Definitions<'_> {
 /// remain in Runtime::modifier_owners, shared with unit/building creation.
 pub struct State<'a> {
     origin: ActionStamp,
+    pub melee_queries: Option<&'a dyn melee::stock::MovementQueries>,
     inputs: Option<backend::Inputs>,
     bindings: Option<resolve::completion::stock::Bindings>,
     pub observer: Option<i32>,
@@ -43,7 +44,7 @@ impl<'a> State<'a> {
     /// Qualified Unit lifecycle/report callbacks without attack execution.
     /// Mutable effects and requirements stay in the existing ModifierOwners.
     /// Attack inputs, completion bindings and configuration remain unavailable;
-    /// requesting a ranged attack on this context returns an explicit error.
+    /// requesting a melee or ranged attack returns an explicit error.
     pub fn for_unit_cleanup(
         state: &LoadedState,
         observer: Option<i32>,
@@ -52,6 +53,7 @@ impl<'a> State<'a> {
     ) -> Self {
         Self {
             origin: state.action_stamp(),
+            melee_queries: None,
             inputs: None,
             bindings: None,
             observer,
@@ -78,6 +80,7 @@ impl<'a> State<'a> {
         (
             Self {
                 configuration: Some(configuration),
+                melee_queries: None,
                 origin,
                 inputs: Some(inputs),
                 bindings: Some(bindings),
@@ -134,7 +137,9 @@ impl<'a, P> Runtime<'a, P> {
             .ok_or_else(|| missing("combat services"))?;
         if combat.inputs.is_none() || combat.bindings.is_none() || combat.configuration.is_none() {
             self.combat = Some(combat);
-            return Err(missing("ranged action services unavailable in cleanup context"));
+            return Err(missing(
+                "ranged action services unavailable in cleanup context",
+            ));
         }
         let Some(owners) = self.modifier_owners.take() else {
             self.combat = Some(combat);
@@ -203,6 +208,102 @@ impl<'a, P> Runtime<'a, P> {
         self.combat = Some(combat);
         result
     }
+    #[allow(clippy::too_many_arguments)]
+    /// Loan the SAME mutable modifier stores for one synchronous attack, then
+    /// restore them, including every completed prefix when resolution fails.
+    pub fn melee_attack<D>(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &mut sight::Runtime,
+        damage: &mut D,
+        inputs: &melee::transition::Inputs<'_, '_, '_>,
+        actor: UnitReference,
+        destination: PlotCoord,
+    ) -> Result<bool, melee::transition::Error>
+    where
+        D: melee::transition::Damage<Self, backend::requirements::Runtime>,
+    {
+        let missing = |detail| melee::transition::Error {
+            stage: melee::transition::Stage::Backend,
+            detail: format!("{detail:?}"),
+        };
+        let mut combat = self
+            .combat
+            .take()
+            .ok_or_else(|| missing("combat services"))?;
+        if combat.inputs.is_none() || combat.bindings.is_none() || combat.configuration.is_none() {
+            self.combat = Some(combat);
+            return Err(missing(
+                "melee action services unavailable in cleanup context",
+            ));
+        }
+        let Some(owners) = self.modifier_owners.take() else {
+            self.combat = Some(combat);
+            return Err(missing("canonical modifier owners"));
+        };
+        let ModifierOwners {
+            effects,
+            requirements,
+            collections,
+            unit_created,
+        } = owners;
+        let backend_inputs = combat
+            .inputs
+            .take()
+            .expect("combat inputs retained outside synchronous loan");
+        let backend = backend::Backend::resume_owned(
+            state,
+            combat.origin,
+            (),
+            requirements,
+            effects,
+            backend_inputs,
+        );
+        let (backend, result) = match backend {
+            Err(backend) => (backend, Err(missing("different combat World"))),
+            Ok(backend) => {
+                let ((), mut session) = melee::transition::Session::from_backend(state, backend);
+                let mut bindings = combat.bindings.take().expect("combat bindings retained");
+                self.combat = Some(combat);
+                let result = session.execute(
+                    state,
+                    sight,
+                    self,
+                    damage,
+                    inputs,
+                    &mut bindings,
+                    actor,
+                    destination,
+                );
+                combat = self.combat.take().expect("combat outputs retained");
+                combat.bindings = Some(bindings);
+                let result = result.map(|resolved| {
+                    if let melee::transition::Outcome::Resolved(resolved) = resolved {
+                        combat.resolved.push(resolved);
+                        true
+                    } else {
+                        false
+                    }
+                });
+                (
+                    session
+                        .into_backend()
+                        .expect("melee backend restored after Result"),
+                    result,
+                )
+            }
+        };
+        let ((), requirements, effects, backend_inputs) = backend.into_parts();
+        combat.inputs = Some(backend_inputs);
+        self.modifier_owners = Some(ModifierOwners {
+            effects,
+            requirements,
+            collections,
+            unit_created,
+        });
+        self.combat = Some(combat);
+        result
+    }
 }
 impl<P> Runtime<'_, P> {
     fn combat_current(&self, state: &LoadedState) -> Result<&State<'_>, Error> {
@@ -225,9 +326,9 @@ impl<P> ranged_attack::Effects for Runtime<'_, P> {
         let combat = self.combat_current(state)?;
         // Configuration lives in the loaned backend while resolving. Preserve
         // the explicit multiplayer gate using the current stock runtime facts.
-        let configuration = combat
-            .configuration
-            .ok_or(Error::Missing("combat configuration unavailable in cleanup context"))?;
+        let configuration = combat.configuration.ok_or(Error::Missing(
+            "combat configuration unavailable in cleanup context",
+        ))?;
         let _ = combat;
         let location = melee::actor(state, defender)
             .map_err(|e| Error::Requirement(format!("{e:?}")))?
@@ -464,5 +565,73 @@ impl<P> Runtime<'_, P> {
                 .map_err(Error::Rules)?;
         }
         Ok(())
+    }
+}
+
+impl<P> resolve::surviving::Effects for Runtime<'_, P> {
+    fn both_alive_statuses(
+        &mut self,
+        state: &mut LoadedState,
+        request: resolve::surviving::Status,
+    ) -> Result<(), Error> {
+        let configuration = self
+            .combat_current(state)?
+            .configuration
+            .ok_or(Error::Missing("combat configuration"))?;
+        self.combat
+            .as_mut()
+            .expect("combat output owner")
+            .statuses
+            .push(request);
+        if resolve::surviving::combat_notification_required(
+            state,
+            &configuration,
+            self.facts
+                .manager_initialized
+                .zip(self.facts.game_uninitializing),
+            request.defender,
+        )
+        .map_err(|e| Error::Requirement(format!("{e:?}")))?
+        {
+            return Err(Error::Missing(
+                "human multiplayer combat notification creation",
+            ));
+        }
+        Ok(())
+    }
+    fn combat_movement_cost(
+        &mut self,
+        state: &LoadedState,
+        sight: &sight::Runtime,
+        attacker: UnitReference,
+        location: PlotCoord,
+    ) -> Result<i32, Error> {
+        self.combat_current(state)?
+            .melee_queries
+            .ok_or(Error::Missing("melee movement queries"))?
+            .cost(state, sight, attacker, location)
+    }
+    fn visible_enemy_at(
+        &mut self,
+        state: &LoadedState,
+        sight: &sight::Runtime,
+        attacker: UnitReference,
+        location: PlotCoord,
+    ) -> Result<(bool, bool), Error> {
+        self.combat_current(state)?
+            .melee_queries
+            .ok_or(Error::Missing("melee movement queries"))?
+            .visible(state, sight, attacker, location)
+    }
+    fn enemy_defensible_district(
+        &mut self,
+        state: &LoadedState,
+        attacker: UnitReference,
+        location: PlotCoord,
+    ) -> Result<bool, Error> {
+        self.combat_current(state)?
+            .melee_queries
+            .ok_or(Error::Missing("melee movement queries"))?
+            .district(state, attacker, location)
     }
 }

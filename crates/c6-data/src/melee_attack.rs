@@ -4,6 +4,7 @@
 //! request. District/religious combat and unsupported continuations return errors.
 use crate::{formation_path_state as path, formation_rules, movement_placement_state};
 pub mod transition;
+pub mod stock;
 pub mod backend;
 pub mod damage;
 pub mod experience;
