@@ -4,7 +4,7 @@ use crate::{
     game_parameters::sql_integer,
     registry::{linux_type_hash, LinuxDefinitionRegistry},
     unit_initialization_definitions::collection,
-    Rules,
+    Rules, SqlValue,
 };
 use c6_core::{
     core_player::initialization::WireBinding,
@@ -34,6 +34,8 @@ pub struct Definitions {
     traders: Vec<bool>,
     resources: Vec<(u32, bool)>,
     denounce: i32,
+    earliest_major_dow_turn: i32,
+    casus_prerequisites: Vec<(u32, Option<u32>, bool)>,
     denounce_by_speed: Vec<(u32, i32)>,
     congress_initial_era: i32,
     special_session_min_turns: i32,
@@ -159,6 +161,49 @@ impl Definitions {
                 .and_then(sql_integer)
                 .ok_or(missing("Congress parameter"))
         };
+        let actions = rules
+            .gameplay()
+            .table("DiplomaticActions")
+            .ok_or(missing("DiplomaticActions"))?;
+        let xp1 = rules
+            .gameplay()
+            .table("DiplomaticActions_XP1")
+            .ok_or(missing("DiplomaticActions_XP1"))?;
+        let mut casus_prerequisites = Vec::new();
+        for name in [
+            "DIPLOACTION_DECLARE_COLONIAL_WAR",
+            "DIPLOACTION_DECLARE_HOLY_WAR",
+            "DIPLOACTION_DECLARE_LIBERATION_WAR",
+            "DIPLOACTION_DECLARE_PROTECTORATE_WAR",
+            "DIPLOACTION_DECLARE_RECONQUEST_WAR",
+            "DIPLOACTION_DECLARE_TERRITORIAL_WAR",
+            "DIPLOACTION_DECLARE_GOLDEN_AGE_WAR",
+            "DIPLOACTION_DECLARE_WAR_OF_RETRIBUTION",
+            "DIPLOACTION_DECLARE_IDEOLOGICAL_WAR",
+        ] {
+            let row = actions
+                .rows()
+                .find(|r| r.text("DiplomaticActionType").ok() == Some(name))
+                .ok_or(missing("casus belli action"))?;
+            let prerequisite = match row
+                .get("InitiatorPrereqCivic")
+                .map_err(|_| missing("casus civic prerequisite"))?
+            {
+                SqlValue::Null => None,
+                SqlValue::Text(value) => Some(linux_type_hash(value)),
+                _ => return Err(missing("casus civic prerequisite")),
+            };
+            let golden = xp1
+                .rows()
+                .find(|r| r.text("DiplomaticActionType").ok() == Some(name))
+                .is_some_and(|r| {
+                    matches!(
+                        r.get("RequiresGoldenAgeCommemorationType"),
+                        Ok(SqlValue::Text(_))
+                    )
+                });
+            casus_prerequisites.push((linux_type_hash(name.as_bytes()), prerequisite, golden));
+        }
         Ok(Self {
             congress_initial_era: parameter("WORLD_CONGRESS_INITIAL_ERA")?,
             special_session_min_turns: parameter(
@@ -169,6 +214,8 @@ impl Definitions {
             traders,
             resources,
             denounce,
+            earliest_major_dow_turn: parameter("DIPLOMACY_EARLIEST_MAJOR_DOW_TURN")?,
+            casus_prerequisites,
             denounce_by_speed,
         })
     }
@@ -405,10 +452,68 @@ fn diplomacy(
     }
     for &other in q.alive_major_ids {
         if met(state, owner, other)? {
-            return Err(missing("met-player casus belli activation"));
+            // These gates only read current rules/flags. A positive or
+            // overridden prerequisite keeps the later formal-war rules explicit.
+            if state.retained().core.current_turn >= defs.earliest_major_dow_turn {
+                let p = player(state, owner)?;
+                for &(action, civic, golden) in &defs.casus_prerequisites {
+                    let unmet_civic = if let Some(hash) = civic {
+                        let acquired = p
+                            .culture
+                            .has_civic
+                            .pairs
+                            .iter()
+                            .rev()
+                            .find(|v| v.definition_hash == hash)
+                            .ok_or(missing("casus current civic flag"))?
+                            .value;
+                        !acquired
+                            && !p
+                                .diplomacy
+                                .action_prereq_overrides
+                                .iter()
+                                .any(|v| v.action_hash == action)
+                    } else {
+                        false
+                    };
+                    if unmet_civic {
+                        continue;
+                    }
+                    if golden
+                        && !state
+                            .player_has_golden_age(owner)
+                            .map_err(|_| missing("casus current golden age"))?
+                    {
+                        continue;
+                    }
+                    return Err(missing("met-player casus belli positive war legality"));
+                }
+            }
+            // UpdateAvailableCasusBelli writes each false result; notifications
+            // occur only for newly true availability, not true-to-false changes.
+            let index = usize::try_from(other).map_err(|_| missing("casus belli player"))?;
+            let row = state
+                .activation_managers_mut(owner)
+                .map_err(state_error)?
+                .diplomacy
+                .casus_belli
+                .get_mut(index)
+                .ok_or(missing("casus belli player"))?;
+            clear_casus_belli(row);
         }
     }
     Ok(())
+}
+fn clear_casus_belli(row: &mut c6_core::player_diplomacy::CasusBelliData) {
+    row.colonial_war = false;
+    row.holy_war = false;
+    row.liberation_war = false;
+    row.protectorate_war = false;
+    row.reconquest_war = false;
+    row.territorial_war = false;
+    row.golden_age_war = false;
+    row.retribution_war = false;
+    row.ideological_war = false;
 }
 pub fn before_units(
     state: &mut LoadedState,
@@ -696,6 +801,30 @@ pub fn on_congress_turn_started(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn unavailable_casus_belli_clears_stale_flags_and_preserves_wire_tag() {
+        let mut row = c6_core::player_diplomacy::CasusBelliData {
+            wire_version: 41,
+            colonial_war: true,
+            holy_war: true,
+            liberation_war: true,
+            protectorate_war: true,
+            reconquest_war: true,
+            territorial_war: true,
+            golden_age_war: true,
+            retribution_war: true,
+            ideological_war: true,
+        };
+        super::clear_casus_belli(&mut row);
+        assert_eq!(
+            row,
+            c6_core::player_diplomacy::CasusBelliData {
+                wire_version: 41,
+                ..Default::default()
+            }
+        );
+    }
+
     use super::*;
     fn tracker() -> DiplomaticModifierTracker {
         DiplomaticModifierTracker {
