@@ -247,7 +247,12 @@ pub fn detach_unit<P: super::Providers, C: Services<P>>(
                     .unit_lifecycle
                     .as_ref()
                     .ok_or(Error::Missing("matching Unit wrapper lifecycle"))?;
-                objects.push((life.pool_ordinal, *handle));
+                let subtype = match object.unit_sort_suffix {
+                    Some([0, 0]) => false,
+                    Some([1, _]) => true,
+                    _ => return Err(Error::Missing("matching Unit wrapper subtype")),
+                };
+                objects.push((life.pool_ordinal, *handle, subtype));
             }
         }
     }
@@ -255,8 +260,22 @@ pub fn detach_unit<P: super::Providers, C: Services<P>>(
         return Err(Error::Missing("Unit.MakeObject creation/cache binding"));
     }
     objects.sort_by_key(|r| r.0);
-    let handles: Vec<_> = objects.into_iter().map(|r| r.1).collect();
-    dispatch(state, sight, providers, effects, definitions, &handles)
+    let handles: Vec<_> = objects.iter().map(|r| r.1).collect();
+    dispatch(state, sight, providers, effects, definitions, &handles)?;
+    // Native ObjectDestroyed holds every matching wrapper for the complete
+    // callback batch. Releasing earlier could invalidate a nested callback or
+    // its retained cursor. Only now has that temporary strong-owner list ended.
+    // Normal wrappers remain owned by the still-live (possibly delayed) Unit.
+    for (_, handle, subtype) in objects {
+        if subtype {
+            effects
+                .unit_cleanup_runtime_mut()
+                .map_err(Error::CleanupQuery)?
+                .release_unit_subtype_wrapper(state, handle)
+                .map_err(Error::CleanupQuery)?;
+        }
+    }
+    Ok(())
 }
 /// Source-only ability-revoked GameEffects leaf. Resolves the existing wrapper
 /// by CURRENT Unit CID and configured ability hash. A directly observed empty
