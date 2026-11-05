@@ -1,4 +1,5 @@
 //! Current UnitCreated rule and Script leaves shared by production callers.
+pub mod trained_gossip;
 use super::*;
 use crate::{
     loaded_actions::stock_script, movement_placement_state::CurrentCivilizationLevels, SqlValue,
@@ -7,6 +8,7 @@ use c6_core::{core_player::initialization::WireBinding, map::UnitReference};
 #[derive(Debug)]
 pub enum Error {
     State(c6_core::loaded_state::Error),
+    Statistics(c6_core::loaded_state::game_statistics::AccessError),
     World(c6_core::world::MissingInput),
     Script(stock_script::Error),
     Rules(crate::Error),
@@ -595,9 +597,7 @@ impl Definitions {
         if unit_era <= player_era.wrapping_sub(self.obsolete) {
             return Ok(());
         }
-        Err(Error::Missing(
-            "trained-unit gossip global count and occurrence",
-        ))
+        trained_gossip::require_no_occurrence(state, actor.e_type_index)
     }
 }
 ///2c9d3a0: re-read both object identities, append city arguments only when
