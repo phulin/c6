@@ -360,6 +360,7 @@ impl Definitions {
             culture: current.culture,
             city_count: current.city_count,
             current_turn: current.current_turn,
+            current_game_era: None,
             human: current.slot_status.map(|status| status == 3),
             graph,
             techs,
@@ -388,6 +389,10 @@ impl Definitions {
             definitions: self,
             culture: &player.culture,
             current_turn: state.retained().core.current_turn,
+            current_game_era: state
+                .game_eras()
+                .ok()
+                .and_then(|eras| eras.current_era()),
             human: state
                 .player_slot_status(owner)
                 .ok()
@@ -480,6 +485,7 @@ impl GameCulture {
 pub struct Queries<'a> {
     definitions: &'a Definitions,
     current_turn: i32,
+    current_game_era: Option<i32>,
     human: Option<bool>,
     culture: &'a Culture,
     city_count: usize,
@@ -712,8 +718,9 @@ impl Queries<'_> {
         }
         if p.age_restricted {
             let c = self.context()?;
-            let current = c
+            let current = self
                 .current_game_era
+                .or(c.current_game_era)
                 .ok_or(Error::Unsupported("current Game.Eras.CurrentEra"))?;
             let start = self
                 .definitions

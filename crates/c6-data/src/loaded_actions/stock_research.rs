@@ -290,9 +290,19 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                 if culture.binding != *state.binding() {
                     return Err(Error::Effect(effect));
                 }
+                let technology = self
+                    .choices
+                    .player(state, owner, self.choice_graph)
+                    .map_err(Error::Choice)?;
                 let needed = culture
                     .definitions
-                    .player(state, owner, culture.graph, None, culture.starting)
+                    .player(
+                        state,
+                        owner,
+                        culture.graph,
+                        Some(&technology),
+                        culture.starting,
+                    )
                     .map_err(Error::Culture)?
                     .is_needed(culture_notifications::Kind::ChooseCivic, true)
                     .map_err(Error::Culture)?;
@@ -314,13 +324,23 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                 if culture.binding != *state.binding() {
                     return Err(Error::Effect(effect));
                 }
+                let technology = self
+                    .choices
+                    .player(state, owner, self.choice_graph)
+                    .map_err(Error::Choice)?;
                 for kind in [
                     culture_notifications::Kind::ConsiderGovernmentChange,
                     culture_notifications::Kind::FillCivicSlot,
                 ] {
                     let needed = culture
                         .definitions
-                        .player(state, owner, culture.graph, None, culture.starting)
+                        .player(
+                            state,
+                            owner,
+                            culture.graph,
+                            Some(&technology),
+                            culture.starting,
+                        )
                         .map_err(Error::Culture)?
                         .is_needed(kind, true)
                         .map_err(Error::Culture)?;
