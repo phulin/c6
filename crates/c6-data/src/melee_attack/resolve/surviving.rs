@@ -36,6 +36,23 @@ pub trait Effects: upkeep::Effects + upkeep::OperationReports<Error = ProviderEr
         attacker: UnitReference,
         location: PlotCoord,
     ) -> Result<i32, ProviderError<Self>>;
+    /// Native HasVisibleEnemyUnit's return and output flag, in that order.
+    /// Delegate to the current Formation's canonical visibility query.
+    fn visible_enemy_at(
+        &mut self,
+        state: &LoadedState,
+        sight: &crate::unit_sight_state::Runtime,
+        attacker: UnitReference,
+        location: PlotCoord,
+    ) -> Result<(bool, bool), ProviderError<Self>>;
+    /// Called only when positive advance permission is not blocked by the
+    /// visible-enemy return/output pair. Read the attacker's current owner.
+    fn enemy_defensible_district(
+        &mut self,
+        state: &LoadedState,
+        attacker: UnitReference,
+        location: PlotCoord,
+    ) -> Result<bool, ProviderError<Self>>;
 }
 #[derive(Debug)]
 pub enum Error<E> {
@@ -108,10 +125,20 @@ pub fn finish_both_alive<E: Effects>(
     let movement_cost = effects
         .combat_movement_cost(state, sight, attacker, members.location)
         .map_err(Error::Effect)?;
-    // Positive permission still requires visible-enemy/district gates, captures
-    // and placement. This bounded continuation never treats it as a free move.
+    // Generated permission does not establish an advance. Native 28d699f
+    // blocks it only when BOTH the HasVisibleEnemyUnit return and output are
+    // true; otherwise the fresh enemy-district query is still mandatory.
     if members.attacker_advances {
-        return Err(Error::Advance);
+        let (enemy, combat) = effects
+            .visible_enemy_at(state, sight, attacker, members.location)
+            .map_err(Error::Effect)?;
+        if !(enemy && combat)
+            && !effects
+                .enemy_defensible_district(state, attacker, members.location)
+                .map_err(Error::Effect)?
+        {
+            return Err(Error::Advance);
+        }
     }
     upkeep::change_unit_moves(
         state,
