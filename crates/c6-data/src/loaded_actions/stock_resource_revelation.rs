@@ -24,11 +24,19 @@ pub enum UnitPlotSubscriber {
     Barbarian { owner: i32 },
     Unavailable { receiver: u64 },
 }
+#[derive(Clone, Copy, Debug)]
+struct ResourceBoostCheck {
+    receiver: u64,
+    resource_reference: bool,
+    improvement_reference: bool,
+    boost_value: i32,
+}
 pub struct State {
     definitions: resources::Definitions,
     resources: LinuxDefinitionRegistry,
     layer: usize,
     subscribers: Vec<u64>,
+    resource_boost_checks: Option<Vec<ResourceBoostCheck>>,
     pub dispatches: Vec<(i32, i32)>,
     pub reports: Vec<Report>,
     pub(super) natural_wonders: Vec<u32>,
@@ -117,6 +125,7 @@ impl<P> Runtime<'_, P> {
             propagation: Vec::new(),
             visibility_blocks: Vec::new(),
             unit_visibility: Vec::new(),
+            resource_boost_checks: None,
             unit_plot_subscribers: None,
             unit_plot_dispatches: Vec::new(),
         });
@@ -124,6 +133,78 @@ impl<P> Runtime<'_, P> {
     }
     /// Complete current GameSignals+10c8 order, supplied from the same initial
     /// runtime. Unknown nonempty consumers fail at their actual dispatch.
+    /// Bind source PlayerResourceCheck2844a40 consumers in the already
+    /// observed ResourceRevealed order. Parameters are immutable rule references,
+    /// not captured predicate answers or a suppressed signal.
+    pub fn bind_resource_boost_checks(
+        &mut self,
+        state: &LoadedState,
+        rules: &crate::Rules,
+        subscribers: &[(u64, i64)],
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("resource boost identity"))?;
+        let binding = self
+            .resource_revelation
+            .as_mut()
+            .ok_or(Error::Missing("resource revelation services"))?;
+        if binding.resource_boost_checks.is_some()
+            || subscribers.len() != binding.subscribers.len()
+            || subscribers
+                .iter()
+                .zip(&binding.subscribers)
+                .any(|(a, b)| a.0 != *b)
+        {
+            return Err(Error::Missing("current resource boost registration order"));
+        }
+        let improvements = collection(rules, "Improvements", "ImprovementType")
+            .map_err(|e| Error::Requirement(format!("resource boost improvements: {e:?}")))?;
+        let boosts = rules
+            .gameplay()
+            .table("Boosts")
+            .ok_or(Error::Missing("Boosts"))?;
+        let names = rules
+            .gameplay()
+            .table("BoostNames")
+            .ok_or(Error::Missing("BoostNames"))?;
+        let mut checks = Vec::new();
+        for &(receiver, row_id) in subscribers {
+            let row = boosts
+                .row_by_id(crate::RulesRowId(row_id))
+                .ok_or(Error::Missing("resource boost definition"))?;
+            let reference = |column: &'static str| -> Result<Option<u32>, Error> {
+                match row
+                    .get(column)
+                    .map_err(|e| Error::Requirement(format!("{e:?}")))?
+                {
+                    crate::SqlValue::Null => Ok(None),
+                    crate::SqlValue::Text(name) => Ok(Some(crate::registry::linux_type_hash(name))),
+                    _ => Err(Error::Missing("resource boost reference")),
+                }
+            };
+            let class = row
+                .text("BoostClass")
+                .map_err(|e| Error::Requirement(format!("{e:?}")))?;
+            let name = names
+                .rows()
+                .find(|r| r.text("BoostType").ok() == Some(class))
+                .ok_or(Error::Missing("resource boost name reference"))?;
+            checks.push(ResourceBoostCheck {
+                receiver,
+                resource_reference: reference("ResourceType")?
+                    .is_some_and(|hash| binding.resources.find_index(hash).is_some()),
+                improvement_reference: reference("ImprovementType")?
+                    .is_some_and(|hash| improvements.find_index(hash).is_some()),
+                boost_value: i32::try_from(
+                    name.integer("BoostValue")
+                        .map_err(|e| Error::Requirement(format!("{e:?}")))?,
+                )
+                .map_err(|_| Error::Missing("resource boost value"))?,
+            });
+        }
+        binding.resource_boost_checks = Some(checks);
+        Ok(())
+    }
     pub fn bind_unit_plot_visibility_signal(
         &mut self,
         state: &LoadedState,
@@ -375,10 +456,29 @@ impl<P> Runtime<'_, P> {
         };
         if player != 1000 {
             binding.dispatches.push((player, actual));
-            if let Some(receiver) = binding.subscribers.first() {
-                return Err(Error::Requirement(format!(
-                    "ResourceRevealed subscriber {receiver} (player {player}, resource {actual})"
-                )));
+            for (position, receiver) in binding.subscribers.iter().enumerate() {
+                let check = binding.resource_boost_checks.as_ref().and_then(|checks| checks.get(position))
+                    .filter(|check| check.receiver == *receiver)
+                    .ok_or_else(|| Error::Requirement(format!("ResourceRevealed subscriber {receiver} (player {player}, resource {actual})")))?;
+                // Source reads these definition references before the territory
+                // owner. Failed guards have no state, callback or RNG effects.
+                if !check.resource_reference
+                    || !check.improvement_reference
+                    || check.boost_value != 11
+                {
+                    continue;
+                }
+                let current_plot = state
+                    .world()
+                    .map()
+                    .plot_by_index(index)
+                    .ok_or(Error::Missing("resource boost current plot"))?;
+                let owner = crate::movement_placement_state::plot_owner(current_plot)
+                    .map_err(Error::Placement)?;
+                if owner != player {
+                    continue;
+                }
+                return Err(Error::Missing("positive PlayerResourceCheck improvement/resource and TriggerBoost continuation"));
             }
         }
         if sight
