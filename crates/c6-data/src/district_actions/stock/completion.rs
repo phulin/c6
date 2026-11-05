@@ -87,8 +87,8 @@ pub struct Services<'a> {
     pub cached: &'a Cached,
     pub listeners: &'a [Listener],
     pub player_listeners: &'a [(i32, usize)],
-    /// Current zoned callbacks are only the source-qualified CityBuild observer;
-    /// it may invalidate production policy caches but never choose an action.
+    /// Source-qualified CityBuild observers with empty unit-request contract
+    /// vectors. Positive existing contracts require their cancellation path.
     pub zoned_owners: &'a [i32],
     pub boosts: &'a production::district_boosts::Definitions,
     pub quests: &'a std::cell::RefCell<crate::game_update_state::round_quests::Runtime>,
@@ -431,7 +431,7 @@ impl changes::Context for RequirementContext<'_> {
             )));
         }
         let Some(hash) = self.binding.district else {
-            return Ok(0);
+            return Err(sets::Error::Context(production::Error::Unsupported("PlayerHasDistrict missing district filter")));
         };
         let player = self
             .state
