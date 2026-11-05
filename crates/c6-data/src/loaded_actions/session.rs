@@ -342,6 +342,34 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
     }
 }
 
+/// Failure from an ordinary Builder improvement and its mandatory aftermath.
+pub type BuildImprovementError = super::move_to::ActionError<
+    stock_notifications::movement::Error,
+    crate::builder_improvement::stock::Error,
+    super::notifications::processing::Error,
+>;
+impl Session<'_, '_, c6_core::unit::OperationParameters> {
+    /// Build the selected supported improvement through this SAME retained
+    /// state, stock services, visibility and HeadlessMessagesProcessed boundary.
+    #[allow(clippy::too_many_arguments)]
+    pub fn build_improvement(
+        &mut self, issuer: i32, actor: (i32, u32), improvement_hash: u32,
+        modifiers: u32, inputs: &Inputs<'_, '_>, handlers: &handlers::BoundHandlers<'_>,
+        runtime: &mut super::move_to::Runtime<'_>,
+        dispatcher: &mut crate::builder_improvement::stock::Dispatcher<'_, '_>,
+        budget: &mut usize,
+    ) -> Result<super::move_to::ActionOutcome, Error<BuildImprovementError>> {
+        self.check()?;
+        if matches!(self.pending_choice().map(|c|c.kind),Some(PolicyKind::Research(_))) {
+            return Err(Error::PendingResearch);
+        }
+        let result = super::move_to::execute_build_improvement_active_request(
+            &mut self.context, issuer, actor, improvement_hash, modifiers,
+            inputs, handlers, runtime, dispatcher, budget);
+        self.retain(result, true)
+    }
+}
+
 /// Failure from an explicit stock technology or civic queue request.
 pub type ResearchError = crate::research::Error<stock_notifications::research::Error>;
 

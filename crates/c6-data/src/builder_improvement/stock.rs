@@ -57,7 +57,7 @@ impl<P> super::Effects for Current<'_, '_, '_, '_,P> {
     }
     fn culture_bomb(&mut self,state:&mut LoadedState,actor:UnitReference,_:i32)->Result<(),Error>{
         let p=state.retained().players.iter().find(|p|p.header.owner==actor.player()).ok_or_else(||err("culture owner","missing"))?;
-        if p.culture.culture_bomb_triggers.iter().any(|t|t.improvement_hash==self.dispatcher.definitions.farm_hash) {
+        if p.culture.culture_bomb_triggers.iter().any(|t|t.improvement_hash==self.dispatcher.definitions.improvement_hash) {
             return Err(err("culture bomb","positive Farm trigger"));
         }
         Ok(())
@@ -103,7 +103,7 @@ impl<P> super::Effects for Current<'_, '_, '_, '_,P> {
         if !present {return Ok(None);}
         crate::city_turn::upkeep::citizens::reallocate(state,owner,id,&mut workers::Current{
             backend:self.backend,definitions:&self.dispatcher.cached.workers,appeal:&self.dispatcher.cached.appeal,
-            fallout:self.dispatcher.legality.fallout_turns,reports:self.dispatcher.worker_reports})
+            fallout:self.dispatcher.legality.fallout_turns,appeal_subscribers:self.dispatcher.services.appeal_changed_subscribers.as_deref(),reports:self.dispatcher.worker_reports})
             .map_err(|e|err("ReallocateCitizens",e))?;
         Ok(Some(ComponentId{owner:owner as i16,component_type:2,id}))
     }

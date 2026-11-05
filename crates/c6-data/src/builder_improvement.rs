@@ -1,4 +1,4 @@
-//! Ordinary Linux XP2 Builder Farm operation, over the ongoing loaded state.
+//! Ordinary Linux XP2 Builder Farm and Mine operations, over the ongoing loaded state.
 //!
 //! The operation body is separate from legality, queue processing and stock
 //! subscriber delivery. A returned StartData is meaningful only after every
@@ -34,23 +34,37 @@ impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
 }
 impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Kind { Farm, Mine }
+impl Kind {
+    pub fn type_name(self) -> &'static str {
+        match self { Self::Farm => "IMPROVEMENT_FARM", Self::Mine => "IMPROVEMENT_MINE" }
+    }
+}
 /// Immutable source inputs, prepared once for the admitted rules identity.
 pub struct Definitions {
     binding: WireBinding,
-    pub farm_hash: u32,
-    pub farm_index: i32,
+    pub improvement_hash: u32,
+    pub improvement_index: i32,
     builder_hash: u32,
+    pub kind: Kind,
+    prerequisite_technology: Option<(u32, i32)>,
+    prerequisite_civic: Option<(u32, i32)>,
     legality: legality::Static,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error<crate::Error>> {
+        Self::for_kind(state, rules, Kind::Farm)
+    }
+    pub fn for_kind(state: &LoadedState, rules: &Rules, kind: Kind) -> Result<Self, Error<crate::Error>> {
         if !matches!(
             rules.profile(),
             crate::RulesProfile::LinuxXp2Base | crate::RulesProfile::LinuxXp2ActivatedDiagnostic
         ) {
             return Err(Error::Unsupported("Linux Farm rules"));
         }
-        let farm_hash = linux_type_hash(b"IMPROVEMENT_FARM");
+        let name = kind.type_name();
+        let improvement_hash = linux_type_hash(name.as_bytes());
         let improvements = crate::unit_initialization_definitions::collection(
             rules,
             "Improvements",
@@ -58,7 +72,7 @@ impl Definitions {
         )
         .map_err(|_| Error::Missing("Farm collection"))?;
         let index = improvements
-            .find_index(farm_hash)
+            .find_index(improvement_hash)
             .ok_or(Error::Missing("Farm definition"))?;
         let row = rules
             .gameplay()
@@ -79,7 +93,7 @@ impl Definitions {
                 return Err(Error::Unsupported("ordinary Farm definition"));
             }
         }
-        for field in ["TraitType", "PrereqTech", "PrereqCivic"] {
+        for field in ["TraitType"] {
             if !matches!(
                 row.get(field).map_err(|error| Error::Effect {
                     stage: field,
@@ -90,6 +104,19 @@ impl Definitions {
                 return Err(Error::Unsupported("Farm prerequisite/trait"));
             }
         }
+        let prerequisite = |key| match row.get(key).map_err(|error|Error::Effect {stage:key,error})? {
+            SqlValue::Null => Ok(None), SqlValue::Text(value) => {
+                let (table, column) = if key=="PrereqTech" {("Technologies","TechnologyType")} else {("Civics","CivicType")};
+                let registry=crate::unit_initialization_definitions::collection(rules,table,column)
+                    .map_err(|_|Error::Missing("improvement prerequisite definitions"))?;
+                let hash=linux_type_hash(value);
+                let index=registry.find_index(hash).ok_or(Error::Missing("improvement prerequisite definition"))?;
+                Ok(Some((hash,index as i32)))
+            },
+            _ => Err(Error::Unsupported("ordinary improvement prerequisite reference")),
+        };
+        let prerequisite_technology = prerequisite("PrereqTech")?;
+        let prerequisite_civic = prerequisite("PrereqCivic")?;
         let builder_row = rules
             .gameplay()
             .table("Units")
@@ -111,7 +138,7 @@ impl Definitions {
             .table("Improvement_ValidBuildUnits")
             .ok_or(Error::Missing("Improvement_ValidBuildUnits"))?;
         let mut builder = build.rows().filter(|r| {
-            r.text("ImprovementType").ok() == Some("IMPROVEMENT_FARM")
+            r.text("ImprovementType").ok() == Some(name)
                 && r.text("UnitType").ok() == Some("UNIT_BUILDER")
         });
         let row = builder
@@ -129,11 +156,11 @@ impl Definitions {
             return Err(Error::Unsupported("Farm charge rule"));
         }
         Ok(Self {
-            binding: state.binding().clone(),
-            farm_hash,
-            farm_index: index as i32,
+            binding: state.binding().clone(), kind, prerequisite_technology, prerequisite_civic,
+            improvement_hash,
+            improvement_index: index as i32,
             builder_hash: linux_type_hash(b"UNIT_BUILDER"),
-            legality: legality::Static::from_rules(rules)?,
+            legality: legality::Static::from_rules(rules, kind)?,
         })
     }
 }
@@ -230,7 +257,7 @@ pub fn start<E: Effects>(
     }
     if node.operation_hash != BUILD_IMPROVEMENT_HASH
         || !matches!(node.parameters,
-        OperationParameters::BuildImprovement { improvement_hash, .. } if improvement_hash == definitions.farm_hash)
+        OperationParameters::BuildImprovement { improvement_hash, .. } if improvement_hash == definitions.improvement_hash)
     {
         return Err(Error::Unsupported("ordinary Farm request"));
     }
@@ -267,7 +294,7 @@ pub fn start<E: Effects>(
             error,
         })?;
     effects
-        .culture_bomb(state, actor, definitions.farm_index)
+        .culture_bomb(state, actor, definitions.improvement_index)
         .map_err(|error| Error::Effect {
             stage: "Farm culture bomb",
             error,
@@ -283,7 +310,7 @@ pub fn start<E: Effects>(
             state,
             Report::Operation {
                 unit: unit_id(state)?,
-                improvement: definitions.farm_index,
+                improvement: definitions.improvement_index,
             },
         )
         .map_err(|error| Error::Effect {

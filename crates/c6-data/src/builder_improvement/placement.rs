@@ -63,7 +63,7 @@ pub fn first<C: Effects>(
     {
         let world = state.world_mut().map_err(Error::State)?;
         let p = world.plot_mut(plot).ok_or(Error::Missing("Farm plot"))?;
-        p.improvement_hash = definitions.farm_hash;
+        p.improvement_hash = definitions.improvement_hash;
         p.flags.set(PlotFlag::ImprovementPillaged, false);
         // SetDirection(NO_DIRECTION,true) calls EditProperties even when the
         // direction key is absent (Linux2a3e85f). That creates the nested
@@ -88,12 +88,12 @@ pub fn first<C: Effects>(
             if let Some(count) = area
                 .improvement_counts
                 .iter_mut()
-                .find(|c| c.hash == definitions.farm_hash)
+                .find(|c| c.hash == definitions.improvement_hash)
             {
                 count.value = count.value.wrapping_add(1);
             } else {
                 area.improvement_counts.push(DefinitionValue {
-                    hash: definitions.farm_hash,
+                    hash: definitions.improvement_hash,
                     value: 1,
                 });
             }
@@ -106,7 +106,7 @@ pub fn first<C: Effects>(
             stage: "Farm constructed subscribers",
             error,
         })?;
-    shared::restore_visual_state(state, context, plot, definitions.farm_index)
+    shared::restore_visual_state(state, context, plot, definitions.improvement_index)
         .map_err(shared_error)?;
     context
         .calculate_monopolies(state)

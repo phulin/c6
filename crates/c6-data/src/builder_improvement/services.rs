@@ -24,6 +24,8 @@ struct Boost {
     improvement: Option<u32>,
     unit: Option<u32>,
     requires_resource: bool,
+    resource: Option<u32>,
+    resource_specific: bool,
 }
 #[derive(Debug)]
 pub struct Error(pub &'static str);
@@ -40,10 +42,11 @@ pub struct Current {
     history_special: Vec<i32>,
     boosts: Vec<Boost>,
     yields: crate::registry::LinuxDefinitionRegistry,
-    farm_has_modifiers: bool,
+    modifier_improvements: Vec<u32>,
     resort_hash: Option<u32>,
     civilizations: Vec<(i32, String)>,
     pub economic: Economic,
+    pub appeal_changed_subscribers: Option<Vec<u64>>,
 }
 impl Current {
     pub fn from_initial(state: &LoadedState, rules: &Rules, order: Vec<Subscriber>,
@@ -58,10 +61,13 @@ impl Current {
             row: r.row_id().ok_or(Error("Boost row"))?.0,
             items: r.integer("NumItems").ok().and_then(|v| i32::try_from(v).ok()).ok_or(Error("Boost NumItems"))?,
             improvement: optional(r,"ImprovementType")?, unit: optional(r,"Unit1Type")?,
+            resource: optional(r,"ResourceType")?,
+            resource_specific: r.text("BoostClass").map_err(|_|Error("BoostClass"))? == "BOOST_TRIGGER_IMPROVE_SPECIFIC_RESOURCE",
             requires_resource: r.integer("RequiresResource").map_err(|_| Error("Boost RequiresResource"))? != 0,
         })).collect::<Result<Vec<_>,Error>>()?;
-        let farm_has_modifiers = table("ImprovementModifiers")?.rows()
-            .any(|r| r.text("ImprovementType").ok() == Some("IMPROVEMENT_FARM"));
+        let modifier_improvements = table("ImprovementModifiers")?.rows()
+            .map(|r|r.text("ImprovementType").map(|v|linux_type_hash(v.as_bytes())).map_err(|_|Error("ImprovementModifiers")))
+            .collect::<Result<Vec<_>,_>>()?;
         let registry = crate::unit_initialization_definitions::collection(rules,"Improvements","ImprovementType")
             .map_err(|_| Error("Improvement definitions"))?;
         let resort_hash = registry.find_index(linux_type_hash(b"IMPROVEMENT_SEASIDE_RESORT"))
@@ -70,7 +76,7 @@ impl Current {
             .map_err(|_| Error("Yield definitions"))?;
         if history_special.len()!=8 { return Err(Error("History improvement members")); }
         Ok(Self { binding: state.binding().clone(), order, history_special, boosts,
-            yields, farm_has_modifiers, resort_hash, civilizations, economic })
+            yields, modifier_improvements, resort_hash, civilizations, economic, appeal_changed_subscribers: None })
     }
     fn counts(&self, state: &LoadedState, owner: i32, kind: Option<u32>) -> Result<i32, Error> {
         let mut count=0i32;
@@ -94,22 +100,22 @@ impl Current {
         if state.binding()!=&self.binding { return Err(Error("Farm constructed binding")); }
         for index in 0..self.order.len() {
             let p=state.world().map().plots.get(plot).ok_or(Error("Farm constructed plot"))?;
-            if p.improvement_hash!=defs.farm_hash { return Err(Error("Farm construction changed definition")); }
+            if p.improvement_hash!=defs.improvement_hash { return Err(Error("Farm construction changed definition")); }
             let owner=crate::movement_placement_state::plot_owner(p).map_err(|_| Error("Farm owner"))?;
             match self.order[index] {
-                Subscriber::AttachModifiers if !self.farm_has_modifiers => {},
+                Subscriber::AttachModifiers if !self.modifier_improvements.contains(&defs.improvement_hash) => {},
                 Subscriber::SeasideResort => {
                     //29b82d0 deliberately falls through when the resort
                     // definition is absent. Its local occurrence constructor
                     // has no gameplay/RNG effects; AddGossipItem29b25d0 returns
                     // before writes/reporting when the current history is empty.
-                    if !self.resort_hash.is_some_and(|h| h != defs.farm_hash)
+                    if !self.resort_hash.is_some_and(|h| h != defs.improvement_hash)
                         && !gossip_history.is_empty() {
                         return Err(Error("Farm reached BeachResort gossip delivery"));
                     }
                 },
                 Subscriber::History => {
-                    if self.history_special.contains(&defs.farm_index) { return Err(Error("Farm special historical moment")); }
+                    if self.history_special.contains(&defs.improvement_index) { return Err(Error("Farm special historical moment")); }
                     let feature=c6_core::plot_yield::FeatureYieldStorage::from_world(state.world(),&self.yields)
                         .map_err(|_| Error("Farm Feature yield storage"))?;
                     for y in 0..self.yields.entries().len() {
@@ -126,22 +132,33 @@ impl Current {
                 Subscriber::ImprovementConstructed {boost_row} => {
                     if owner==-1 { continue; }
                     let boost=self.boosts.iter().find(|b|b.row==boost_row).ok_or(Error("Farm Boost row"))?;
-                    if boost.improvement==Some(defs.farm_hash)
-                        && self.counts(state,owner,Some(defs.farm_hash))? >= boost.items
-                        && (!boost.requires_resource || p.resource_hash!=u32::MAX) {
+                    if boost.improvement==Some(defs.improvement_hash)
+                        && self.counts(state,owner,Some(defs.improvement_hash))? >= boost.items
+                        && (!boost.requires_resource || p.resource_hash!=u32::MAX)
+                        && (!boost.resource_specific || boost.resource==Some(p.resource_hash)) {
                         return Err(Error("Farm reached improvement TriggerBoost"));
                     }
                 },
                 Subscriber::AirbaseForeignContinent if p.city_attributes.as_ref().is_none_or(|a|a.district==u32::MAX) => {},
                 Subscriber::UnitAndImprovement {boost_row} => {
                     let boost=self.boosts.iter().find(|b|b.row==boost_row).ok_or(Error("Farm Boost row"))?;
-                    if owner!=-1 && boost.unit.is_some() && boost.improvement==Some(defs.farm_hash) {
-                        return Err(Error("Farm unit/improvement boost continuation"));
+                    if owner!=-1 && boost.improvement.is_some() {
+                        if let Some(unit) = boost.unit {
+                            let has_unit=state.world().player(owner).map_err(|_|Error("UnitAndImprovement owner"))?
+                                .unit_records().map_err(|_|Error("UnitAndImprovement units"))?.iter()
+                                .any(|r|r.value.e_type_index==unit);
+                            if has_unit && state.world().map().plots.iter().any(|p|
+                                crate::movement_placement_state::plot_owner(p).ok()==Some(owner)
+                                && boost.improvement==Some(p.improvement_hash)
+                                && boost.resource.is_none_or(|r|p.resource_hash==r)) {
+                                return Err(Error("positive unit/improvement boost continuation"));
+                            }
+                        }
                     }
                 },
                 Subscriber::Resources {owner: receiver} if receiver!=owner || p.resource_hash==u32::MAX => {},
                 Subscriber::Barbarian if state.retained().barbarian.flag_168_raw!=0
-                    || defs.farm_hash!=state.retained().barbarian.improvement_hash => {},
+                    || defs.improvement_hash!=state.retained().barbarian.improvement_hash => {},
                 Subscriber::Achievement => {
                     //28f9240: all specialized-type branches reject ordinary Farm.
                     // The expansion2 renewable-set scan cannot fire without any

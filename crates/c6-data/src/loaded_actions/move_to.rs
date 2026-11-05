@@ -1495,7 +1495,7 @@ enum OperationRequest {
     MoveTo(Request),
     RangeAttack(Request),
     FoundCity,
-    Farm { improvement_hash: u32, modifiers: u32 },
+    BuildImprovement { improvement_hash: u32, modifiers: u32 },
 }
 #[allow(clippy::too_many_arguments)]
 fn request_operation_active_player<E, M>(
@@ -1586,7 +1586,7 @@ where
         OperationRequest::FoundCity => {
             execute_found_city_manager(state, actor, inputs, handlers, runtime, effects, movement)
         }
-        OperationRequest::Farm { improvement_hash, modifiers } => execute_farm_manager(
+        OperationRequest::BuildImprovement { improvement_hash, modifiers } => execute_farm_manager(
             state, actor, improvement_hash, modifiers, inputs, handlers, runtime, effects, movement),
     }
     .map(RequestOutcome::Executed)
@@ -1815,7 +1815,7 @@ where
 
 /// Execute ordinary Farm through the same retained active-player message boundary.
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
-pub fn execute_farm_active_request<B, M>(
+pub fn execute_build_improvement_active_request<B, M>(
     context: &mut super::current_aftermath::Context<'_, B>,
     issuer: i32,
     actor: (i32, u32),
@@ -1841,7 +1841,7 @@ where
         context,
         issuer,
         actor,
-        OperationRequest::Farm { improvement_hash, modifiers },
+        OperationRequest::BuildImprovement { improvement_hash, modifiers },
         inputs,
         handlers,
         runtime,
@@ -1849,3 +1849,6 @@ where
         budget,
     )
 }
+
+/// Compatibility name for callers of the first supported Farm action.
+pub use execute_build_improvement_active_request as execute_farm_active_request;

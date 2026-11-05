@@ -1,6 +1,6 @@
-//! Source Farm legality for an owned, flat, resource/feature-free first placement.
+//! Source ordinary Farm/Mine legality for owned resource/feature-free first placement.
 //! Other improvement and replacement branches remain explicit unsupported inputs.
-use super::{Definitions, Error};
+use super::{Definitions, Error, Kind};
 use crate::{registry::linux_type_hash, Rules, SqlValue};
 use c6_core::{
     game_national_parks::ParkData,
@@ -12,16 +12,18 @@ use std::convert::Infallible;
 
 pub(super) struct Static {
     terrains: Vec<u32>,
+    hills: Vec<u32>,
 }
 impl Static {
-    pub(super) fn from_rules(rules: &Rules) -> Result<Self, Error<crate::Error>> {
+    pub(super) fn from_rules(rules: &Rules, kind: Kind) -> Result<Self, Error<crate::Error>> {
+        let name = kind.type_name();
         let missing = Error::Missing("Farm flat legality rules");
         let row = rules
             .gameplay()
             .table("Improvements")
             .ok_or(missing)?
             .rows()
-            .find(|r| r.text("ImprovementType").ok() == Some("IMPROVEMENT_FARM"))
+            .find(|r| r.text("ImprovementType").ok() == Some(name))
             .ok_or(Error::Missing("Farm flat definition"))?;
         for (key, expected) in [
             ("SameAdjacentValid", 1),
@@ -64,7 +66,7 @@ impl Static {
                 .table(table)
                 .ok_or(Error::Missing(table))?
                 .rows()
-                .any(|r| r.text("ImprovementType").ok() == Some("IMPROVEMENT_FARM"))
+                .any(|r| r.text("ImprovementType").ok() == Some(name))
             {
                 return Err(Error::Unsupported("Farm flat extension/adjacency rule"));
             }
@@ -75,7 +77,7 @@ impl Static {
             .ok_or(Error::Missing("Farm ValidTerrains"))?
             .rows()
             .filter(|r| {
-                r.text("ImprovementType").ok() == Some("IMPROVEMENT_FARM")
+                r.text("ImprovementType").ok() == Some(name)
                     && matches!(r.get("PrereqTech"), Ok(SqlValue::Null))
                     && matches!(r.get("PrereqCivic"), Ok(SqlValue::Null))
             })
@@ -88,13 +90,12 @@ impl Static {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        if terrains.len() != 2
-            || !terrains.contains(&linux_type_hash(b"TERRAIN_GRASS"))
-            || !terrains.contains(&linux_type_hash(b"TERRAIN_PLAINS"))
-        {
-            return Err(Error::Unsupported("Farm flat terrain references"));
-        }
-        Ok(Self { terrains })
+        if terrains.is_empty() { return Err(Error::Missing("ordinary improvement terrain references")); }
+        let hills = rules.gameplay().table("Terrains").ok_or(Error::Missing("Terrain definitions"))?.rows()
+            .filter(|r|r.integer("Hills").ok()==Some(1))
+            .map(|r|r.text("TerrainType").map(|v|linux_type_hash(v.as_bytes())).map_err(|error|Error::Effect{stage:"TerrainType",error}))
+            .collect::<Result<Vec<_>,_>>()?;
+        Ok(Self { terrains, hills })
     }
 }
 /// Actual current climate/park owners borrowed across requests. These contain
@@ -118,7 +119,7 @@ pub fn can_start(
     if state.binding() != &defs.binding {
         return Err(Error::Unsupported("Farm legality binding"));
     }
-    if improvement_hash != defs.farm_hash || unit.e_type_index != defs.builder_hash {
+    if improvement_hash != defs.improvement_hash || unit.e_type_index != defs.builder_hash {
         return Err(Error::Unsupported("ordinary Builder Farm legality"));
     }
     if (unit.e_owner, unit.id) != (actor.player(), actor.id) {
@@ -139,6 +140,17 @@ pub fn can_start(
     // Farm has no XP2 BuildOnAdjacentPlot row. Native visible-only returns here.
     if visible_only {
         return Ok(true);
+    }
+    let player = state.retained().players.iter().find(|p|p.header.owner==unit.e_owner)
+        .ok_or(Error::Missing("improvement prerequisite player"))?;
+    use c6_core::yields::{PrerequisiteKind, PrerequisiteState};
+    for (reference, flags, kind) in [(defs.prerequisite_technology, &player.techs.has_tech.pairs, PrerequisiteKind::Technology),
+        (defs.prerequisite_civic, &player.culture.has_civic.pairs, PrerequisiteKind::Civic)] {
+        if let Some((reference,index)) = reference {
+            if !state.world().globally_available(kind,index).map_err(|_|Error::Missing("current improvement prerequisite availability"))? {return Ok(false);}
+            if !flags.iter().rfind(|r|r.definition_hash==reference)
+                .ok_or(Error::Missing("current improvement prerequisite flag"))?.value { return Ok(false); }
+        }
     }
     // ClimateData stores active drought object IDs, not one ID per plot.
     // With no objects GetActiveDroughtTypeAtPlot returns NO_DROUGHT before
@@ -187,7 +199,7 @@ pub fn can_start(
     if plot.flags.get(PlotFlag::Impassable) {
         return Ok(false);
     }
-    if plot.flags.get(PlotFlag::Hills)
+    if defs.legality.hills.contains(&plot.terrain_hash) != (defs.kind == Kind::Mine)
         || plot.feature_hash != u32::MAX
         || plot.resource_hash != u32::MAX
         || plot.improvement_hash != u32::MAX
