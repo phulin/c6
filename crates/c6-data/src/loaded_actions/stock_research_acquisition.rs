@@ -397,7 +397,28 @@ impl<P> Effects<'_, '_, P> {
                     }
                     .map_err(|e| source_failure(format!("{e:?}")))?;
                     if era != self.runtime.start_era_hash {
-                        return Err(failure());
+                        let level = self
+                            .runtime
+                            .civilization_levels
+                            .iter()
+                            .find(|row| row.0 == player)
+                            .ok_or_else(|| {
+                                source_failure("current history player civilization level".into())
+                            })?
+                            .1;
+                        // History::Manager::HandleMoment (29da970) rejects
+                        // nonmajor actors at 29da9d3 before history/EraScore
+                        // writes, signals or RNG. The dispatcher's preceding
+                        // era/technology-count reads are pure; any Moment it
+                        // constructs is temporary data only.
+                        if level == 0x253718b0 {
+                            return Err(source_failure(
+                                "major research history moment and EraScore continuation".into(),
+                            ));
+                        }
+                        self.backend
+                            .reached
+                            .push("stock research history nonmajor moment guard");
                     }
                 }
                 GameSubscriber::EmptyScriptRegistry => {
