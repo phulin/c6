@@ -145,6 +145,26 @@ impl<P> research::Effects for Effects<'_, '_, P> {
     ) -> Result<(), Error> {
         self.backend.check(state).map_err(Error::Notification)?;
         match effect {
+            research::Effect::Notification(ref notice)
+                if ((notice.kind == research::Kind::Technology
+                    && notice.notification_type == 0x715a6581)
+                    || (notice.kind == research::Kind::Civic
+                        && notice.notification_type == 0xb73826b0))
+                    && notice.old_progress.is_none()
+                    && notice.source.is_none()
+                    && notice.percent.is_none() =>
+            {
+                // Manager::Add returns before factory lookup for nonhuman
+                // owners, an uninitialized manager or game teardown. Positive
+                // constructors and their synchronous consumers stay explicit.
+                if self.culture_can_notify(state, notice.player)? {
+                    return Err(Error::Effect(effect));
+                }
+                self.backend
+                    .reached
+                    .push("stock research completion notice manager guards");
+                Ok(())
+            }
             research::Effect::GameAcquired {
                 player,
                 kind,
