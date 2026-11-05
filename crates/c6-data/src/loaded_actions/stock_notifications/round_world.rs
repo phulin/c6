@@ -1,8 +1,9 @@
 //! XP2 world upkeep over the existing climate, trade and action owners.
 use super::Runtime;
 use crate::game_update_state::{
-    activation::cityless_managers, round_climate, round_fallout, round_great_people, round_map,
-    round_quests, round_random_events, round_religion, round_trade,
+    activation::cityless_managers, round_climate, round_diplomatic_relations, round_eras,
+    round_fallout, round_great_people, round_map, round_quests, round_random_events,
+    round_religion, round_trade,
 };
 use c6_core::{
     game_capabilities::Membership,
@@ -38,6 +39,8 @@ pub struct Current<'a, 'b, P, E> {
     pub great_people_definitions: &'a round_great_people::Definitions,
     pub great_people: &'a mut round_great_people::Runtime,
     pub quests: &'a mut round_quests::Runtime,
+    pub diplomatic_definitions: &'a round_diplomatic_relations::Definitions,
+    pub era_definitions: &'a round_eras::Definitions,
     pub capabilities: &'a Membership,
     pub effects: &'a mut E,
 }
@@ -46,6 +49,19 @@ impl<P> round_trade::Effects for Runtime<'_, P> {
     fn temporary_routes_cleared(&mut self, _: &mut LoadedState) -> Result<(), round_trade::Error> {
         Err(round_trade::Error::Requires(
             "temporary-route-cleared signal consumers",
+        ))
+    }
+}
+struct EraReports;
+impl round_eras::Effects for EraReports {
+    fn countdown_started(
+        &mut self,
+        _: &mut LoadedState,
+        _: i32,
+        _: i32,
+    ) -> Result<(), round_eras::Error> {
+        Err(round_eras::Error::Requires(
+            "era countdown report consumers",
         ))
     }
 }
@@ -99,6 +115,41 @@ impl<P, E: Effects<P>> round::WorldEffects for Current<'_, '_, P, E> {
             }
             WorldManager::Quests => {
                 round_quests::run(state, self.quests).map_err(|e| format!("{e:?}"))
+            }
+            WorldManager::DiplomaticRelations => {
+                let players = self
+                    .backend
+                    .player_services
+                    .as_ref()
+                    .ok_or(Error::Unsupported(
+                        "round Diplomacy current player services",
+                    ))?;
+                round_diplomatic_relations::run(
+                    state,
+                    players,
+                    self.diplomatic_definitions,
+                    self.random.scheduling.game_speed_hash,
+                )
+                .map_err(|e| format!("{e:?}"))
+            }
+            WorldManager::Eras => {
+                let players = self
+                    .backend
+                    .player_services
+                    .as_ref()
+                    .ok_or(Error::Unsupported("round Eras current player services"))?;
+                round_eras::run(
+                    state,
+                    self.era_definitions,
+                    players,
+                    self.capabilities,
+                    round_eras::Scheduling {
+                        game_speed_hash: self.random.scheduling.game_speed_hash,
+                        game_end_turn: self.random.scheduling.game_end_turn,
+                    },
+                    &mut EraReports,
+                )
+                .map_err(|e| format!("{e:?}"))
             }
             WorldManager::RandomEvents => round_random_events::run(
                 state,
