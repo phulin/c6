@@ -20,8 +20,10 @@ mod manager_queries;
 pub mod maintenance;
 pub mod social;
 pub mod human_activation;
+pub mod inactive_control;
 pub mod cityless_managers;
 pub mod deactivation;
+pub mod turn_loop;
 #[path = "stock_movement.rs"]
 pub mod movement;
 #[path = "stock_research.rs"]

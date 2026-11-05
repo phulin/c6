@@ -6,6 +6,7 @@ pub mod automation;
 pub mod deactivation;
 pub mod human_activation;
 pub mod human_control;
+pub mod inactive_control;
 pub mod maintenance;
 pub mod resources;
 use crate::{
