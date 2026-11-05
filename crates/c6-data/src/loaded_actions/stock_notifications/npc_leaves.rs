@@ -671,7 +671,10 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     .and_then(|p| p.civilization_level)
                     .ok_or(Error::Unsupported("Homeland current civilization level"))?;
                 if level != 0xd959_ec24 {
-                    return Err(Error::Unsupported("Homeland non-barbarian activation"));
+                    // Preserve the existing cityless, unitless activation
+                    // admission; this branch adds the reached barbarian write.
+                    no_units(state, backend, owner, kind)?;
+                    return Ok(());
                 }
                 // 213526c skips the move/city branch for barbarians and writes
                 // -1 through +e8 to m_additionalPriority(+f8), not the global
