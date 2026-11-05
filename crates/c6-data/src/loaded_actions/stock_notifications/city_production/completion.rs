@@ -244,6 +244,39 @@ pub(super) fn dispatch<P>(
             }
         }
     }
+    // Government actions register CityHasBuilding receivers after the imported
+    // Game.BuildingConstructed listeners. Read the SAME current owner here so
+    // new cards/governments and retired subscriptions are reflected without a
+    // second fixed listener inventory. Player.BuildingConstructed follows this
+    // entire Game signal in the native producer.
+    let owners = runtime
+        .modifier_owners_mut()
+        .map_err(|_| missing("current dynamic building requirement owner"))?;
+    owners
+        .effects
+        .install_government_building_maps(state, services.building_maps)
+        .map_err(|_| missing("current government building maps"))?;
+    let routes = owners
+        .effects
+        .city_building_subscriptions()
+        .map_err(|_| missing("current government building subscriptions"))?;
+    let city_id = c6_core::unit::ComponentId {
+        owner: owner as i16,
+        component_type: 2,
+        id: city,
+    };
+    for route in routes {
+        owners
+            .effects
+            .notify_city_building_changed(
+                state,
+                &mut owners.requirements,
+                route,
+                city_id,
+                &mut ModifierReports,
+            )
+            .map_err(|_| missing("government CityHasBuilding continuation"))?;
+    }
     let count = services
         .player_signal_listeners
         .iter()
