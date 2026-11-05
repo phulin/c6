@@ -457,6 +457,37 @@ pub fn current_build(
     })
 }
 
+/// UpdateUnitProgress284f8c0 reserves the current strategic resource and emits
+/// Climate accounting only when the selected Unit has StrategicResource.
+/// Resource-free Units have no mutation in that prefix; progress factors are
+/// computed separately by current_build from the same canonical state.
+pub fn start_progress(
+    state: &LoadedState,
+    owner: i32,
+    city: u32,
+    entry: &QueueEntry,
+    definitions: &Definitions,
+) -> Result<(), Error> {
+    if definitions.inputs != state.binding().inputs {
+        return Err(Error::Binding);
+    }
+    state.city(owner, city)?;
+    let Order::Train { unit_hash, .. } = entry.order else {
+        return Err(Error::Unsupported("non-Train progress start"));
+    };
+    let unit = definitions
+        .units
+        .iter()
+        .find(|d| d.hash == unit_hash)
+        .ok_or(Error::Unsupported("current Unit definition"))?;
+    if unit.strategic {
+        return Err(Error::Unsupported(
+            "Unit progress strategic resource and Climate accounting",
+        ));
+    }
+    Ok(())
+}
+
 pub trait FrontEffects {
     fn unit_front_report(
         &mut self,
