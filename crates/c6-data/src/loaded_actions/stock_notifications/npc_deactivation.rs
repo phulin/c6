@@ -157,7 +157,7 @@ fn no_trees(state: &LoadedState, owner: i32) -> Result<(), Error> {
 struct Effects<'s, 'a, 'i, P> {
     backend: &'s mut Runtime<'a, P>,
     inputs: &'i Inputs,
-    visibility: &'i crate::unit_sight_state::Runtime,
+    visibility: &'i std::cell::RefCell<crate::unit_sight_state::Runtime>,
     units: &'i crate::registry::LinuxDefinitionRegistry,
 }
 impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
@@ -202,6 +202,12 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                     .ok_or(Error::Unsupported("current NPC Homeland"))?
                     .additional_priority;
                 if current == self.inputs.configured(kind)? || current == additional {
+                    self.backend.npc_unit_decisions(
+                        state,
+                        owner,
+                        super::npc_unit_decisions::Stage::Homeland,
+                        current,
+                    )?;
                     // DoTurn2135330/2195f60 returns true after native
                     // RecruitUnits/AssignMoves. Those calls choose controller
                     // allocations, formation changes and unit commands; they
@@ -214,6 +220,12 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
             }
             Kind::Tactical => {
                 if current == self.inputs.configured(kind)? {
+                    self.backend.npc_unit_decisions(
+                        state,
+                        owner,
+                        super::npc_unit_decisions::Stage::Tactical,
+                        current,
+                    )?;
                     // DoTurn2135330/2195f60 returns true after native
                     // RecruitUnits/AssignMoves. Those calls choose controller
                     // allocations, formation changes and unit commands; they
@@ -298,7 +310,10 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                 state,
                 owner,
                 self.units,
-                self.visibility,
+                &*self
+                    .visibility
+                    .try_borrow()
+                    .map_err(|_| Error::Unsupported("NPC knowledge sight borrow"))?,
                 self.backend
                     .movement()
                     .ok()
@@ -379,7 +394,7 @@ impl<'a, P> Runtime<'a, P> {
         state: &mut LoadedState,
         runtime: &mut loaded::Runtime,
         owner: i32,
-        visibility: &crate::unit_sight_state::Runtime,
+        visibility: &std::cell::RefCell<crate::unit_sight_state::Runtime>,
         units: &crate::registry::LinuxDefinitionRegistry,
     ) -> Result<Progress, Error> {
         self.check(state)

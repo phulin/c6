@@ -308,11 +308,7 @@ pub fn finish_completed_human_pass<P>(
                     c.state,
                     c.runtime,
                     owner,
-                    &*services.visibility.try_borrow().map_err(|_| {
-                        Error::Prefix(game_update::Error::Unsupported(
-                            "current NPC deactivation sight borrow",
-                        ))
-                    })?,
+                    services.visibility,
                     services.maintenance.maintenance.unit_registry(),
                 )
                 .map_err(Error::NpcControl)?

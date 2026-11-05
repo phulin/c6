@@ -38,6 +38,8 @@ pub mod npc_activation;
 pub mod npc_deactivation;
 pub mod npc_leaves;
 pub mod queued_operations;
+pub mod npc_unit_operations;
+pub mod npc_unit_decisions;
 #[path = "stock_research.rs"]
 pub mod research;
 pub mod round_ai;
@@ -96,6 +98,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     social_capabilities: Option<c6_core::game_capabilities::Membership>,
     era_changes: Option<era_changes::State>,
     queued_operations: Option<Box<dyn queued_operations::Services<P> + 'a>>,
+    npc_unit_decisions: Option<Box<dyn npc_unit_decisions::Provider<P> + 'a>>,
     pub reporting: reporting::Provider<'a>,
     pub decisions: Vec<Decision>,
     pub notices: Vec<Notice>,
@@ -183,6 +186,7 @@ impl<'a, P> Runtime<'a, P> {
             round_services: None,
             turn_messages: std::collections::VecDeque::new(),
             queued_operations: None,
+            npc_unit_decisions: None,
         })
     }
     /// Semantic stock informational publication. The source caller has run its
