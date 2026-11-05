@@ -134,6 +134,21 @@ impl<S: Copy> ListenerRing<S> {
         }
         found.ok_or(RegistryError::InvalidSubscription)
     }
+    /// Current callable order without retaining cursors or invoking callbacks.
+    /// Removed links held by an active dispatch do not expose cleared routes.
+    pub fn ordered_subscribers(&self) -> impl Iterator<Item = S> + '_ {
+        let mut next = self.links[0].next;
+        std::iter::from_fn(move || {
+            while next != 0 {
+                let link = &self.links[next];
+                next = link.next;
+                if let Some(subscriber) = link.subscriber.filter(|_| link.handle_alive) {
+                    return Some(subscriber);
+                }
+            }
+            None
+        })
+    }
     fn unlink(&mut self, id: usize) -> Result<(), RegistryError> {
         let link = *self.links.get(id).ok_or(RegistryError::CursorInvalidated)?;
         self.links
@@ -503,11 +518,13 @@ mod tests {
         let cursor = ring.cursor_start().unwrap();
         let first = ring.subscription_for(|route| route == 7).unwrap();
         ring.unsubscribe(first).unwrap();
+        assert_eq!(ring.ordered_subscribers().collect::<Vec<_>>(), [8]);
         assert_eq!(
             ring.subscription_for(|route| route == 7),
             Err(RegistryError::InvalidSubscription)
         );
         ring.subscribe(8).unwrap();
+        assert_eq!(ring.ordered_subscribers().collect::<Vec<_>>(), [8, 8]);
         assert_eq!(
             ring.subscription_for(|route| route == 8),
             Err(RegistryError::DuplicateScope)
@@ -731,7 +748,9 @@ mod tests {
         let mut ring = ListenerRing::from_ordered(&[10u64, 20, 30]).unwrap();
         let start = ring.cursor_start().unwrap();
         let current = ring.cursor_next(start).unwrap().unwrap();
+        assert_eq!(ring.ordered_subscribers().collect::<Vec<_>>(), [10, 20, 30]);
         ring.clear_subscriptions().unwrap();
+        assert!(ring.ordered_subscribers().next().is_none());
         assert_eq!(ring.cursor_route(current).unwrap(), None);
         assert_eq!(ring.cursor_next(current).unwrap(), None);
         assert!(ring.subscription_for(|_| true).is_err());
