@@ -1189,6 +1189,16 @@ impl<'a> Provider<'a> {
                     c6_core::unit::FORTIFY_HASH
                 }
                 Some(node)
+                    if node.operation_hash == c6_core::found_city::OPERATION_HASH
+                        && matches!(node.parameters, c6_core::unit::OperationParameters::None) =>
+                {
+                    // The trusted parameterless request has no parameter object:
+                    // Exports.GetOperationParams2c93c75 returns before virtual
+                    // Write(map). Omit that presentation serialization; the real
+                    // current snapshot/gameplay queries above remain required.
+                    c6_core::found_city::OPERATION_HASH
+                }
+                Some(node)
                     if node.operation_hash == c6_core::unit::MOVE_TO_HASH
                         && matches!(
                             node.parameters,
