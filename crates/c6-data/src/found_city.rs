@@ -1,6 +1,7 @@
 //! Current admitted definitions for Linux FoundCity and placement gates.
 //! This does not construct a City or bypass Manager/script legality.
 pub mod cultural_identity;
+pub mod city_created_callbacks;
 pub mod legality;
 pub mod names;
 
