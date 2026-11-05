@@ -80,7 +80,10 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
             .contains(&self.current_plot(plot)?.feature_hash))
     }
     fn player_valid(&mut self, player: i32) -> Result<bool, Self::Error> {
-        self.state.player_initialized(player).map_err(Error::State)
+        self.state
+            .world()
+            .player_is_valid(player)
+            .map_err(Error::World)
     }
     fn human(&mut self, player: i32) -> Result<bool, Self::Error> {
         Ok(self
