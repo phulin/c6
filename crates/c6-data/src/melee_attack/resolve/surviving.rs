@@ -247,3 +247,23 @@ pub fn combat_movement_cost(
     .map(|v| v.final_cost().0)
     .map_err(QueryError::Cost)
 }
+
+/// Reporting.Notification.Send asks AcceptsNotifications (2d2f000) before
+/// allocating or sending anything. Resolve the fresh defender owner first,
+/// then preserve manager -> uninitializing -> current human-configuration order.
+/// Returning true still requires the real creation/publication continuation.
+pub fn accepts_combat_notification(
+    state: &LoadedState,
+    initialized: bool,
+    uninitializing: bool,
+    defender: UnitReference,
+) -> Result<bool, super::super::Error> {
+    let owner = super::super::actor(state, defender)?.e_owner;
+    if !initialized || uninitializing {
+        return Ok(false);
+    }
+    Ok(state
+        .player_slot_status(owner)
+        .map_err(super::super::Error::State)?
+        == 3)
+}
