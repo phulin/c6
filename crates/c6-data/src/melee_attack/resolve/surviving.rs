@@ -1,0 +1,222 @@
+//! Linux inner melee continuation when both combatants survive. This returns
+//! only the outer Resolve boundary; it does not complete an Attack action.
+use super::{RequiresCombatAftermath, RequiresOuterResolution};
+use crate::{formation_movement_cost as cost, loaded_upkeep as upkeep};
+use c6_core::{
+    loaded_state::LoadedState,
+    map::UnitReference,
+    movement::{MoveBudget, MovementPoints, ZocValue},
+    unit::PlotCoord,
+};
+type ProviderError<E> = <E as upkeep::Effects>::Error;
+
+#[derive(Clone, Copy, Debug)]
+pub struct Status {
+    pub attacker: UnitReference,
+    pub defender: UnitReference,
+    pub location: PlotCoord,
+    pub attacker_damage: i32,
+    pub defender_damage: i32,
+    pub status_id: u32,
+}
+/// Ordered attacker/defender statuses, then the multiplayer notification when
+/// configured. Providers preserve reached gameplay subscribers and RNG.
+pub trait Effects: upkeep::Effects + upkeep::OperationReports<Error = ProviderError<Self>> {
+    fn both_alive_statuses(
+        &mut self,
+        state: &mut LoadedState,
+        request: Status,
+    ) -> Result<(), ProviderError<Self>>;
+    /// Delegate to `combat_movement_cost` with current admitted definitions,
+    /// placement queries and sight; no imported cost answer is accepted.
+    fn combat_movement_cost(
+        &mut self,
+        state: &LoadedState,
+        sight: &crate::unit_sight_state::Runtime,
+        attacker: UnitReference,
+        location: PlotCoord,
+    ) -> Result<i32, ProviderError<Self>>;
+}
+#[derive(Debug)]
+pub enum Error<E> {
+    Actor(super::super::Error),
+    State(c6_core::loaded_state::Error),
+    Maximum(cost::Error),
+    Effect(E),
+    Clear(Box<upkeep::Error<E>>),
+    Movement(c6_core::movement_execution::UnitMovementError<upkeep::Error<E>>),
+    Sync(c6_core::formation_upkeep::FormationUpkeepError<upkeep::Error<E>>),
+    DeadAttacker,
+    DefenderDeath,
+    MissingFormation,
+    Advance,
+}
+
+/// Native 28d6ccb -> 28d6808 -> 28d69de -> 28d6a24. A failed
+/// continuation retains preceding callbacks and mutations in the owned state.
+pub fn finish_both_alive<E: Effects>(
+    state: &mut LoadedState,
+    maximum: &cost::Definitions<'_>,
+    inputs: &crate::unit_movement_state::Inputs<'_>,
+    sight: &crate::unit_sight_state::Runtime,
+    effects: &mut E,
+    pending: RequiresCombatAftermath,
+    status_id: u32,
+) -> Result<RequiresOuterResolution, Error<ProviderError<E>>> {
+    let members = pending.members;
+    let attacker = members.damage.attacker;
+    let defender = members.damage.defender;
+    let dead = |state: &LoadedState, actor| {
+        let current = super::super::actor(state, actor).map_err(Error::Actor)?;
+        Ok::<_, Error<ProviderError<E>>>(
+            current.i_damage >= maximum.maximum_damage(current).map_err(Error::Maximum)?,
+        )
+    };
+    if dead(state, attacker)? {
+        return Err(Error::DeadAttacker);
+    }
+    if dead(state, defender)? {
+        return Err(Error::DefenderDeath);
+    }
+    effects
+        .both_alive_statuses(
+            state,
+            Status {
+                attacker,
+                defender,
+                location: members.location,
+                attacker_damage: members.damage.attacker_received,
+                defender_damage: members.damage.defender_received,
+                status_id,
+            },
+        )
+        .map_err(Error::Effect)?;
+    upkeep::clear_unit_operations(state, attacker.player(), attacker.id, effects)
+        .map_err(|e| Error::Clear(Box::new(e)))?;
+    upkeep::clear_unit_operations(state, defender.player(), defender.id, effects)
+        .map_err(|e| Error::Clear(Box::new(e)))?;
+    if dead(state, attacker)? {
+        return Ok(RequiresOuterResolution { members });
+    }
+    // Pinned Linux IsSuicide (28e09a0) is `xor eax,eax; ret`.
+    let current = super::super::actor(state, attacker).map_err(Error::Actor)?;
+    let formation = state
+        .unit_runtime(current.e_owner, current.id)
+        .map_err(Error::State)?
+        .formation
+        .ok_or(Error::MissingFormation)?;
+    let movement_cost = effects
+        .combat_movement_cost(state, sight, attacker, members.location)
+        .map_err(Error::Effect)?;
+    // Positive permission still requires visible-enemy/district gates, captures
+    // and placement. This bounded continuation never treats it as a free move.
+    if members.attacker_advances {
+        return Err(Error::Advance);
+    }
+    upkeep::change_unit_moves(
+        state,
+        attacker.player(),
+        attacker.id,
+        inputs,
+        effects,
+        movement_cost.wrapping_neg(),
+    )
+    .map_err(Error::Movement)?;
+    // Native retains this Formation across ChangeMovesRemaining subscribers.
+    upkeep::update_formation(
+        state,
+        formation.owner,
+        formation.requested_id,
+        inputs,
+        effects,
+    )
+    .map_err(Error::Sync)?;
+    let can_heal = super::super::actor(state, attacker)
+        .map_err(Error::Actor)?
+        .k_health_modifiers
+        .b_can_heal_after_action;
+    state
+        .unit_mut(attacker.player(), attacker.id)
+        .map_err(Error::State)?
+        .b_eligible_to_heal = can_heal;
+    Ok(RequiresOuterResolution { members })
+}
+
+/// Actual MovementCost overload reached at 28d6927. Base/max moves fold all
+/// current Formation members; domain -1 is the native Formation getter's member
+/// argument, even though its caller supplies combat-plot water domain.
+#[allow(clippy::too_many_arguments)]
+pub fn combat_movement_cost(
+    state: &LoadedState,
+    definitions: &cost::Definitions<'_>,
+    placement: &crate::movement_placement_state::Context<'_, '_, '_>,
+    inputs: &crate::unit_movement_state::Inputs<'_>,
+    sight: &crate::unit_sight_state::Runtime,
+    attacker: UnitReference,
+    destination: PlotCoord,
+) -> Result<i32, crate::formation_path_state::Error> {
+    use crate::{formation_path_state::Error as QueryError, unit_movement_state as moves};
+    let unit =
+        super::super::actor(state, attacker).map_err(|_| QueryError::Missing("combat attacker"))?;
+    let attachment = state
+        .unit_runtime(unit.e_owner, unit.id)
+        .map_err(QueryError::State)?
+        .formation
+        .ok_or(QueryError::Missing("combat Formation"))?;
+    let player = state
+        .world()
+        .player(attachment.owner)
+        .map_err(QueryError::World)?;
+    let formation = player
+        .formation(attachment.requested_id)
+        .map_err(QueryError::World)?
+        .ok_or(QueryError::Missing("combat Formation"))?
+        .record;
+    let fold = |base: bool| -> Result<i32, QueryError> {
+        let mut minimum = 9001i32;
+        let mut escort_maximum = 0;
+        for &id in &formation.unit_ids {
+            let Some(found) = player.unit(id).map_err(QueryError::World)? else {
+                continue;
+            };
+            let member = found.record;
+            let n = if base {
+                moves::unit_base_moves_with_can_embark(state, member, -1, inputs, || {
+                    placement.can_embark(member)
+                })
+                .map_err(QueryError::UnitMoves)?
+            } else {
+                moves::unit_max_moves(state, member, inputs).map_err(QueryError::UnitMoves)?
+            };
+            minimum = minimum.min(n);
+            if member.k_movement_modifiers.b_escort_mobility {
+                escort_maximum = escort_maximum.max(n);
+            }
+        }
+        Ok(minimum.max(escort_maximum))
+    };
+    let (_, target) = c6_core::movement_world::plot_at(state.world().map(), destination)
+        .map_err(|e| QueryError::Cost(cost::Error::Movement(e)))?;
+    let _domain = i32::from(placement.water(target).map_err(QueryError::Placement)?) - 1;
+    let budget = MoveBudget {
+        base_moves: fold(true)?,
+        max_moves: MovementPoints::integer(fold(false)?),
+        remaining: MovementPoints(0),
+        exit_moves: MovementPoints(0),
+    };
+    cost::movement_cost(
+        state,
+        definitions,
+        placement,
+        formation,
+        unit.k_location,
+        destination,
+        Some(destination),
+        budget,
+        ZocValue::Query,
+        0,
+        Some(sight),
+    )
+    .map(|v| v.final_cost().0)
+    .map_err(QueryError::Cost)
+}
