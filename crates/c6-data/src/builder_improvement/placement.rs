@@ -36,6 +36,42 @@ fn shared_error<E>(error: shared::Error<E>) -> Error<E> {
         }
     }
 }
+/// SetDirection(NO_DIRECTION,true)2a3e85f edits the nested Improvement map
+/// even when the direction is absent; the outer map remains present.
+pub(crate) fn reset_improvement_direction(
+    properties: &mut Option<TypedVariantMap>,
+) -> Result<(), &'static str> {
+    let properties = properties.get_or_insert_with(TypedVariantMap::default);
+    if !properties.entries.iter().any(|e| e.key == 0xd9a34c75) {
+        properties.entries.push(TypedEntry {
+            key: 0xd9a34c75,
+            name: None,
+            value: TypedVariant {
+                type_bits: 10,
+                modifier_bits: 0,
+                value: ArrayVariant {
+                    count_flags: 0x05000000,
+                    element_size: 0,
+                    payload: VariantPayload::TypedVariantMap(Box::default()),
+                },
+            },
+        });
+    }
+    let entry = properties
+        .entries
+        .iter_mut()
+        .find(|e| e.key == 0xd9a34c75)
+        .ok_or("improvement property map")?;
+    if entry.value.type_bits != 10 || entry.value.modifier_bits != 0 {
+        return Err("non-map improvement properties");
+    }
+    let VariantPayload::TypedVariantMap(improvement) = &mut entry.value.value.payload else {
+        return Err("improvement property payload");
+    };
+    improvement.entries.retain(|e| e.key != 0xf9fa9bc3);
+    Ok(())
+}
+
 /// Linux 0x2a391d0 first-placement branch. The improvement is assigned before
 /// owner sight and listeners. Any error retains that exact completed prefix.
 pub fn first<C: Effects>(
@@ -65,25 +101,7 @@ pub fn first<C: Effects>(
         let p = world.plot_mut(plot).ok_or(Error::Missing("Farm plot"))?;
         p.improvement_hash = definitions.improvement_hash;
         p.flags.set(PlotFlag::ImprovementPillaged, false);
-        // SetDirection(NO_DIRECTION,true) calls EditProperties even when the
-        // direction key is absent (Linux2a3e85f). That creates the nested
-        // Improvement typed map before erasing its direction property.
-        let properties = p.properties.get_or_insert_with(TypedVariantMap::default);
-        if !properties.entries.iter().any(|e| e.key == 0xd9a34c75) {
-            properties.entries.push(TypedEntry { key: 0xd9a34c75, name: None,
-                value: TypedVariant { type_bits: 10, modifier_bits: 0,
-                    value: ArrayVariant { count_flags: 0x05000000, element_size: 0,
-                        payload: VariantPayload::TypedVariantMap(Box::default()) } } });
-        }
-        let entry = properties.entries.iter_mut().find(|e|e.key==0xd9a34c75)
-            .ok_or(Error::Missing("Farm improvement property map"))?;
-        if entry.value.type_bits != 10 || entry.value.modifier_bits != 0 {
-            return Err(Error::Unsupported("Farm non-map improvement properties"));
-        }
-        let VariantPayload::TypedVariantMap(improvement) = &mut entry.value.value.payload else {
-            return Err(Error::Unsupported("Farm improvement property payload"));
-        };
-        improvement.entries.retain(|e|e.key!=0xf9fa9bc3);
+        reset_improvement_direction(&mut p.properties).map_err(Error::Unsupported)?;
         if let Some(area) = world.area_mut(area) {
             if let Some(count) = area
                 .improvement_counts
@@ -114,4 +132,49 @@ pub fn first<C: Effects>(
             stage: "Farm resource monopolies",
             error,
         })
+}
+
+#[cfg(test)]
+mod direction_tests {
+    use super::*;
+    fn integer(key: u32) -> TypedEntry {
+        TypedEntry {
+            key,
+            name: None,
+            value: TypedVariant {
+                type_bits: 2,
+                modifier_bits: 0,
+                value: ArrayVariant {
+                    count_flags: 0,
+                    element_size: 0,
+                    payload: VariantPayload::Inline32(7),
+                },
+            },
+        }
+    }
+    #[test]
+    fn direction_reset_retains_improvement_map_and_only_erases_nested_direction() {
+        let mut properties = None;
+        reset_improvement_direction(&mut properties).unwrap();
+        let outer = properties.as_mut().unwrap();
+        assert_eq!(outer.entries[0].key, 0xd9a34c75);
+        assert_eq!(outer.entries[0].value.value.count_flags, 0x05000000);
+        let VariantPayload::TypedVariantMap(inner) = &mut outer.entries[0].value.value.payload
+        else {
+            panic!("typed map");
+        };
+        assert!(inner.entries.is_empty());
+        inner.entries.extend([integer(1), integer(0xf9fa9bc3)]);
+        outer.entries.push(integer(0xf9fa9bc3));
+        reset_improvement_direction(&mut properties).unwrap();
+        let outer = properties.as_ref().unwrap();
+        assert!(outer.entries.iter().any(|e| e.key == 0xf9fa9bc3));
+        let VariantPayload::TypedVariantMap(inner) = &outer.entries[0].value.value.payload else {
+            panic!("typed map");
+        };
+        assert_eq!(inner.entries.iter().map(|e| e.key).collect::<Vec<_>>(), [1]);
+        let prior = properties.clone();
+        reset_improvement_direction(&mut properties).unwrap();
+        assert_eq!(properties, prior);
+    }
 }

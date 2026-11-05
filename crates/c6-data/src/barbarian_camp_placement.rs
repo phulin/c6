@@ -134,10 +134,8 @@ pub fn set_camp<C: Context>(
         let p = world.plot_mut(plot).ok_or(Error::Missing("camp plot"))?;
         p.improvement_hash = improvement_hash;
         p.flags.set(PlotFlag::ImprovementPillaged, false);
-        // SetDirection(NO_DIRECTION, true) removes IMPROVEMENT_DIRECTION.
-        if let Some(properties) = &mut p.properties {
-            properties.entries.retain(|e| e.key != 0xf9fa9bc3);
-        }
+        crate::builder_improvement::placement::reset_improvement_direction(&mut p.properties)
+            .map_err(Error::Unsupported)?;
         if let Some(area) = world.area_mut(area) {
             if let Some(count) = area
                 .improvement_counts
