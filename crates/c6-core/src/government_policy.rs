@@ -1,5 +1,6 @@
 //! Linux Culture policy-slot mutations and CivicsCommand ordering.
 //! Definition legality and synchronous consumers borrow the caller's live owner.
+pub mod government;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Event {

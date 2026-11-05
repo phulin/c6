@@ -185,6 +185,48 @@ pub fn can_slot<E>(
     if boolean(&c.policy_banned, hash)? || boolean(&c.policy_is_in_place, hash)? {
         return Ok(false);
     }
+    if !eligible_in_government(
+        state,
+        defs,
+        current,
+        owner,
+        policy,
+        c.current_government_hash,
+    )? {
+        return Ok(false);
+    }
+    let p = &defs.entries[policy as usize];
+    let Some(slot) = usize::try_from(index)
+        .ok()
+        .and_then(|i| c.active_policies.entries.get(i))
+    else {
+        return Ok(false);
+    };
+    let Some(&any) = usize::try_from(slot.slot_ordinal)
+        .ok()
+        .and_then(|i| defs.wildcard.get(i))
+    else {
+        return Ok(false);
+    };
+    Ok(slot.slot_ordinal == p.slot || any)
+}
+
+/// CanPolicyBeSlotted2a74e40, without the separate already-active/banned/slot
+/// gates. Government.BuildSlots uses it AFTER restoring a card's active flag.
+pub fn eligible_in_government<E>(
+    state: &LoadedState,
+    defs: &Definitions,
+    current: &Current<'_>,
+    owner: i32,
+    policy: i32,
+    government_hash: u32,
+) -> Result<bool, Error<E>> {
+    if state.binding() != &defs.binding {
+        return Err(Error::Unsupported("policy binding"));
+    }
+    let Some(hash) = defs.policy_hash(policy) else {
+        return Ok(false);
+    };
     let technology = current
         .technology
         .map(|(defs, graph)| defs.player(state, owner, graph))
@@ -213,24 +255,12 @@ pub fn can_slot<E>(
     }
     if defs
         .government_unlocked_policy
-        .contains(&(c.current_government_hash, hash))
-        || (!p.governments.is_empty() && !p.governments.contains(&c.current_government_hash))
+        .contains(&(government_hash, hash))
+        || (!p.governments.is_empty() && !p.governments.contains(&government_hash))
     {
         return Ok(false);
     }
-    let Some(slot) = usize::try_from(index)
-        .ok()
-        .and_then(|i| c.active_policies.entries.get(i))
-    else {
-        return Ok(false);
-    };
-    let Some(&any) = usize::try_from(slot.slot_ordinal)
-        .ok()
-        .and_then(|i| defs.wildcard.get(i))
-    else {
-        return Ok(false);
-    };
-    Ok(slot.slot_ordinal == p.slot || any)
+    Ok(true)
 }
 
 pub trait Effects {

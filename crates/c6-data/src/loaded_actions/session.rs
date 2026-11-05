@@ -22,6 +22,8 @@ pub mod initialized;
 pub mod founding;
 #[path = "session_policy.rs"]
 pub mod policy;
+#[path = "session_government.rs"]
+pub mod government;
 #[path = "session_purchase.rs"]
 pub mod purchase;
 #[path = "session_district.rs"]
