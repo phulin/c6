@@ -1,5 +1,6 @@
 //! Actual selected phase TurnMode rules for current next-player selection.
 pub mod cityless_managers;
+pub mod forced_rebase;
 pub mod maintenance;
 pub mod relationship_requirements;
 pub mod requirement_changes;
