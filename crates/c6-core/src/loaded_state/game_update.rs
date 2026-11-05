@@ -4,8 +4,8 @@ use super::LoadedState;
 pub mod activation;
 pub mod automation;
 pub mod deactivation;
-pub mod human_control;
 pub mod human_activation;
+pub mod human_control;
 pub mod maintenance;
 pub mod resources;
 use crate::{
@@ -195,6 +195,8 @@ impl<'a, S: Services> Context<'a, S> {
     }
     /// Finish the current stock human pass after deactivation/next selection.
     /// This exclusive synchronous executor has no outstanding native AI jobs.
+    /// The processed-AI bit only controls the native Stopwatch at2a0d3b3;
+    /// completed inactive-controller callbacks do not prevent this human exit.
     /// The supplied callback is Game.Instance.Update's mandatory pending-
     /// diplomacy tail, executed after the final Autoplay.Update.
     pub fn finish_exclusive_human_update(
@@ -210,7 +212,6 @@ impl<'a, S: Services> Context<'a, S> {
             )
             || progress.completed != progress.selected
             || !progress.has_human
-            || progress.processed_ai
             || self.state.retained.core.player_processor.active_count == 0
         {
             return Err(Error::Unsupported(
@@ -580,6 +581,40 @@ pub fn complete_activation(
     Ok(effect)
 }
 
+/// Inactive Player.Update returns directly from Control.DoTurn to profiling.
+/// It does not increment turn counters or run the active blocking update.
+pub fn complete_inactive_player(
+    state: &LoadedState,
+    runtime: &mut Runtime,
+) -> Result<PlayerPassProgress, Error> {
+    if state.binding() != &runtime.binding || runtime.failed {
+        return Err(Error::Unsupported(
+            "Game.Update inactive continuation binding or failure",
+        ));
+    }
+    let frame = runtime
+        .player_frame
+        .as_ref()
+        .ok_or(Error::Unsupported("Game.Update no inactive continuation"))?;
+    if frame.effect
+        != Some(core::PlayerEffect::InactiveControl {
+            player: frame.player,
+        })
+    {
+        return Err(Error::Unsupported(
+            "Game.Update inactive continuation ordering",
+        ));
+    }
+    runtime.player_cursor = runtime
+        .player_cursor
+        .checked_add(1)
+        .ok_or(Error::Unsupported("Game.Update player cursor capacity"))?;
+    runtime.pass_has_human = frame.next_has_human;
+    runtime.pass_processed_ai |= frame.alive_nonhuman;
+    runtime.player_frame = None;
+    Ok(runtime.player_progress())
+}
+
 /// Invoke ONLY after the SAME current notification provider completed the
 /// required blocking update. Current human tail: SetDisabled(true) writes the
 /// local stopwatch+41, End returns before logging, destructor changes only
@@ -691,4 +726,42 @@ pub fn install_current_game_contacts(
     state.advance_admission_generation()?;
     state.game_relations = Some(owner);
     Ok(())
+}
+
+#[cfg(test)]
+mod inactive_tests {
+    use super::*;
+    #[test]
+    fn inactive_return_advances_pass_without_active_player_counter_or_blocking_writes() {
+        let state = crate::loaded_state::tests::state();
+        let before = state.retained.core.player_processor.clone();
+        let mut runtime = Runtime::new(
+            &state,
+            Inputs {
+                autoplay: AutoplayInputs {
+                    end_turn_signaled: None,
+                    has_pending_state_change: None,
+                    pending_state: None,
+                    active: None,
+                },
+                needs_update: None,
+                auto_player_game: None,
+                local_player: None,
+            },
+        );
+        runtime.pending = Some(core::Continuation::PlayerUpdates(vec![0]));
+        runtime.player_frame = Some(PlayerFrame {
+            player: 0,
+            effect: Some(core::PlayerEffect::InactiveControl { player: 0 }),
+            next_has_human: true,
+            alive_nonhuman: true,
+        });
+        let progress = complete_inactive_player(&state, &mut runtime).unwrap();
+        assert_eq!(progress.completed, 1);
+        assert!(progress.has_human && progress.processed_ai);
+        assert_eq!(state.retained.core.player_processor, before);
+        assert!(runtime.pending_player_effect().is_none());
+        assert!(complete_inactive_player(&state, &mut runtime).is_err());
+        assert_eq!(runtime.player_progress().completed, 1);
+    }
 }
