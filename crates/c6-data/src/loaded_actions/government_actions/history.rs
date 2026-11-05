@@ -46,6 +46,9 @@ pub fn enacted<E: history::Effects>(
     inputs: history::Inputs<'_>,
     effects: &mut E,
 ) -> Result<Option<i32>, history::Error<E::Error>> {
+    if state.binding() != &governments.binding {
+        return Err(history::Error::Binding);
+    }
     let Some(tier) = governments.government_tier(government) else {
         return Ok(None);
     };
@@ -86,6 +89,74 @@ pub fn enacted<E: history::Effects>(
         },
         effects,
     )
+}
+
+/// Stock cache/achievement publishers with no added synchronous consumers.
+/// Initializers must qualify the current MomentRecorded ring and report routes;
+/// custom gameplay subscribers require a concrete `history::Effects` service.
+pub struct StockEffects<'a> {
+    pub recorded: &'a [history::RecordedListener],
+    pub reports: Vec<Report>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Report {
+    Recorded { id: i32, kind: u32, owner: i32 },
+    Moment { id: i32, kind: u32 },
+    EraScore { owner: i32, amount: i32 },
+    Notice { id: i32, owner: i32 },
+}
+#[derive(Debug)]
+pub enum StockError {
+    Recorded(history::RecordedError),
+    Eras(c6_core::loaded_state::game_eras::AccessError),
+    Unsupported(&'static str),
+}
+impl history::Effects for StockEffects<'_> {
+    type Error = StockError;
+    fn moment_recorded(
+        &mut self,
+        _: &mut LoadedState,
+        id: i32,
+        kind: u32,
+        owner: i32,
+    ) -> Result<(), StockError> {
+        history::stock_recorded(self.recorded, kind).map_err(StockError::Recorded)?;
+        self.reports.push(Report::Recorded { id, kind, owner });
+        Ok(())
+    }
+    fn report(&mut self, _: &mut LoadedState, id: i32, kind: u32) -> Result<(), StockError> {
+        self.reports.push(Report::Moment { id, kind });
+        Ok(())
+    }
+    fn change_era_score(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        amount: i32,
+        reason: i32,
+    ) -> Result<(), StockError> {
+        if reason != 0 {
+            return Err(StockError::Unsupported("nonhistoric EraScore reason"));
+        }
+        if state
+            .change_game_era_score(owner, amount, reason)
+            .map_err(StockError::Eras)?
+        {
+            // Source2998080(reason0) publishes788b7534 after the canonical cell
+            // mutation; its stock consumer274d500 refreshes numeric cache only.
+            self.reports.push(Report::EraScore { owner, amount });
+        }
+        Ok(())
+    }
+    fn era_score_notice(&mut self, _: &mut LoadedState, moment: &Moment) -> Result<(), StockError> {
+        // PrideMoment is nonblocking. Under this qualified stock scope its
+        // name/translation/Host output has no gameplay or RNG consumer.
+        self.reports.push(Report::Notice {
+            id: moment.id,
+            owner: moment.acting_player_ordinal,
+        });
+        Ok(())
+    }
 }
 
 #[cfg(test)]

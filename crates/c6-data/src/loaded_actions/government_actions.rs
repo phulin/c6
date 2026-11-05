@@ -2,6 +2,7 @@
 //! Available choices and source-ordered mutations are supplied by this module;
 //! unknown positive effects and anarchy remain incomplete transitions.
 pub mod boosts;
+pub mod current;
 pub mod history;
 pub mod modifiers;
 pub mod requirements;
