@@ -175,7 +175,7 @@ pub fn dispatch<P>(
                 effects
                     .backend
                     .script
-                    .call_empty(state, "DistrictConstructed", &arguments)
+                    .call_empty(state, "OnDistrictConstructed", &arguments)
                     .map_err(|e| error("DistrictConstructed script", e))?;
             }
             Listener::Gossip if services.gossip_history.is_empty() => {}
