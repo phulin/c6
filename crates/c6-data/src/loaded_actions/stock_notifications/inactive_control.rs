@@ -1,5 +1,5 @@
 //! Current inactive controller off-turn work on the same stock runtime.
-//! This supports source-proven cold, cityless/unitless analysis guards. It
+//! This supports source-proven cityless/unitless analysis guards. It
 //! preserves the nonzero CollectorOne result and its status2 stop boundary.
 use super::{human_activation::Kind, Runtime};
 use c6_core::{
@@ -172,9 +172,27 @@ impl<P> Effects<'_, '_, P> {
                 if unit_production_ready(self.input.flags)? {
                     return Ok(Status::Complete);
                 }
-                Err(Error::Unsupported(
-                    "inactive GrandStrategic policy analysis consumers",
-                ))
+                empty_cities(state, owner)?;
+                if !state
+                    .world()
+                    .player(owner)
+                    .map_err(|_| Error::Unsupported("inactive policy owner"))?
+                    .unit_records()
+                    .map_err(|_| Error::Unsupported("inactive policy units"))?
+                    .is_empty()
+                {
+                    return Err(Error::Unsupported(
+                        "inactive current GrandStrategic unit analysis",
+                    ));
+                }
+                // DoOffTurn2122f70 evaluates victory/settlement/unit scores,
+                // then invokes the supplied continuation (status2). These
+                // outputs belong to the external policy, not gameplay state.
+                // Stock UnitProduction's synchronous bool(UnitTypes) queries
+                // are Research's const vector lookup and Religious's const
+                // hero-claim lookup; neither changes state or draws RNG.
+                // No scheduler or policy score mirrors are constructed.
+                Ok(Status::Yield)
             }
             Kind::Economic => {
                 if flag(
