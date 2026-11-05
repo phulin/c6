@@ -30,16 +30,6 @@ pub fn observe_visible_units(
             "current historical knowledge aging continuation",
         ));
     }
-    if state
-        .retained()
-        .players
-        .iter()
-        .any(|p| !p.cities.records.entries.is_empty())
-    {
-        return Err(Error::Unsupported(
-            "current Targets City observation continuation",
-        ));
-    }
     let layers = visibility.shared(observer).map_err(Error::Unsupported)?;
     let normal = layers
         .0
@@ -59,12 +49,36 @@ pub fn observe_visible_units(
             .checked_mul(normal.grid_width as usize)
             .and_then(|v| v.checked_add(index % width))
             .ok_or(Error::Unsupported("current Targets visibility index"))?;
-        if *normal
+        let visible = *normal
             .values
             .get(cell)
             .ok_or(Error::Unsupported("current Targets visibility extent"))?
-            <= 0
-        {
+            > 0;
+        if plot.city_attributes.as_ref().is_some_and(|c| {
+            (c.player >= 0 && c.district != u32::MAX) || c.wonder_building_hash != u32::MAX
+        }) {
+            let revealed = match state
+                .world()
+                .visibility(observer)
+                .ok_or(Error::Unsupported("current Targets revealed owner"))?
+                .revealed
+                .get(index)
+            {
+                Some(0) => false,
+                Some(1) => true,
+                _ => {
+                    return Err(Error::Unsupported(
+                        "current Targets canonical revealed byte",
+                    ))
+                }
+            };
+            if visible || revealed {
+                return Err(Error::Unsupported(
+                    "current Targets City observation continuation",
+                ));
+            }
+        }
+        if !visible {
             continue;
         }
         if plot.improvement_hash != u32::MAX {
