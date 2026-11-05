@@ -40,6 +40,7 @@ pub struct Effects<'s, 'runtime, 'a, P> {
     pub backend: &'s mut Runtime<'runtime, P>,
     pub research_runtime: &'s mut research::Runtime,
     pub inputs: &'a Inputs<'a>,
+    pub gossip_history: &'s [c6_core::city_power_activation::gossip_delivery::TurnVisibility],
     pub reports: Vec<Report>,
     pub workers: Vec<crate::builder_improvement::workers::Report>,
 }

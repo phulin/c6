@@ -21,6 +21,7 @@ impl<P> Session<'_, '_, P> {
                 backend: &mut self.context.notifications.backend,
                 research_runtime: &mut self.research,
                 inputs,
+                gossip_history: &self.visibility.history,
                 reports: Vec::new(),
                 workers: Vec::new(),
             };

@@ -92,8 +92,6 @@ pub struct Services<'a> {
     pub zoned_owners: &'a [i32],
     pub boosts: &'a production::district_boosts::Definitions,
     pub quests: &'a std::cell::RefCell<crate::game_update_state::round_quests::Runtime>,
-    pub gossip_fallback: &'a c6_core::city_power_activation::gossip_delivery::TurnVisibility,
-    pub gossip_history: &'a [c6_core::city_power_activation::gossip_delivery::TurnVisibility],
 }
 impl Services<'_> {
     pub fn check_zoned(&self, owner: i32) -> Result<(), production::Error> {
@@ -179,9 +177,9 @@ pub fn dispatch<P>(
                     .call_empty(state, "OnDistrictConstructed", &arguments)
                     .map_err(|e| error("DistrictConstructed script", e))?;
             }
-            Listener::Gossip
-                if services.gossip_history.is_empty()
-                    && services.gossip_fallback.visibility == 0 => {}
+            // AddGossipItem returns before archive/report for empty current
+            // history; it never reads the fallback on that branch.
+            Listener::Gossip if effects.gossip_history.is_empty() => {}
             Listener::Gossip => {
                 return Err(production::Error::Unsupported(
                     "district Gossip propagation",
@@ -431,7 +429,9 @@ impl changes::Context for RequirementContext<'_> {
             )));
         }
         let Some(hash) = self.binding.district else {
-            return Err(sets::Error::Context(production::Error::Unsupported("PlayerHasDistrict missing district filter")));
+            return Err(sets::Error::Context(production::Error::Unsupported(
+                "PlayerHasDistrict missing district filter",
+            )));
         };
         let player = self
             .state
