@@ -318,6 +318,48 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
         Ok(())
     }
 }
+/// Current owners for the same stock human off-turn callback ring. Native
+/// planning work uses the same exclusions as activation; retained City/role
+/// effects run on every dispatch before the inactive controller stores pending.
+pub struct OffTurn<'a> {
+    pub definitions: &'a maintenance::Definitions,
+    pub inputs: &'a Inputs,
+    pub units: &'a [u32],
+    pub major: bool,
+    pub initialized: bool,
+    pub scout: &'a ScoutInputs,
+    pub visibility: &'a crate::unit_sight_state::Runtime,
+}
+impl OffTurn<'_> {
+    pub(super) fn dispatch<P>(
+        &self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+    ) -> Result<bool, Error> {
+        if state.binding() != &self.inputs.binding
+            || state
+                .player_slot_status(self.inputs.owner)
+                .map_err(|_| Error::Unsupported("off-turn human configuration"))?
+                != 3
+        {
+            return Err(Error::Unsupported("human off-turn runtime binding"));
+        }
+        core::Effects::off_turn(
+            &mut Effects {
+                backend,
+                inputs: self.inputs,
+                definitions: self.definitions,
+                units: self.units,
+                scout: self.scout,
+                visibility: self.visibility,
+                major: self.major,
+                initialized: self.initialized,
+            },
+            state,
+            self.inputs.owner,
+        )
+    }
+}
 #[allow(clippy::too_many_arguments)]
 pub fn run<P>(
     state: &mut LoadedState,

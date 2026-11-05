@@ -311,6 +311,52 @@ pub fn run<P>(
     result
 }
 
+/// Inactive human orchestration over the same qualified callback implementation
+/// used by human activation. Callback order must match both current bindings.
+pub fn run_human<P>(
+    state: &mut LoadedState,
+    backend: &mut Runtime<'_, P>,
+    input: &mut Inputs,
+    current: super::human_activation::OffTurn<'_>,
+) -> Result<Outcome, Error> {
+    if input.failed
+        || state.binding() != &input.binding
+        || input.owner != current.inputs.owner
+        || input.off_turn != current.inputs.off_turn
+    {
+        return Err(Error::Unsupported("inactive human callback binding"));
+    }
+    backend
+        .check(state)
+        .map_err(|_| Error::Unsupported("inactive human stock state"))?;
+    struct Human<'s, 'a, 'i, P> {
+        backend: &'s mut Runtime<'a, P>,
+        current: super::human_activation::OffTurn<'i>,
+    }
+    impl<P> core::Effects for Human<'_, '_, '_, P> {
+        fn off_turn(&mut self, state: &mut LoadedState, _: i32) -> Result<bool, Error> {
+            self.current.dispatch(state, self.backend)
+        }
+        fn wait_for_jobs(&mut self, state: &mut LoadedState, _: i32) -> Result<(), Error> {
+            self.backend
+                .check(state)
+                .map_err(|_| Error::Unsupported("inactive human job join"))?;
+            Ok(())
+        }
+    }
+    let result = core::run(
+        state,
+        input.owner,
+        input.skip_off_turn,
+        &mut Human { backend, current },
+    );
+    if let Err(error) = &result {
+        input.failed = true;
+        backend.last_error = Some(format!("inactive human control: {error:?}"));
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
