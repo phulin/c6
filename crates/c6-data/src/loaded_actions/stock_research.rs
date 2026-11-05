@@ -97,6 +97,18 @@ impl<P> Runtime<'_, P> {
         }
         Ok(())
     }
+    /// Apply the same explicit policy response at a source-qualified NPC
+    /// activation selection boundary. This records legal choices and changes
+    /// no canonical research queue; ordinary player actions remain external.
+    pub fn deferred_research_response(
+        &mut self,
+        state: &LoadedState,
+        player: i32,
+        legal_indices: &[i32],
+    ) -> Result<research::policy::AcquisitionResponse, processing::Error> {
+        self.check(state)?;
+        Ok(self.acquisition_policies.respond(player, legal_indices))
+    }
     pub fn deferred_acquisition_decisions(&self) -> &[research::policy::DeferredAcquisition] {
         &self.acquisition_policies.decisions
     }
@@ -115,11 +127,9 @@ impl<P> research::Effects for Effects<'_, '_, P> {
         player: i32,
         legal_indices: &[i32],
     ) -> Result<research::policy::AcquisitionResponse, Self::Error> {
-        self.backend.check(state).map_err(Error::Notification)?;
-        Ok(self
-            .backend
-            .acquisition_policies
-            .respond(player, legal_indices))
+        self.backend
+            .deferred_research_response(state, player, legal_indices)
+            .map_err(Error::Notification)
     }
     fn effect(
         &mut self,
