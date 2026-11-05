@@ -15,6 +15,8 @@ mod activation;
 pub mod city_production;
 pub mod unit_creation;
 pub mod city_queries;
+#[path = "stock_resource_revelation.rs"]
+pub mod resource_revelation;
 pub mod cityless_managers;
 pub mod deactivation;
 #[path = "stock_notifications_game_update.rs"]
@@ -99,6 +101,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     unit_creation: Option<unit_creation::State<'a>>,
     modifier_owners: Option<unit_creation::ModifierOwners>,
     movement: Option<movement::State<'a>>,
+    resource_revelation: Option<resource_revelation::State>,
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
     pub(crate) turn_progress: Option<turn_loop::Progress>,
@@ -139,6 +142,7 @@ impl<'a, P> Runtime<'a, P> {
             unit_creation: None,
             modifier_owners: None,
             movement: None,
+            resource_revelation: None,
             city_queries: None,
             gold_signals: None,
             activation_progress: None,

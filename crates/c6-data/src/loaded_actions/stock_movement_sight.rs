@@ -236,7 +236,7 @@ impl<P> sight::Effects for Runtime<'_, P> {
         player: i32,
         plot: u32,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight update_resource_revealed"))
+        self.update_revealed_resource(state, runtime, player, plot)
     }
     fn preflight_hidden_propagation(
         &self,
