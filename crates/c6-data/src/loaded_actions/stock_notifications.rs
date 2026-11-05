@@ -13,6 +13,8 @@ use super::{
 #[path = "stock_activation.rs"]
 mod activation;
 pub mod city_production;
+#[path = "stock_combat.rs"]
+pub mod combat;
 pub mod city_queries;
 pub mod cityless_managers;
 pub mod deactivation;
@@ -136,6 +138,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     modifier_owners: Option<unit_creation::ModifierOwners>,
     unit_production_signals: Option<city_production::unit::Signals>,
     movement: Option<movement::State<'a>>,
+    combat: Option<combat::State<'a>>,
     resource_revelation: Option<resource_revelation::State>,
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
@@ -189,6 +192,7 @@ impl<'a, P> Runtime<'a, P> {
             era_changes: None,
             unit_production_signals: None,
             movement: None,
+            combat: None,
             resource_revelation: None,
             city_queries: None,
             gold_signals: None,

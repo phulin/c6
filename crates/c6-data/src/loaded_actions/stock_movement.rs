@@ -314,8 +314,13 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
                     .map_err(Error::Rules)
             }
             0xd8ad_fd71 | 0x8ee3_1e6f | 0x4ce3_627a => self
-                .deliver_removal_report(state, report, super::turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers)
+                .deliver_removal_report(
+                    state,
+                    report,
+                    super::turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers,
+                )
                 .map_err(Error::RemovalReport),
+            0x35597c21 | 0x7274f04b | 0x754cbd1b => self.deliver_combat_placement_report(state, report),
             _ => Err(Error::UnsupportedPlacementReport(report.event_hash)),
         }
     }

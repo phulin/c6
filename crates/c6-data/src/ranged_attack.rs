@@ -3,6 +3,7 @@
 //! Unsupported branches fail explicitly and retain prior state and gameplay RNG.
 pub mod death;
 pub mod query;
+pub mod stock;
 use crate::{
     loaded_upkeep as upkeep, melee_attack as melee, unit_placement_state as placement,
     unit_sight_state as sight,

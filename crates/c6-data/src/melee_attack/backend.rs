@@ -646,6 +646,33 @@ impl<O, R> Backend<O, R> {
             inputs,
         })
     }
+    /// Reborrow already initialized canonical owners after an action. Unlike
+    /// `new`, this never refreshes initial inputs or requires a pristine world.
+    /// A rejected transfer returns every owner unchanged to its caller.
+    #[allow(clippy::too_many_arguments, clippy::result_large_err)]
+    pub(crate) fn resume_owned(
+        state: &LoadedState,
+        origin: c6_core::loaded_state::ActionStamp,
+        reporting: O,
+        requirements: R,
+        effects: EffectRuntime,
+        inputs: Inputs,
+    ) -> Result<Self, Self> {
+        let backend = Self {
+            reporting,
+            requirements,
+            effects,
+            inputs,
+        };
+        if !origin.same_instance(state.action_stamp())
+            || backend.effects.binding != *state.binding()
+            || state.observed_snapshot() != Some(&backend.effects.witness)
+        {
+            return Err(backend);
+        }
+        Ok(backend)
+    }
+
     /// Borrow the persistent provider and lifecycle owners together; no state is
     /// cloned or rebuilt for nested death/ability callbacks.
     pub fn kill_parts(&mut self) -> (&mut O, &mut EffectRuntime, &mut R, &Inputs) {
