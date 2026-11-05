@@ -13,6 +13,7 @@ pub mod influence_map_update;
 pub mod game_update;
 pub mod game_sync;
 pub mod game_statistics;
+pub mod game_history;
 pub mod game_eras;
 pub mod player_social;
 pub mod player_governors;
@@ -112,6 +113,7 @@ mod tests {
             game_sync_runtime: None,
             game_city_names: None,
             game_statistics: None,
+            game_history: None,
             game_eras: None,
             limits: AssemblyLimits::default(),
             revision: 0,
@@ -3497,6 +3499,7 @@ pub struct LoadedState {
     game_sync_runtime: Option<game_sync::Runtime>,
     game_city_names: Option<game_city_names::Owner>,
     game_statistics: Option<game_statistics::Statistics>,
+    game_history: Option<crate::game_history::Manager>,
     game_eras: Option<game_eras::Runtime>,
     limits: AssemblyLimits,
     revision: u64,
@@ -3707,6 +3710,7 @@ impl LoadedState {
             game_sync_runtime: None,
             game_city_names: None,
             game_statistics: None,
+            game_history: None,
             game_eras: None,
             limits,
             revision: 0,
