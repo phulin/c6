@@ -190,20 +190,24 @@ impl<S: Copy> ListenerRing<S> {
         }
         Ok(())
     }
-    pub(crate) fn cursor_start(&mut self) -> Result<usize, RegistryError> {
+    /// Retain the sentinel before a reentrant dispatch. Release on failure or advance until None.
+    pub fn cursor_start(&mut self) -> Result<usize, RegistryError> {
         self.retain(0)?;
         Ok(0)
     }
-    pub(crate) fn cursor_route(&self, current: usize) -> Result<Option<S>, RegistryError> {
+    /// Read the currently retained dispatch route; callbacks may mutate this same ring.
+    pub fn cursor_route(&self, current: usize) -> Result<Option<S>, RegistryError> {
         self.links
             .get(current)
             .map(|l| l.subscriber)
             .ok_or(RegistryError::CursorInvalidated)
     }
-    pub(crate) fn cursor_release(&mut self, current: usize) -> Result<(), RegistryError> {
+    /// Release a retained cursor after an interrupted dispatch.
+    pub fn cursor_release(&mut self, current: usize) -> Result<(), RegistryError> {
         self.release(current)
     }
-    pub(crate) fn cursor_next(&mut self, current: usize) -> Result<Option<usize>, RegistryError> {
+    /// Retain the successor before releasing the current link; None closes the dispatch.
+    pub fn cursor_next(&mut self, current: usize) -> Result<Option<usize>, RegistryError> {
         let next = self
             .links
             .get(current)

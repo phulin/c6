@@ -4,6 +4,7 @@
 //! actual ModifierSystem counter; cached City objects keep their source IDs.
 pub mod collection;
 pub mod definitions;
+pub mod destruction;
 pub mod government;
 pub mod policy;
 mod primary;
@@ -1120,6 +1121,27 @@ impl EffectRuntime {
         owner: u64,
         effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
     ) -> Result<(), Error> {
+        let Some(instance) = self
+            .city_creation
+            .as_ref()
+            .ok_or(Error::Missing("current City creation domain"))?
+            .modifiers
+            .iter()
+            .find(|m| m.owner == owner)
+            .map(|m| m.instance)
+        else {
+            return Ok(());
+        };
+        self.remove_city_modifier_instance(state, requirements, instance, &[], effects)
+    }
+    fn remove_city_modifier_instance(
+        &mut self,
+        state: &mut LoadedState,
+        requirements: &mut super::requirements::Runtime,
+        instance: i32,
+        features: &[u32],
+        effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
+    ) -> Result<(), Error> {
         self.current_owner(state).map_err(Error::Query)?;
         {
             let Some(index) = self
@@ -1128,10 +1150,18 @@ impl EffectRuntime {
                 .ok_or(Error::Missing("current City creation domain"))?
                 .modifiers
                 .iter()
-                .position(|m| m.owner == owner)
+                .position(|m| m.instance == instance)
             else {
-                return Ok(());
+                return Err(Error::Missing("current City modifier destruction instance"));
             };
+            let record = &self.city_creation.as_ref().unwrap().modifiers[index];
+            let owner = record.owner;
+            if record.definition.permanent || record.modifier.suppressed || !record.modifier.enabled
+            {
+                return Err(Error::Missing(
+                    "City owned modifier disabled/suppressed/permanent destruction",
+                ));
+            }
             // Deactivate23332b0 clears eligible tracked entries first. These
             // admitted policy definitions have no permanent/removed subjects.
             if self.city_creation.as_ref().unwrap().modifiers[index]
@@ -1192,13 +1222,14 @@ impl EffectRuntime {
                     continue;
                 }
                 let (_, effect) = self.city_effect(effect).map_err(Error::Query)?;
-                let super::ContextObject::City(city) =
-                    self.object(subject).map_err(Error::Query)?.kind
-                else {
-                    return Err(Error::Missing("Policy Remove ICity"));
-                };
+                let city = self
+                    .object(subject)
+                    .map_err(Error::Query)?
+                    .kind
+                    .city_component()
+                    .ok_or(Error::Missing("owned modifier Remove ICity"))?;
                 effect
-                    .apply(state, city, &[], true, effects)
+                    .apply(state, city, features, true, effects)
                     .map_err(Error::Effect)?;
             }
             let creation = self.city_creation.as_mut().unwrap();
