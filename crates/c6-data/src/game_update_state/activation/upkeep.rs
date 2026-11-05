@@ -342,13 +342,18 @@ impl<P> Context<'_, '_, P> {
                 .map_err(|e| failure("city activation", e))?;
             services.outcomes.push((owner, city, outcome));
         }
-        super::cityless_managers::after_cities(
-            self.state,
-            self.managers_definitions,
-            self.backend,
-            owner,
-        )
-        .map_err(|e| failure("resource maintenance and notifications", e))?;
+        // 2ba0e92..2ba0ec6 has a second IsBarbarian guard: resource
+        // maintenance/notifications and trade-capacity notification are skipped.
+        // City activation above and movement restoration below are unconditional.
+        if !barbarian {
+            super::cityless_managers::after_cities(
+                self.state,
+                self.managers_definitions,
+                self.backend,
+                owner,
+            )
+            .map_err(|e| failure("resource maintenance and notifications", e))?;
+        }
         self.backend
             .restore_player_movement(
                 self.state,
@@ -468,19 +473,8 @@ pub fn placement_prelude(
 ) -> Result<(), Error> {
     super::forced_rebase::check_districts(state, definitions, owner)
         .map_err(|e| failure("forced district rebasing", e))?;
-    let player = state
-        .retained()
-        .players
-        .iter()
-        .find(|p| p.header.owner == owner)
-        .ok_or_else(|| failure("placement", "current player"))?;
-    if !player.improvements.plot_indices.is_empty() {
-        return Err(failure(
-            "forced improvement rebasing",
-            "current improvement callbacks",
-        ));
-    }
-    // ExecuteImprovementCaptures traverses the same current improvement list.
+    super::forced_rebase::check_improvements(state, definitions, owner)
+        .map_err(|e| failure("forced improvement rebasing and captures", e))?;
     Ok(())
 }
 

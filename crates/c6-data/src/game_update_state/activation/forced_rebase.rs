@@ -1,4 +1,4 @@
-//! District portion of stock Placement.ExecuteForcedUnitRebase.
+//! District/improvement guards of stock Placement.ExecuteForcedUnitRebase.
 //! Completion and current air capacity precede city, occupation and pairing
 //! queries. Only pillaged or enemy-occupied hangars enter forced rebasing.
 use crate::{resource_binding::ResourceAuthority, unit_initialization_definitions, Rules};
@@ -10,6 +10,7 @@ pub enum Error {
     Rules(crate::Error),
     Missing(&'static str),
     AircraftContinuation { district: u32, capacity: i32 },
+    ImprovementAircraftContinuation { plot: i32, capacity: i32 },
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -20,6 +21,13 @@ impl std::error::Error for Error {}
 pub struct Definitions {
     binding: WireBinding,
     air_slots: Vec<(u32, i32)>,
+    improvements: Vec<Improvement>,
+}
+struct Improvement {
+    hash: u32,
+    air_slots: i32,
+    outside: bool,
+    capturable: bool,
 }
 impl Definitions {
     pub fn from_rules(
@@ -48,9 +56,36 @@ impl Definitions {
                 .map_err(|_| Error::Missing("district AirSlots"))?;
             air_slots.push((crate::registry::linux_type_hash(&entry.type_name), value));
         }
+        let registry =
+            unit_initialization_definitions::collection(rules, "Improvements", "ImprovementType")
+                .map_err(Error::Definitions)?;
+        let table = rules
+            .gameplay()
+            .table("Improvements")
+            .ok_or(Error::Missing("Improvements"))?;
+        let improvements = registry
+            .entries()
+            .iter()
+            .map(|entry| {
+                let row = table
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Missing("improvement row"))?;
+                let integer = |name| {
+                    i32::try_from(row.integer(name).map_err(Error::Rules)?)
+                        .map_err(|_| Error::Missing("improvement scalar"))
+                };
+                Ok(Improvement {
+                    hash: crate::registry::linux_type_hash(&entry.type_name),
+                    air_slots: integer("AirSlots")?,
+                    outside: integer("CanBuildOutsideTerritory")? != 0,
+                    capturable: integer("Capturable")? != 0,
+                })
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
             binding: state.binding().clone(),
             air_slots,
+            improvements,
         })
     }
 }
@@ -132,6 +167,58 @@ pub fn check_districts(
                 district: district.id,
                 capacity,
             });
+        }
+    }
+    Ok(())
+}
+/// Complete the ordinary improvement guards, followed by the separate capture
+/// traversal. Both use the live player's original plot order and current types.
+pub fn check_improvements(
+    state: &LoadedState,
+    definitions: &Definitions,
+    owner: i32,
+) -> Result<(), Error> {
+    if state.binding() != &definitions.binding {
+        return Err(Error::Binding);
+    }
+    let player = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == owner)
+        .ok_or(Error::Missing("current improvement owner"))?;
+    // ForceRebase2befbce tests AirSlots before pillage/occupation/pairing.
+    for &index in &player.improvements.plot_indices {
+        let Some(plot) = state.world().map().plots.get(index as usize) else {
+            continue;
+        };
+        let Some(definition) = definitions
+            .improvements
+            .iter()
+            .find(|d| d.hash == plot.improvement_hash)
+        else {
+            return Err(Error::Missing("current rebase improvement definition"));
+        };
+        if definition.air_slots > 0 {
+            return Err(Error::ImprovementAircraftContinuation {
+                plot: index,
+                capacity: definition.air_slots,
+            });
+        }
+    }
+    // Captures2beb9dd first requires outside-territory, then Capturable.
+    // Camps and ordinary Farm/Mine return at their real outside-territory guard.
+    for &index in &player.improvements.plot_indices {
+        let Some(plot) = state.world().map().plots.get(index as usize) else {
+            continue;
+        };
+        let definition = definitions
+            .improvements
+            .iter()
+            .find(|d| d.hash == plot.improvement_hash)
+            .ok_or(Error::Missing("current capture improvement definition"))?;
+        if definition.outside && definition.capturable {
+            return Err(Error::Missing("current improvement capture continuation"));
         }
     }
     Ok(())
