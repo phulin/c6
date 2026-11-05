@@ -1,6 +1,8 @@
 //! Explicit Linux City plot gold purchase on canonical territory and Treasury.
 //! All callback services borrow the ongoing stock owners; unsupported listeners
 //! retain their actual mutation prefix instead of completing the request.
+pub mod boosts;
+
 use crate::{
     city_territory,
     loaded_actions::{city_range_attack, stock_notifications},
