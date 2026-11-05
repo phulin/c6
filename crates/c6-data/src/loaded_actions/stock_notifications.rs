@@ -25,6 +25,8 @@ pub mod cityless_managers;
 pub mod deactivation;
 pub mod turn_loop;
 pub mod city_queries;
+#[path = "stock_gold.rs"]
+pub mod gold;
 #[path = "stock_movement.rs"]
 pub mod movement;
 #[path = "stock_research.rs"]
@@ -89,6 +91,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     player_services: Option<crate::unit_placement_services::Runtime>,
     movement: Option<movement::State<'a>>,
     city_queries: Option<city_queries::Inputs<'a>>,
+    gold_signals: Option<gold::Signals>,
 }
 impl<'a, P> Runtime<'a, P> {
     pub fn new(
@@ -120,6 +123,7 @@ impl<'a, P> Runtime<'a, P> {
             player_services: None,
             movement: None,
             city_queries: None,
+            gold_signals: None,
         })
     }
     /// Semantic stock informational publication. The source caller has run its
@@ -156,6 +160,35 @@ impl<'a, P> Runtime<'a, P> {
             return Ok(());
         }
         self.notices.push(notice);
+        Ok(())
+    }
+    /// City.BuildQueue.CheckProduction284f6e0: a live City with no front
+    /// entry requests an external production choice. This publishes the
+    /// semantic decision without constructing native notification/UI pools.
+    pub fn publish_city_production(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        city: u32,
+    ) -> Result<(), processing::Error> {
+        self.check(state)?;
+        let current = state.city(owner, city)?;
+        if current.header.delayed_death || !current.build_queue.entries.is_empty() {
+            return Ok(());
+        }
+        let decision = Decision {
+            owner: current.header.owner,
+            type_hash: 0x40fb_81ed,
+            location: [current.header.location_x, current.header.location_y],
+            component: Some(ComponentId {
+                owner: current.header.owner.try_into().map_err(|_| processing::Error::Unsupported("City owner range"))?,
+                component_type: 2,
+                id: current.header.id,
+            }),
+        };
+        if !self.decisions.contains(&decision) {
+            self.decisions.push(decision);
+        }
         Ok(())
     }
     /// Publish a decision already established by the source gameplay caller
