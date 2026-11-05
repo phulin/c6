@@ -452,3 +452,47 @@ impl<P> Session<'_, '_, P> {
         self.retain(result, partial_failure)
     }
 }
+
+impl<P> Session<'_, '_, P> {
+    /// Append an explicit building choice using the same stock runtime and
+    /// already-bound current city queries. Legality runs before queue writes;
+    /// successful selection returns ordered semantic production publications.
+    #[allow(clippy::too_many_arguments)]
+    pub fn choose_building(
+        &mut self,
+        owner: i32,
+        city: u32,
+        building_hash: u32,
+        buildings: &crate::city_production_turn::buildings::Definitions,
+        appeal: &crate::city_production_turn::appeal::Definitions,
+        choices: &crate::city_production_turn::selection::Definitions,
+        current: &crate::city_production_turn::selection::Current<'_>,
+        queries: &impl crate::city_production_turn::selection::Queries,
+    ) -> Result<
+        Vec<stock_notifications::city_production::Record>,
+        Error<crate::city_production_turn::Error>,
+    > {
+        self.ordinary_player_action(owner)?;
+        let before = self.state().action_stamp();
+        let (result, reports) = {
+            let mut effects = stock_notifications::city_production::Effects::new(
+                &mut self.context.notifications.backend,
+                buildings,
+                appeal,
+                stock_notifications::city_production::Scope::StockPlainHeadlessNoAddedConsumers,
+            );
+            let result = effects.choose_building(
+                self.context.notifications.state,
+                owner,
+                city,
+                building_hash,
+                choices,
+                current,
+                queries,
+            );
+            (result, effects.reports)
+        };
+        let partial_failure = self.state().action_stamp() != before;
+        self.retain(result.map(|()| reports), partial_failure)
+    }
+}
