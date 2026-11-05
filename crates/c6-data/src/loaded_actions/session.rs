@@ -36,6 +36,8 @@ pub mod district;
 pub mod upgrade;
 #[path = "session_promotion.rs"]
 pub mod promotion;
+#[path = "session_trade_route.rs"]
+pub mod trade_route;
 
 #[derive(Debug)]
 pub enum Error<E> {

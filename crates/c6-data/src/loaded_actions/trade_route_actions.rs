@@ -6,6 +6,7 @@
 //! neither a captured path nor a successful empty callback is supplied here.
 pub mod current;
 pub mod path;
+pub mod stock;
 use crate::{game_update_state::round_trade, registry::linux_type_hash, Rules};
 use c6_core::{
     core_player::initialization::InputIdentities,

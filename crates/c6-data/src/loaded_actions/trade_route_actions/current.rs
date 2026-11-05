@@ -16,6 +16,7 @@ use c6_core::{
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
     TraderRouteChanged(ComponentId),
+    DiplomaticVisibilityChanged { owner: i32, other: i32 },
     ResourceStarted {
         origin: ComponentId,
         destination: ComponentId,
