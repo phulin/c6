@@ -244,6 +244,7 @@ impl<'a, B: Backend> Provider<'a, B> {
             choose_tech::TYPE_HASH => Some(choose_tech::VTABLE_ADDRESSPOINT),
             0x40fb81ed => Some(0x3af4b80),
             0x9456ed4a => Some(0x3af4ec0),
+            super::governors::TYPE_HASH => Some(super::governors::VTABLE_ADDRESSPOINT),
             command_units::TYPE_HASH => Some(command_units::VTABLE_ADDRESSPOINT),
             city_range_attack::TYPE_HASH => Some(city_range_attack::VTABLE_ADDRESSPOINT),
             hash => culture::Kind::from_hash(hash).map(|k| k.vtable()),
@@ -251,6 +252,9 @@ impl<'a, B: Backend> Provider<'a, B> {
         let base = matches!(
             vtable,
             super::initialization::BASE_VTABLE | super::initialization::PRIDE_VTABLE
+                // CivicDiscovered inherits Instance.IsExpired2d2e250 and
+                // IsNeeded2d2e290; its current turn/duration remain authoritative.
+                | 0x3af5200
         );
         if !base && expected != Some(vtable) {
             return Err(Error::Unsupported(
@@ -271,6 +275,7 @@ impl<'a, B: Backend> Provider<'a, B> {
         let owner = i32::from(record.id.owner);
         let survives = match record.type_hash {
             0x9456ed4a => self.backend.pantheon_needed(self.state, owner)?,
+            super::governors::TYPE_HASH => !super::governors::is_expired(self.state, owner)?,
             // ChooseCityProduction::IsExpired2d29800. This only queries the
             // current City; the external policy retains its production choice.
             0x40fb81ed => self
@@ -673,7 +678,9 @@ impl<B: Backend> Notifications for Provider<'_, B> {
                 .vtable_addresspoint
                 .ok_or(Error::Unsupported("notification phase virtual binding"))?;
             match vtable {
-                super::initialization::BASE_VTABLE | super::initialization::PRIDE_VTABLE => {
+                super::initialization::BASE_VTABLE | super::initialization::PRIDE_VTABLE
+                // CivicDiscovered inherits Instance.IsValidForPhase2d29200 RET1.
+                | 0x3af5200 => {
                     Ok(true)
                 }
                 command_units::VTABLE_ADDRESSPOINT => s
@@ -690,6 +697,9 @@ impl<B: Backend> Notifications for Provider<'_, B> {
                 // ChoosePantheon::IsValidForPhase2d29fc0 uses this query too.
                 0x3af4ec0
                 | 0x3af4b80
+                // GovernorAppointment2d2cf40 forwards to the same strategic
+                // command phase query; the actual choice remains external.
+                | 0x3af5f00
                 | choose_tech::VTABLE_ADDRESSPOINT
                 | city_range_attack::VTABLE_ADDRESSPOINT => {
                     Ok(s.inputs.culture.valid_for_phase(s.state)?)

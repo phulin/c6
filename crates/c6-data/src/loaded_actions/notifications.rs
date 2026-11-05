@@ -3,6 +3,7 @@
 //! Manager::Update remain explicit dependencies.
 pub mod allocation;
 mod borrowed;
+pub mod governors;
 pub mod initialization;
 pub mod lifecycle;
 pub mod processing;
