@@ -860,6 +860,7 @@ pub mod unit_modifier_effect;
 
 pub mod found_city;
 pub mod district_initialization;
+pub mod district_actions;
 pub mod unit_kill;
 
 pub mod city_territory;
