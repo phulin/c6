@@ -2,6 +2,7 @@
 //! Callback providers must execute real current subscribers before returning.
 pub mod boosts;
 pub mod eras;
+pub mod history;
 pub mod mayhem;
 pub mod targets;
 pub mod stock_guards;
