@@ -1,4 +1,4 @@
-//! Source-qualified current civic boost consumers for the stock backend.
+//! Source-qualified current technology and civic boost consumers for the stock backend.
 //! Rates and quest data stay with their canonical current owners. Presentation
 //! DTOs, achievements and telemetry do not run native host/UI machinery.
 use super::{Effects, Error};
@@ -7,24 +7,27 @@ use crate::{game_update_state::round_quests, research};
 use c6_core::{core_player::initialization::WireBinding, loaded_state::LoadedState};
 use std::cell::RefCell;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum CivicConsumer {
+pub enum BoostConsumer {
     Eras,
     Quests,
     Achievements,
 }
+/// Compatibility name for callers binding civic inspirations.
+pub type CivicConsumer = BoostConsumer;
 pub struct Inputs<'a> {
     binding: WireBinding,
-    consumers: Vec<CivicConsumer>,
+    consumers: Vec<BoostConsumer>,
     quests: &'a RefCell<round_quests::Runtime>,
-    culture_report: bool,
-    civic_notice: bool,
+    kind: research::Kind,
+    stock_report: bool,
+    stock_notice: bool,
 }
 impl<'a> Inputs<'a> {
     /// Ordered observed GameSignals+4b0 subscribers and finite stock report /
     /// notification bindings, admitted from the same current BEFORE.
     pub fn from_initial(
         state: &LoadedState,
-        consumers: Vec<CivicConsumer>,
+        consumers: Vec<BoostConsumer>,
         quests: &'a RefCell<round_quests::Runtime>,
         culture_report: bool,
         civic_notice: bool,
@@ -40,8 +43,36 @@ impl<'a> Inputs<'a> {
             binding: state.binding().clone(),
             consumers,
             quests,
-            culture_report,
-            civic_notice,
+            kind: research::Kind::Civic,
+            stock_report: culture_report,
+            stock_notice: civic_notice,
+        })
+    }
+    /// Ordered current GameSignals+1308 subscribers. `stock_report` admits
+    /// only a boost report with no native cache subscribers and the stock host
+    /// translator with no synchronous pre/post/prepublication consumers.
+    /// `stock_notice` qualifies the stock BoostTech factory / empty OnAdd.
+    pub fn from_technology_initial(
+        state: &LoadedState,
+        consumers: Vec<BoostConsumer>,
+        quests: &'a RefCell<round_quests::Runtime>,
+        stock_report: bool,
+        stock_notice: bool,
+    ) -> Result<Self, Error> {
+        quests.borrow().validate(state).map_err(|_| {
+            Error::Effect(research::Effect::BoostSignal {
+                player: -1,
+                kind: research::Kind::Technology,
+                index: -1,
+            })
+        })?;
+        Ok(Self {
+            binding: state.binding().clone(),
+            consumers,
+            quests,
+            kind: research::Kind::Technology,
+            stock_report,
+            stock_notice,
         })
     }
 }
@@ -79,47 +110,48 @@ impl<P> Effects<'_, '_, P> {
             .research_boosts
             .as_ref()
             .ok_or_else(|| Error::Effect(effect.clone()))?;
-        if inputs.binding != *state.binding() || kind != research::Kind::Civic {
+        if inputs.binding != *state.binding() || kind != inputs.kind {
             return Err(Error::Effect(effect));
         }
         for consumer in &inputs.consumers {
             match consumer {
-                CivicConsumer::Eras => {
+                BoostConsumer::Eras => {
                     let rate = state
                         .game_era_boost_rates(player)
                         .map_err(|_| Error::Effect(effect.clone()))?
-                        .map(|v| v[1]);
+                        .map(|v| v[usize::from(kind == research::Kind::Civic)]);
                     if rate.is_some_and(|v| v != 0) {
                         return Err(Error::Acquisition {
                             effect,
-                            reason: "positive civic-boost EraScore continuation".into(),
+                            reason: format!("positive {kind:?}-boost EraScore continuation"),
                         });
                     }
                 }
-                CivicConsumer::Quests => {
+                BoostConsumer::Quests => {
                     let quests = inputs.quests.borrow();
                     quests
                         .validate(state)
                         .map_err(|_| Error::Effect(effect.clone()))?;
-                    // 2c99150 returns before reading the quest type/owner/civic
-                    // filters on an empty current roster. Positive matching
+                    // 2c99150 (civic) / 2c99a80 (technology) return before
+                    // reading quest filters on an empty current roster. Matching
                     // quest completion remains explicit, never discarded.
                     if !quests.current.is_empty() {
                         return Err(Error::Acquisition {
                             effect,
-                            reason: "current civic boost quest completion".into(),
+                            reason: format!("current {kind:?} boost quest completion"),
                         });
                     }
                 }
-                CivicConsumer::Achievements => {
-                    // 28f8680 updates achievement-only counters/unlocks. No
+                BoostConsumer::Achievements => {
+                    // 28f8680 (civic) / 28f8740 (technology) update
+                    // achievement-only counters/unlocks. No
                     // gameplay owner, callback or RNG is touched by that path.
                 }
             }
         }
         self.backend
             .reached
-            .push("stock civic boost current Era/quest subscribers");
+            .push("stock research boost current Era/quest subscribers");
         Ok(())
     }
     pub(super) fn boost_report(
@@ -133,9 +165,28 @@ impl<P> Effects<'_, '_, P> {
             .backend
             .research_boosts
             .as_ref()
-            .is_some_and(|v| v.binding == *state.binding() && v.culture_report)
+            .is_some_and(|v| v.binding == *state.binding() && v.stock_report)
         {
             return Err(Error::Effect(effect));
+        }
+        let kind = self.backend.research_boosts.as_ref().unwrap().kind;
+        if kind == research::Kind::Technology {
+            if report.event != 0xbf48_fda8
+                || report.specialization.is_none()
+                || report.index.is_some()
+                || report.old_progress.is_none()
+                || report.source.is_none()
+            {
+                return Err(Error::Effect(effect));
+            }
+            // The qualified current bf48fda8 registration list is empty.
+            // The stock host translator3210b70 copies arguments and queues
+            // event178, with no synchronous consumers. Unlike civic boost
+            // publication this path does not query science/culture yields.
+            self.backend
+                .reached
+                .push("stock technology boost publication");
+            return Ok(());
         }
         research::Context {
             state,
@@ -158,32 +209,40 @@ impl<P> Effects<'_, '_, P> {
         notice: &c6_core::relic_creation::boost::Notification,
     ) -> Result<(), Error> {
         let effect = research::Effect::Notification(*notice);
-        if !self
-            .backend
-            .research_boosts
-            .as_ref()
-            .is_some_and(|v| v.binding == *state.binding() && v.civic_notice)
-        {
+        if !self.backend.research_boosts.as_ref().is_some_and(|v| {
+            v.binding == *state.binding() && v.stock_notice && v.kind == notice.kind
+        }) {
             return Err(Error::Effect(effect));
         }
-        // BoostCivic inherits empty Instance.OnAdd2d2e4b0. Duplicate detection,
+        // BoostCivic and BoostTech inherit empty Instance.OnAdd2d2e4b0. Duplicate detection,
         // localized message formatting and native pool/cache objects are UI.
         if self.culture_can_notify(state, notice.player)? {
+            use crate::loaded_actions::stock_notifications::Notice;
+            let old_progress = notice
+                .old_progress
+                .ok_or_else(|| Error::Effect(effect.clone()))?;
+            let source = notice.source.ok_or_else(|| Error::Effect(effect.clone()))?;
+            let percent = notice
+                .percent
+                .ok_or_else(|| Error::Effect(effect.clone()))?;
+            let semantic = match notice.kind {
+                research::Kind::Technology => Notice::TechnologyBoosted {
+                    owner: notice.player,
+                    technology: notice.index,
+                    old_progress,
+                    source,
+                    percent,
+                },
+                research::Kind::Civic => Notice::CivicBoosted {
+                    owner: notice.player,
+                    civic: notice.index,
+                    old_progress,
+                    source,
+                    percent,
+                },
+            };
             self.backend
-                .publish_notice(
-                    state,
-                    crate::loaded_actions::stock_notifications::Notice::CivicBoosted {
-                        owner: notice.player,
-                        civic: notice.index,
-                        old_progress: notice
-                            .old_progress
-                            .ok_or_else(|| Error::Effect(effect.clone()))?,
-                        source: notice.source.ok_or_else(|| Error::Effect(effect.clone()))?,
-                        percent: notice
-                            .percent
-                            .ok_or_else(|| Error::Effect(effect.clone()))?,
-                    },
-                )
+                .publish_notice(state, semantic)
                 .map_err(Error::Notification)?;
         }
         Ok(())

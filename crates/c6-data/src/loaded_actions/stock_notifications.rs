@@ -101,6 +101,13 @@ pub enum Notice {
         owner: i32,
         civic: i32,
     },
+    TechnologyBoosted {
+        owner: i32,
+        technology: i32,
+        old_progress: i32,
+        source: i32,
+        percent: i32,
+    },
     CivicBoosted {
         owner: i32,
         civic: i32,
@@ -222,7 +229,8 @@ impl<'a, P> Runtime<'a, P> {
         let owner = match &notice {
             Notice::TechnologyCompleted { owner, .. }
             | Notice::CivicCompleted { owner, .. }
-            | Notice::CivicBoosted { owner, .. } => *owner,
+            | Notice::CivicBoosted { owner, .. }
+            | Notice::TechnologyBoosted { owner, .. } => *owner,
         };
         if !self
             .facts

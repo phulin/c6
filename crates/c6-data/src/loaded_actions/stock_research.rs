@@ -211,7 +211,7 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                 index,
             } => self.boost_signal(state, player, kind, index),
             research::Effect::Report(ref report)
-                if report.event == 0x3feaad02
+                if matches!(report.event, 0x3feaad02 | 0xbf48fda8)
                     && report.specialization.is_some()
                     && report.index.is_none()
                     && report.old_progress.is_some()
@@ -220,9 +220,10 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                 self.boost_report(state, definitions, report)
             }
             research::Effect::Notification(ref notice)
-                if notice.kind == research::Kind::Civic
-                    && notice.notification_type == 0xf94c970d
-                    && notice.old_progress.is_some()
+                if matches!(
+                    (notice.kind, notice.notification_type),
+                    (research::Kind::Civic, 0xf94c970d) | (research::Kind::Technology, 0x223fbe46)
+                ) && notice.old_progress.is_some()
                     && notice.source == Some(0)
                     && notice.percent.is_some() =>
             {
