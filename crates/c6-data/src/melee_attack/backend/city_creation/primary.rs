@@ -27,19 +27,14 @@ impl EffectRuntime {
         state
             .district(i32::from(district.owner), district.id)
             .map_err(|_| Error::Missing("initial primary District"))?;
-        let primary = &mut self
-            .city_creation
-            .as_mut()
-            .ok_or(Error::Missing("primary District lifecycle domain"))?
-            .primary;
-        if primary.entries.iter().any(|r| r.district == district) {
+        if self
+            .allocations
+            .absent_primary_districts
+            .contains(&district)
+        {
             return Err(Error::Missing("duplicate primary District admission"));
         }
-        primary.entries.push(Entry {
-            district,
-            handle: None,
-            retained: false,
-        });
+        self.allocations.absent_primary_districts.push(district);
         Ok(())
     }
     pub(super) fn primary_district_context(
@@ -63,7 +58,12 @@ impl EffectRuntime {
             .iter()
             .any(|r| r.district == district)
         {
-            if self.allocations.has_initial_district(district) {
+            if self.allocations.has_initial_district(district)
+                && !self
+                    .allocations
+                    .absent_primary_districts
+                    .contains(&district)
+            {
                 return Err(Error::Missing("current BEFORE primary District cache"));
             }
             creation.primary.entries.push(Entry {

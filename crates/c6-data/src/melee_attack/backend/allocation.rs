@@ -18,6 +18,7 @@ pub(super) struct State {
     initial_units: Vec<(i32, Option<Vec<u32>>)>,
     initial_cities: Vec<(i32, Vec<u32>)>,
     initial_districts: Vec<ComponentId>,
+    pub(super) absent_primary_districts: Vec<ComponentId>,
     absent_unit_wrappers: Vec<(UnitReference, [i32; 2])>,
 }
 impl State {
@@ -41,6 +42,7 @@ impl State {
                     )
                 })
                 .collect(),
+            absent_primary_districts: Vec::new(),
             initial_districts: state
                 .retained()
                 .players
