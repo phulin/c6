@@ -87,9 +87,15 @@ impl<P> round_phase::Effects for Phase<'_, '_, '_, P> {
             c6_core::player_notifications_owner::OccurrenceLimits::default(),
             processing::Scope::SourceInitializedStockXp2,
         );
-        provider
-            .has_end_turn_blocking(owner, kind)
-            .map_err(|_| Error::Unsupported("phase current blocking notification query"))
+        let result = provider.has_end_turn_blocking(owner, kind);
+        let failure = provider.failure().map(|error| format!("{error:?}"));
+        drop(provider);
+        result.map_err(|error| {
+            self.backend.last_error = Some(format!(
+                "phase blocking query owner={owner} kind={kind:#x}: {error:?}; {failure:?}"
+            ));
+            Error::Unsupported("phase current blocking notification query")
+        })
     }
 }
 struct Signal<'a, 'b, 'c, P> {
