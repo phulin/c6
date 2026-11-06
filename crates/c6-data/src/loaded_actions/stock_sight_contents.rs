@@ -200,7 +200,8 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
         {
             return Ok(());
         }
-        Err(Error::Missing("sight discovery meet"))
+        self.backend
+            .meet_major(self.state, first, second, plot, source)
     }
     fn view_unit_rules(
         &mut self,
@@ -209,7 +210,8 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
         origin: i32,
         first_reveal: bool,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight discovery view_unit_rules"))
+        self.backend
+            .stock_view_unit(self.state, player, unit, origin, first_reveal)
     }
     fn signal(&mut self, event: Signal<Self::Unit>) -> Result<(), Self::Error> {
         use crate::loaded_actions::stock_notifications::resource_revelation::ContinentSubscriber as C;

@@ -89,6 +89,19 @@ pub trait Context {
     fn visibility_mut(&mut self, player: Self::Player) -> Result<&mut [i32], Self::Error>;
     fn visibility_source_mut(&mut self, player: Self::Player) -> Result<&mut [i32], Self::Error>;
     fn visibility_sources(&self) -> &[VisibilitySource];
+    /// Recheck against the canonical current diplomatic owner. Wire-backed
+    /// adapters may override this to translate source enums through their rules
+    /// registry while preserving the synchronous report before the source write.
+    fn recheck_contact_visibility(
+        &mut self,
+        player: Self::Player,
+        other: i32,
+    ) -> Result<(), Error<Self::Error>>
+    where
+        Self: Sized,
+    {
+        recheck_visibility(self, player, other)
+    }
     fn visibility_source_active(
         &mut self,
         player: Self::Player,
@@ -154,7 +167,7 @@ pub fn recheck_visibility<C: Context>(
             .visibility_source_active(player, other, source.index)
             .map_err(Error::Context)?
         {
-            last = -1;
+            continue;
         } else if source.dynamic {
             let values = c
                 .dynamic_visibility(player, source.index)
@@ -162,8 +175,6 @@ pub fn recheck_visibility<C: Context>(
             if let Some(value) = values.first() {
                 total = total.wrapping_add(*value);
                 last = source.index;
-            } else {
-                last = -1;
             }
         } else {
             total = total.wrapping_add(1);
@@ -208,7 +219,7 @@ fn set_has_met<C: Context>(
             }
         }
     }
-    recheck_visibility(c, player, other)?;
+    c.recheck_contact_visibility(player, other)?;
     let owner = c.id(player).map_err(Error::Context)?;
     let turn = c.current_turn().map_err(Error::Context)?;
     c.relations_mut()
@@ -552,7 +563,7 @@ mod tests {
         }
         fn dynamic_visibility(&mut self, _: usize, s: i32) -> Result<Vec<i32>, Self::Error> {
             self.trace.push(format!("dynamic{s}"));
-            Ok(vec![-7, 999])
+            Ok(if s == 8 { vec![] } else { vec![-7, 999] })
         }
         fn visibility_changed(&mut self, event: u32, a: i32, b: i32) -> Result<(), Self::Error> {
             assert_eq!(event, VISIBILITY_CHANGED);
@@ -699,7 +710,7 @@ mod tests {
         );
     }
     #[test]
-    fn visibility_sum_uses_first_dynamic_value_negative_level_and_last_iteration_source() {
+    fn visibility_sum_uses_first_dynamic_value_and_preserves_last_contributing_source() {
         let mut c = fixture();
         c.definitions = vec![
             VisibilitySource {
@@ -717,7 +728,7 @@ mod tests {
         ];
         recheck_visibility(&mut c, 0, 1).unwrap();
         assert_eq!(c.players[0].visibility[1], -6);
-        assert_eq!(c.players[0].sources[1], -1); // later inactive resets previous active source.
+        assert_eq!(c.players[0].sources[1], 4); // inactive sources preserve the last contribution.
         assert_eq!(
             c.trace,
             [
@@ -728,6 +739,23 @@ mod tests {
                 "visibility0:1:false"
             ]
         );
+        c.definitions = vec![
+            VisibilitySource {
+                index: 2,
+                dynamic: false,
+            },
+            VisibilitySource {
+                index: 8,
+                dynamic: true,
+            },
+            VisibilitySource {
+                index: 9,
+                dynamic: false,
+            },
+        ];
+        recheck_visibility(&mut c, 0, 1).unwrap();
+        assert_eq!(c.players[0].visibility[1], 1);
+        assert_eq!(c.players[0].sources[1], 2);
         c.definitions = vec![
             VisibilitySource {
                 index: 2,

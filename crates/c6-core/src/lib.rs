@@ -77,8 +77,8 @@ pub mod unit_healing;
 pub mod unit_initialization;
 pub mod unit_occupancy;
 pub mod unit_operations_clear;
-pub mod unit_placement_transition;
 pub mod unit_placement_tails;
+pub mod unit_placement_transition;
 pub mod unit_sight;
 pub mod unit_turn_start;
 pub mod unit_turn_upkeep;
@@ -377,8 +377,8 @@ pub mod unit_operation_aftermath;
 
 pub mod reporting_dirty_components;
 
-pub mod player_governors;
 pub mod governor_lifecycle;
+pub mod player_governors;
 
 pub mod player_heroes;
 
@@ -418,20 +418,20 @@ pub mod player_ai_behavior_tree;
 
 pub mod unit_operation_interruption;
 
+pub mod congress_wire;
 pub mod game_capabilities;
+pub mod game_culture_wire;
 pub mod game_diplomatic_relations;
 pub mod game_diplomatic_relations_wire;
-pub mod game_gossip_wire;
-pub mod game_name_manager_wire;
-pub mod congress_wire;
-pub mod game_fallout_wire;
-pub mod game_culture_wire;
-pub mod game_techs_wire;
-pub mod game_effects_wire;
 pub mod game_effects_modifiers_wire;
+pub mod game_effects_wire;
+pub mod game_fallout_wire;
 pub mod game_global_ai;
+pub mod game_gossip_wire;
 pub mod game_great_people;
+pub mod game_name_manager_wire;
 pub mod game_quests;
+pub mod game_techs_wire;
 
 pub mod game_barbarian;
 
@@ -440,6 +440,7 @@ pub mod game_random_wire;
 
 pub mod trade_read_order;
 
+pub mod diplomacy_first_meeting;
 pub mod diplomacy_manager;
 pub mod diplomacy_meeting;
 pub mod diplomacy_request;
@@ -464,17 +465,17 @@ pub mod lua_math_random;
 
 pub mod game_update;
 
-pub mod simple_requirement;
-pub mod unit_near_religious_city_requirement;
-pub mod unit_modifier_effect;
-pub mod game_emergency;
-pub mod game_climate;
-pub mod game_random_events;
-pub mod game_national_parks;
-pub mod game_stats;
-pub mod game_history;
-pub mod game_eras;
 pub mod game_archaeology;
+pub mod game_climate;
+pub mod game_emergency;
+pub mod game_eras;
+pub mod game_history;
+pub mod game_national_parks;
+pub mod game_random_events;
+pub mod game_stats;
+pub mod simple_requirement;
+pub mod unit_modifier_effect;
+pub mod unit_near_religious_city_requirement;
 
 pub mod found_city;
 

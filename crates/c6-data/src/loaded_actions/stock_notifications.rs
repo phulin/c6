@@ -12,18 +12,22 @@ use super::{
 };
 #[path = "stock_activation.rs"]
 mod activation;
+#[path = "stock_camp_clear.rs"]
+pub mod camp_clear;
 mod capture_owners;
 pub mod city_production;
 pub mod city_queries;
 #[path = "stock_city_strike.rs"]
 pub mod city_strike;
 pub mod cityless_managers;
-#[path = "stock_camp_clear.rs"]
-pub mod camp_clear;
 #[path = "stock_combat.rs"]
 pub mod combat;
 pub mod deactivation;
 pub mod era_changes;
+#[path = "stock_first_contact.rs"]
+pub mod first_contact;
+#[path = "stock_first_contact_unit_view.rs"]
+pub mod first_contact_unit_view;
 pub mod founding;
 #[path = "stock_notifications_game_update.rs"]
 pub mod game_update;
@@ -111,8 +115,15 @@ pub enum Notice {
         unit: ComponentId,
         location: [i32; 2],
     },
-    RoutesUpgraded { owner: i32, era: i32 },
-    ResourceDiscovered { owner: i32, resource: i32, plot: u32 },
+    RoutesUpgraded {
+        owner: i32,
+        era: i32,
+    },
+    ResourceDiscovered {
+        owner: i32,
+        resource: i32,
+        plot: u32,
+    },
     ImprovementPillaged {
         owner: i32,
         actor_owner: i32,
@@ -179,6 +190,8 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     modifier_owners: Option<unit_creation::ModifierOwners>,
     unit_production_signals: Option<city_production::unit::Signals>,
     movement: Option<movement::State<'a>>,
+    first_contact: Option<first_contact::State<'a, P>>,
+    first_contact_unit_view: Option<first_contact_unit_view::Inputs<'a>>,
     combat: Option<combat::State<'a>>,
     capture_dispositions: Vec<crate::city_capture::PendingDisposition>,
     initialized_completed_dispositions: Vec<c6_core::unit::ComponentId>,
@@ -187,7 +200,10 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     gold_signals: Option<gold::Signals>,
     camp_clear: Option<camp_clear::State<'a>>,
     pub(crate) action_research: Option<crate::research::Runtime>,
-    pub(super) research_resource_amount: Option<(&'a super::upgrade_actions::resources::Definitions, &'a super::upgrade_actions::resources::Signals)>,
+    pub(super) research_resource_amount: Option<(
+        &'a super::upgrade_actions::resources::Definitions,
+        &'a super::upgrade_actions::resources::Signals,
+    )>,
     pub(super) research_acquisition: Option<research::acquisition::Binding>,
     pub(super) civic_overflow_report: Option<WireBinding>,
     pub(super) research_unit_updates: Option<&'a crate::unit_movement_state::Definitions>,
@@ -242,6 +258,8 @@ impl<'a, P> Runtime<'a, P> {
             action_gossip_history_empty: None,
             unit_production_signals: None,
             movement: None,
+            first_contact: None,
+            first_contact_unit_view: None,
             combat: None,
             capture_dispositions: Vec::new(),
             initialized_completed_dispositions: Vec::new(),
@@ -659,12 +677,14 @@ impl<P> processing::Backend for Runtime<'_, P> {
 impl<P> ProcessStatement<LoadedState> for Runtime<'_, P> {
     fn process_statement(
         &mut self,
-        _: &mut LoadedState,
-        _: StatementHandle,
+        state: &mut LoadedState,
+        statement: StatementHandle,
     ) -> Result<(), unit_operation_aftermath::Error> {
-        Err(unit_operation_aftermath::Error::Unsupported(
-            "diplomacy statement requires semantic external decision",
-        ))
+        self.process_initial_first_meeting(state, statement)
+            .map_err(|error| {
+                self.last_error = Some(format!("{error:?}"));
+                unit_operation_aftermath::Error::Unsupported("diplomacy statement continuation")
+            })
     }
 }
 impl<P> current_aftermath::Backend for Runtime<'_, P> {
