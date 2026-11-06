@@ -24,6 +24,7 @@ pub struct Definitions {
     binding: WireBinding,
     boosts: Vec<Boost>,
     replacements: Vec<(i32, i32)>,
+    unit_hashes: Vec<u32>,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
@@ -82,6 +83,11 @@ impl Definitions {
             binding: state.binding().clone(),
             boosts,
             replacements,
+            unit_hashes: units
+                .entries()
+                .iter()
+                .map(|entry| linux_type_hash(&entry.type_name))
+                .collect(),
         })
     }
     fn matching_boost(&self, row: i32, seen: i32) -> Result<Option<usize>, Error> {
@@ -138,6 +144,8 @@ impl<'a, P> Runtime<'a, P> {
     pub(super) fn preflight_stock_encountered_unit(
         &self,
         state: &LoadedState,
+        player: i32,
+        index: i32,
     ) -> Result<(), Error> {
         let inputs = self
             .first_contact_unit_view
@@ -153,6 +161,37 @@ impl<'a, P> Runtime<'a, P> {
         {
             return Err(missing("unit view unsupported encounter subscriber"));
         }
+        let ordinal = usize::try_from(index).map_err(|_| missing("unit view type ordinal"))?;
+        let hash = *inputs
+            .definitions
+            .unit_hashes
+            .get(ordinal)
+            .ok_or(missing("unit view type hash"))?;
+        let retained = state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == player)
+            .and_then(|p| p.post_heroes_arrays.as_ref())
+            .and_then(|a| {
+                a.unit_definitions
+                    .pairs
+                    .iter()
+                    .rev()
+                    .find(|p| p.definition_hash == hash)
+            })
+            .ok_or(missing("unit view retained encountered flag"))?
+            .value;
+        let current = *self
+            .player_services
+            .as_ref()
+            .and_then(|services| services.players.iter().find(|p| p.owner == player))
+            .and_then(|p| p.encountered_units.as_ref())
+            .and_then(|flags| flags.get(ordinal))
+            .ok_or(missing("unit view current encountered flag"))?;
+        if retained != current {
+            return Err(missing("unit view encountered flag views disagree"));
+        }
         Ok(())
     }
     pub(super) fn stock_signal_encountered_unit(
@@ -161,7 +200,26 @@ impl<'a, P> Runtime<'a, P> {
         player: i32,
         index: i32,
     ) -> Result<(), Error> {
-        self.preflight_stock_encountered_unit(state)?;
+        let inputs = self
+            .first_contact_unit_view
+            .as_ref()
+            .ok_or(missing("unit view current encounter subscribers"))?;
+        let hash = *usize::try_from(index)
+            .ok()
+            .and_then(|ordinal| inputs.definitions.unit_hashes.get(ordinal))
+            .ok_or(missing("unit view type hash"))?;
+        // Player.SetHasEncountered writes Player+0x320. The retained hashed
+        // unit table serializes this SAME array; update it before dispatch.
+        state
+            .player_discovery_mut(player)
+            .map_err(Error::State)?
+            .unit_definitions
+            .pairs
+            .iter_mut()
+            .rev()
+            .find(|p| p.definition_hash == hash)
+            .ok_or(missing("unit view retained encountered flag"))?
+            .value = true;
         let inputs = self
             .first_contact_unit_view
             .take()
@@ -241,13 +299,7 @@ impl<'a, P> Runtime<'a, P> {
             if !known {
                 // Support admission precedes the flag write. Once admitted,
                 // each callback observes true even if a later consumer fails.
-                let inputs = self
-                    .first_contact_unit_view
-                    .as_ref()
-                    .ok_or(missing("unit view current encounter subscribers"))?;
-                if inputs.definitions.binding != *state.binding() {
-                    return Err(missing("unit view definitions binding"));
-                }
+                self.preflight_stock_encountered_unit(state, player, index)?;
                 let flag = self
                     .player_services
                     .as_mut()

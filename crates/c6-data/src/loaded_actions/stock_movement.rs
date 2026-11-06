@@ -210,7 +210,7 @@ impl<P> services::Services for Runtime<'_, P> {
             .ok()
             .and_then(|index| values.get(index))
             .ok_or(services::Error::Missing("encountered unit index"))?;
-        self.preflight_stock_encountered_unit(state)
+        self.preflight_stock_encountered_unit(state, owner, unit_type)
             .map_err(services::Error::Effect)
     }
     fn signal_encountered_unit(
