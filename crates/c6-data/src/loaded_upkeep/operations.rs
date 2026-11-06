@@ -494,7 +494,7 @@ where
         let current = identity(state, actor)?;
         let trader = c6_core::trade::ComponentId {
             owner: current.owner,
-            component_type: current.component_type as i16,
+            component_type: current.component_type,
             id: current.id,
         };
         if state
