@@ -982,6 +982,19 @@ fn qualify_border_change(
             "enforce borders reporting consumers unqualified",
         ));
     }
+    // The captured OnAllPlayerDiplomacyChanged subscriber publishes each
+    // alive player's cache. DiplomaticAI threat/trust queries are bounded by
+    // their visibility guards only below two; keep that condition current.
+    // Checking every represented player also covers the captured alive list.
+    for player in &state.retained().players {
+        if player.diplomacy.visibility.len() != 64
+            || player.diplomacy.visibility.iter().any(|&level| level >= 2)
+        {
+            return Err(Error::Missing(
+                "enforce borders current cache AI diplomacy visibility unqualified",
+            ));
+        }
+    }
     for plot in &state.world().map().plots {
         if crate::movement_placement_state::plot_owner(plot)
             .map_err(|_| Error::Missing("current border Plot owner"))?
