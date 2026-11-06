@@ -61,6 +61,7 @@ pub struct Activation {
 }
 pub struct Modifiers {
     stamp: ActionStamp,
+    human_statement_owners: Vec<i32>,
     activations: Vec<Activation>,
     modifiers: Vec<Modifier>,
     objects: Vec<Object>,
@@ -87,6 +88,7 @@ impl Modifiers {
         }
         let result = Self {
             stamp: state.action_stamp(),
+            human_statement_owners: Vec::new(),
             activations: Vec::new(),
             modifiers,
             objects,
@@ -106,6 +108,17 @@ impl Modifiers {
             }
         }
         Ok(result)
+    }
+    /// Owners whose actual effect statement flags require the current human
+    /// CanSendStatement guard. Recheck controls on every concrete activation.
+    pub fn with_human_statement_owners(mut self, owners: Vec<i32>) -> Result<Self, Error> {
+        if owners.iter().enumerate().any(|(at, owner)| {
+            owners[..at].contains(owner) || !self.modifiers.iter().any(|m| m.owner == *owner)
+        }) {
+            return Err(Error::Missing("human statement owner identity"));
+        }
+        self.human_statement_owners = owners;
+        Ok(self)
     }
     /// Bind parameters for source-qualified simple effects; other positive
     /// effect families still fail explicitly when reached.
@@ -442,6 +455,15 @@ impl modifiers::EffectContext for Apply<'_> {
     }
     fn apply_concrete_effect(&mut self) -> Result<bool, Error> {
         let m = &self.owner.modifiers[self.modifier];
+        if self.owner.human_statement_owners.contains(&m.owner)
+            && self
+                .state
+                .player_slot_status(m.owner)
+                .map_err(Error::State)?
+                != 3
+        {
+            return Err(Error::Missing("current human diplomacy statement guard"));
+        }
         let subject = self.owner.object(m.tracked[self.subject].object)?.owner;
         let a = self
             .owner
