@@ -252,6 +252,9 @@ pub enum ReadinessPath {
     NoFormation,
     CyclePastGuard,
     AdjacentMove(AdjacentMoveWitness),
+    /// A bound stock command's CanStart returned true, so CanCyclePast does
+    /// not acquire the operation manager or invoke its script callbacks.
+    CommandHoldCycling,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1453,7 +1456,13 @@ impl<'a> Provider<'a> {
         if let Some(witness) = self.has_adjacent_move(state, unit)? {
             return Ok(ReadinessPath::AdjacentMove(witness));
         }
-        Err(Error::Provider("CanCyclePast command HoldCycling then conditional operation HoldCycling callbacks unavailable"))
+        // FillVariants reaches the same CanCyclePast fallback as direct
+        // readiness callers. In particular, do not discard a bound command
+        // provider and report its callbacks as unavailable here. Only a true
+        // command scan closes this immutable snapshot path; the operation
+        // continuation still refuses its unbound effects below.
+        self.cycle_past_hold_result(state, unit)?;
+        Ok(ReadinessPath::CommandHoldCycling)
     }
 
     /// Native IsReadyToMove: member guards precede Formation lookup, and other
@@ -1521,6 +1530,10 @@ impl<'a> Provider<'a> {
         if let Some(result) = self.cycle_past_record_early_result(state, unit, formation)? {
             return Ok(result);
         }
+        self.cycle_past_hold_result(state, unit)
+    }
+
+    fn cycle_past_hold_result(&self, state: &LoadedState, unit: &Unit) -> Result<bool, Error> {
         if let Some(inputs) = self.command_queries {
             let mut query = hold_cycling::commands::Computed {
                 definitions: inputs.definitions,
