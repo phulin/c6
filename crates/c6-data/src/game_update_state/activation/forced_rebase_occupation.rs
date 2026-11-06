@@ -59,6 +59,14 @@ pub(super) fn occupied_by_enemy(
         {
             continue;
         }
+        // The resolved unit already established GetValidPlayer. Diplomacy's
+        // IsAtWarWith next tests the target player's current IsAlive value.
+        if !state
+            .player_alive(unit.e_owner)
+            .map_err(|_| Error::Missing("current occupation target alive"))?
+        {
+            continue;
+        }
         if !state
             .game_relations()
             .map_err(|_| Error::Missing("current occupation diplomacy"))?
