@@ -560,26 +560,10 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::Diplomatic => {
-                let d = p
-                    .ai_diplomatic
-                    .as_ref()
-                    .ok_or(Error::Unsupported("NPC Diplomatic owner"))?;
-                if !d.managed_contracts.is_empty() {
-                    return Err(Error::Unsupported("NPC Diplomatic contract activation"));
-                }
-                if d.diplomatic_states.states.iter().any(|s| {
-                    !s.response_action_hashes.is_empty()
-                        || !s.desired_action_hashes.is_empty()
-                        || !s.transitions.is_empty()
-                        || !s.triggers.is_empty()
-                }) {
-                    return Err(Error::Unsupported("NPC Diplomatic action/state transition"));
-                }
-                // 20961d0: these empty state vectors never dispatch scripts,
-                // DealValue, state changes or RNG. Evaluator readiness is
-                // planning output excluded by this explicit scope; formal
-                // Player.Diplomacy relations are retained unchanged.
-                Ok(())
+                // Source gates precede definition vectors and external action
+                // candidates. Preserve current state/contract/trade prefixes;
+                // initialized evaluators and positive choices remain explicit.
+                c6_core::loaded_state::game_update::npc_activation::activate_diplomatic_without_actions(state, owner)
             }
             Kind::GrandStrategic => {
                 // 2121e72..2121fd5 visits units only for great-person

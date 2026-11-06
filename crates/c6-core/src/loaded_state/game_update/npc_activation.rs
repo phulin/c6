@@ -54,6 +54,87 @@ pub fn take_culture_policy_request(state: &mut LoadedState, owner: i32) -> Resul
         .0 = 0;
     Ok(true)
 }
+/// Diplomatic205ef60 for an uninitialized evaluator roster and states that
+/// cannot select a transition/action. Definition vectors alone are not a call.
+pub fn activate_diplomatic_without_actions(
+    state: &mut LoadedState,
+    owner: i32,
+) -> Result<(), Error> {
+    let index = state
+        .retained
+        .players
+        .iter()
+        .position(|p| p.header.owner == owner)
+        .ok_or(Error::Unsupported("NPC Diplomatic owner"))?;
+    let d = state.retained.players[index]
+        .ai_diplomatic
+        .as_ref()
+        .ok_or(Error::Unsupported("NPC Diplomatic component"))?;
+    if !d.managed_contracts.is_empty() {
+        return Err(Error::Unsupported("NPC Diplomatic contract activation"));
+    }
+    // Execute20863e0 and AdjustAllianceCosts205fd60 use these same guards.
+    if d.diplo_action_evaluator
+        .handlers
+        .iter()
+        .any(|h| h.owner != -1 && h.opponent != -1)
+    {
+        return Err(Error::Unsupported("NPC initialized diplomatic evaluator"));
+    }
+    let mut activate = Vec::with_capacity(d.diplomatic_states.states.len());
+    for s in &d.diplomatic_states.states {
+        let update = s.is_active.0 != 0 && s.is_updating.0 == 0 && s.opponent != -1;
+        // StateVector.Execute20966b0 evaluates active transitions even when
+        // UpdateState's separate recursion guard would return immediately.
+        if (s.is_active.0 != 0 && s.opponent != -1 && !s.transitions.is_empty())
+            || (update && (!s.allowed_action_hashes.is_empty() || !s.triggers.is_empty()))
+        {
+            return Err(Error::Unsupported("NPC Diplomatic state update effects"));
+        }
+        // HasMet2aa65a0 rejects self/invalid before reading contact cells.
+        let met = s.is_active.0 == 0
+            && s.opponent != -1
+            && s.opponent != owner
+            && state
+                .world
+                .player_is_valid(s.opponent)
+                .map_err(|_| Error::Unsupported("NPC Diplomatic validity"))?
+            && state
+                .game_relations()
+                .map_err(|_| Error::Unsupported("NPC Diplomatic relations"))?
+                .has_met(owner, s.opponent)
+                .map_err(|_| Error::Unsupported("NPC Diplomatic contact"))?;
+        let changed = !update && s.has_changed_state.0 != 0;
+        if (s.is_active.0 != 0 || met) && !changed && !s.allowed_action_hashes.is_empty() {
+            return Err(Error::Unsupported("NPC Diplomatic external action choice"));
+        }
+        activate.push((met, update));
+    }
+    state.revision = state
+        .revision
+        .checked_add(1)
+        .ok_or(Error::Unsupported("NPC Diplomatic revision"))?;
+    let cutoff = state.retained.core.current_turn.wrapping_sub(50);
+    let d = state.retained.players[index]
+        .ai_diplomatic
+        .as_mut()
+        .unwrap();
+    d.requested_items.retain(|item| item.game_turn > cutoff);
+    d.favor_traded_this_turn = 0;
+    d.diplo_action_evaluator.is_updated.0 = 1;
+    d.diplomatic_states.is_updated.0 = 1;
+    for (s, (met, update)) in d.diplomatic_states.states.iter_mut().zip(activate) {
+        if update {
+            s.desired_action_hashes.clear();
+            s.has_changed_state.0 = 0;
+            s.is_updating.0 = 0;
+        }
+        if met {
+            s.is_active.0 = 1;
+        }
+    }
+    Ok(())
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DecisionKind {
     Pantheon,
@@ -470,6 +551,88 @@ pub fn retire_after_deactivation(state: &LoadedState, runtime: &mut Runtime) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn diplomatic_empty_active_state_retains_prefix_and_update_stores() {
+        use crate::player_ai_diplomatic::{BoolByte, TradeItem};
+        let (mut state, _, owner) = fixture();
+        state.retained.core.current_turn = 100;
+        let d = state.retained.players[0].ai_diplomatic.as_mut().unwrap();
+        d.managed_contracts.clear();
+        d.diplo_action_evaluator.handlers.clear();
+        d.diplomatic_states.states.truncate(1);
+        let s = &mut d.diplomatic_states.states[0];
+        s.opponent = owner;
+        s.is_active = BoolByte(1);
+        s.is_updating = BoolByte(0);
+        s.has_changed_state = BoolByte(1);
+        s.allowed_action_hashes.clear();
+        s.transitions.clear();
+        s.triggers.clear();
+        s.desired_action_hashes = vec![123];
+        d.requested_items = [49, 50, 51]
+            .map(|game_turn| TradeItem {
+                game_turn,
+                other_player: owner,
+                item_type: 1,
+                item_sub_type: 2,
+                item_value: 3,
+            })
+            .to_vec();
+        d.favor_traded_this_turn = 17;
+        activate_diplomatic_without_actions(&mut state, owner).unwrap();
+        let d = state.retained.players[0].ai_diplomatic.as_ref().unwrap();
+        assert_eq!(
+            d.requested_items
+                .iter()
+                .map(|i| i.game_turn)
+                .collect::<Vec<_>>(),
+            [51]
+        );
+        assert_eq!(d.favor_traded_this_turn, 0);
+        assert_eq!(d.diplo_action_evaluator.is_updated.0, 1);
+        assert_eq!(d.diplomatic_states.is_updated.0, 1);
+        let s = &d.diplomatic_states.states[0];
+        assert!(s.desired_action_hashes.is_empty());
+        assert_eq!(
+            (s.is_active.0, s.is_updating.0, s.has_changed_state.0),
+            (1, 0, 0)
+        );
+    }
+    #[test]
+    fn diplomatic_inactive_definitions_do_not_execute_positive_state_effects() {
+        use crate::player_ai_diplomatic::BoolByte;
+        let (mut state, _, owner) = fixture();
+        let d = state.retained.players[0].ai_diplomatic.as_mut().unwrap();
+        d.managed_contracts.clear();
+        d.diplo_action_evaluator.handlers.clear();
+        d.diplomatic_states.states.truncate(1);
+        let s = &mut d.diplomatic_states.states[0];
+        s.opponent = owner;
+        s.is_active = BoolByte(0);
+        s.is_updating = BoolByte(0);
+        s.has_changed_state = BoolByte(1);
+        assert!(!s.transitions.is_empty());
+        let definitions = s.transitions.clone();
+        activate_diplomatic_without_actions(&mut state, owner).unwrap();
+        let d = state.retained.players[0].ai_diplomatic.as_mut().unwrap();
+        assert_eq!(d.diplomatic_states.states[0].transitions, definitions);
+        d.diplomatic_states.states[0].is_active = BoolByte(1);
+        assert!(matches!(
+            activate_diplomatic_without_actions(&mut state, owner),
+            Err(Error::Unsupported("NPC Diplomatic state update effects"))
+        ));
+        state.retained.players[0]
+            .ai_diplomatic
+            .as_mut()
+            .unwrap()
+            .diplomatic_states
+            .states[0]
+            .is_updating = BoolByte(1);
+        assert!(matches!(
+            activate_diplomatic_without_actions(&mut state, owner),
+            Err(Error::Unsupported("NPC Diplomatic state update effects"))
+        ));
+    }
     fn fixture() -> (LoadedState, Runtime, i32) {
         let (mut state, mut runtime, owner) =
             crate::loaded_state::tests::current_update_player_fixture();
