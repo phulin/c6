@@ -154,12 +154,37 @@ impl Runtime {
         profile.managed_sets.remove(at);
         Ok(true)
     }
-    pub fn retire_requirement(&mut self, label: u64) -> Result<bool, &'static str> {
+    pub fn retire_requirement(
+        &mut self,
+        sets: &sets::Runtime,
+        label: u64,
+    ) -> Result<bool, &'static str> {
         let profile = self
             .known_major
             .as_mut()
             .ok_or("opinion collection profile absent")?;
-        if !profile.subscriptions.iter().any(|r| r.0 == label) {
+        // The canonical last-reference record proves both the actual class
+        // and logical ownership, including captured initial registrations.
+        // Initial signal routes are borrowed by stock dispatch and filtered
+        // by this owner's liveness; newly created routes own tokens here.
+        let Some(definition) = sets.requirement_definition(label) else {
+            return Ok(false);
+        };
+        let supported = definition.id == b"REQUIRES_PLAYERS_HAVE_MET"
+            || profile
+                .relationship_factories
+                .iter()
+                .any(|r| r.0 == definition.id);
+        let Some((context, sets::Subject::ModifierObject(subject))) =
+            sets.requirement_context(label)
+        else {
+            return Ok(false);
+        };
+        if !supported
+            || sets.simple_requirement_for_destruction(label).is_none()
+            || !profile.contexts.iter().any(|r| r.0 == context)
+            || !profile.all_players.iter().any(|r| r.1 == subject)
+        {
             return Ok(false);
         }
         profile.destroy(label)?;
@@ -1079,5 +1104,122 @@ fn initialization_error(error: sets::Error<&'static str>) -> &'static str {
         sets::Error::Allocation => "opinion subject initialization allocation",
         sets::Error::CounterExhausted => "opinion subject logical identity exhausted",
         sets::Error::Ring(_) => "opinion subject initialization listener ring",
+    }
+}
+
+#[cfg(test)]
+mod lifetime_tests {
+    use super::*;
+    use c6_core::{
+        melee_attack::proposals::subject_sets::changes, simple_requirement::Requirement,
+    };
+    struct Current {
+        sets: sets::Runtime,
+        graph: Runtime,
+        retired: Vec<u64>,
+    }
+    impl changes::Context for Current {
+        type Error = &'static str;
+        fn subject_sets(&self) -> Result<&sets::Runtime, Self::Error> {
+            Ok(&self.sets)
+        }
+        fn subject_sets_mut(&mut self) -> Result<&mut sets::Runtime, Self::Error> {
+            Ok(&mut self.sets)
+        }
+        fn test_requirement(&mut self, _: u64) -> Result<i32, sets::Error<Self::Error>> {
+            Err(sets::Error::Context("unexpected Test"))
+        }
+        fn modifier_changed(
+            &mut self,
+            _: sets::SetListener,
+            _: u64,
+            _: i32,
+            _: i32,
+        ) -> Result<(), sets::Error<Self::Error>> {
+            Err(sets::Error::Context("unexpected Changed"))
+        }
+        fn destroy_requirement(&mut self, label: u64) -> Result<(), sets::Error<Self::Error>> {
+            assert!(self
+                .graph
+                .retire_requirement(&self.sets, label)
+                .map_err(sets::Error::Context)?);
+            self.retired.push(label);
+            Ok(())
+        }
+        fn destroy_set(&mut self, _: u64) -> Result<(), sets::Error<Self::Error>> {
+            Ok(())
+        }
+        fn reset_trigger(&mut self, label: u64) -> Result<(), sets::Error<Self::Error>> {
+            changes::reset_trigger_state(&mut self.sets, label)
+        }
+    }
+    #[test]
+    fn initial_shared_met_requirement_retires_only_at_final_reference() {
+        let name = b"REQUIRES_MET_10_TURNS_AGO".to_vec();
+        let mut sets = sets::Runtime::from_initial(99, vec![], vec![]).unwrap();
+        let child = changes::CurrentRequirement {
+            label: 10,
+            native_id: 5,
+            context: 1,
+            subject: sets::Subject::ModifierObject(42),
+            definition: sets::RequirementDefinition {
+                id: name.clone(),
+                predicate: sets::Predicate::Unsupported(3537428826),
+                inverse: false,
+                persistent: false,
+            },
+            value: sets::InitializedRequirement::Simple(Requirement {
+                active: true,
+                state: 1,
+                inverse: false,
+                persistent: false,
+                triggered: false,
+            }),
+            references: 2,
+            subscribers: vec![20, 21],
+        };
+        let group = |label| changes::CurrentSet {
+            label,
+            native_id: label as u32,
+            context: 1,
+            subject: sets::Subject::ModifierObject(42),
+            definition: sets::SetDefinition {
+                id: vec![label as u8],
+                requirements: vec![name.clone()],
+            },
+            state: 1,
+            references: 1,
+            children: vec![10],
+            subscribers: vec![],
+        };
+        sets.import_current::<&str>(vec![child], vec![group(20), group(21)])
+            .unwrap();
+        let mut graph = Runtime::from_current(vec![]).unwrap();
+        let mut profile = KnownMajor::new(vec![(0, 41), (1, 42)], vec![(1, 0)]);
+        profile
+            .relationship_factories
+            .push((name, relationship::Kind::MetXTurns { turns: 10 }));
+        graph.bind_known_major(profile).unwrap();
+        assert!(!graph.retire_requirement(&sets, 10).unwrap());
+        assert!(!graph.retire_requirement(&sets, 999).unwrap());
+        let mut current = Current {
+            sets,
+            graph,
+            retired: vec![],
+        };
+        changes::release(&mut current, 20).unwrap();
+        assert_eq!(current.sets.requirement_reference_count(10), Some(1));
+        assert!(current.sets.simple_requirement(10).unwrap().active);
+        assert!(current.retired.is_empty());
+        changes::release(&mut current, 21).unwrap();
+        assert_eq!(current.retired, [10]);
+        assert_eq!(current.sets.requirement_state(10), None);
+        assert!(
+            !current
+                .sets
+                .simple_requirement_for_destruction(10)
+                .unwrap()
+                .active
+        );
     }
 }

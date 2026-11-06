@@ -172,7 +172,7 @@ impl<P> changes::Services for StockServices<'_, '_, '_, P> {
     fn destroy_requirement(
         &mut self,
         state: &mut LoadedState,
-        _: &mut subject_sets::Runtime,
+        sets: &mut subject_sets::Runtime,
         id: u64,
     ) -> Result<(), Continuation> {
         if self
@@ -186,7 +186,7 @@ impl<P> changes::Services for StockServices<'_, '_, '_, P> {
         let handled = self
             .backend
             .with_growth_requirement_effects(state, |_, _, canonical| {
-                canonical.with_opinion_graph(|graph, _| graph.retire_requirement(id))
+                canonical.with_opinion_graph(|graph, _| graph.retire_requirement(sets, id))
             })
             .map_err(Continuation::OpinionLifecycle)?;
         if handled {

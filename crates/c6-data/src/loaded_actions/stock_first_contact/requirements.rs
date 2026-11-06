@@ -194,6 +194,16 @@ pub fn changed<C: Continuations>(
             "meeting requirement definition identity",
         ));
     }
+    // Captured initial routes borrow their registration list. A source-derived
+    // destructor removes the native handles before base Deactivate; the shared
+    // zero-reference inactive record is the same logical unsubscription here.
+    if runtime
+        .sets()
+        .simple_requirement_for_destruction(receiver.label)
+        .is_some_and(|r| !r.active)
+    {
+        return Ok(());
+    }
     changes::invalidate(
         &mut Context {
             state,
