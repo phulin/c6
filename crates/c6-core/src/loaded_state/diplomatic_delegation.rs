@@ -64,6 +64,54 @@ impl LoadedState {
     }
 }
 
+impl LoadedState {
+    pub fn validate_delegation_sender_result(
+        &self,
+        sender: i32,
+        target: i32,
+        hash: u32,
+    ) -> Result<(), Error> {
+        let p = self
+            .retained
+            .players
+            .iter()
+            .find(|p| p.header.owner == sender)
+            .ok_or(Error::MissingDiplomatic(sender))?;
+        let ai = p
+            .ai_diplomatic
+            .as_ref()
+            .ok_or(Error::MissingDiplomatic(sender))?;
+        policy::validate_sender_result(ai, sender, target, hash).map_err(Error::Policy)?;
+        self.revision
+            .checked_add(1)
+            .ok_or(Error::State(StateError::ResourceLimit))?;
+        Ok(())
+    }
+    pub fn finish_delegation_sender_result(
+        &mut self,
+        sender: i32,
+        target: i32,
+        hash: u32,
+    ) -> Result<(), Error> {
+        self.validate_delegation_sender_result(sender, target, hash)?;
+        let p = self
+            .retained
+            .players
+            .iter_mut()
+            .find(|p| p.header.owner == sender)
+            .expect("validated player");
+        policy::finish_sender_result(
+            p.ai_diplomatic.as_mut().expect("validated AI"),
+            sender,
+            target,
+            hash,
+        )
+        .map_err(Error::Policy)?;
+        self.revision += 1;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

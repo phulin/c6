@@ -91,7 +91,7 @@ mod tests {
         ActionEvalVector, DiplomaticActionHandler, HashEntry, StateVector,
     };
 
-    fn state() -> Diplomatic {
+    pub(super) fn state() -> Diplomatic {
         Diplomatic {
             wire_version: 18,
             player_id: 1,
@@ -179,6 +179,110 @@ mod tests {
         let before = value.clone();
         assert_eq!(
             finish_initialized_response(&mut value, 1, 0, 17),
+            Err(Error::DuplicateDefinition)
+        );
+        assert_eq!(value, before);
+    }
+}
+
+/// ProcessActionResult(result=1) clears the sender's two cached action cells.
+/// It neither spends savings nor changes closed-partner actions or selects policy.
+pub fn validate_sender_result(
+    state: &Diplomatic,
+    sender: i32,
+    target: i32,
+    hash: u32,
+) -> Result<(usize, usize, usize), Error> {
+    if state.wire_version != 18 {
+        return Err(Error::UnsupportedVersion);
+    }
+    if sender < 0 || target < 0 || sender == target || state.player_id != sender {
+        return Err(Error::InvalidPlayers);
+    }
+    let index = usize::try_from(target).map_err(|_| Error::InvalidPlayers)?;
+    let h = state
+        .diplo_action_evaluator
+        .handlers
+        .get(index)
+        .ok_or(Error::MissingHandler)?;
+    if h.owner != sender || h.opponent != target {
+        return Err(Error::HandlerIdentity);
+    }
+    let position = |entries: Option<&[crate::player_ai_diplomatic::HashEntry<i32>]>| {
+        let entries = entries.ok_or(Error::MissingDefinition)?;
+        let mut found = entries.iter().enumerate().filter(|(_, e)| e.hash == hash);
+        let p = found.next().ok_or(Error::MissingDefinition)?.0;
+        if found.next().is_some() {
+            return Err(Error::DuplicateDefinition);
+        }
+        Ok(p)
+    };
+    Ok((
+        index,
+        position(h.desirability.as_deref())?,
+        position(h.cost.as_deref())?,
+    ))
+}
+pub fn finish_sender_result(
+    state: &mut Diplomatic,
+    sender: i32,
+    target: i32,
+    hash: u32,
+) -> Result<(), Error> {
+    let (i, d, c) = validate_sender_result(state, sender, target, hash)?;
+    let h = &mut state.diplo_action_evaluator.handlers[i];
+    h.desirability.as_mut().expect("validated")[d].value = 0;
+    h.cost.as_mut().expect("validated")[c].value = 0;
+    Ok(())
+}
+
+#[cfg(test)]
+mod sender_tests {
+    use super::*;
+    use crate::player_ai_diplomatic::HashEntry;
+    #[test]
+    fn result_one_clears_only_two_sender_cells_without_closed_or_initialization_write() {
+        let mut value = super::tests::state();
+        let h = &mut value.diplo_action_evaluator.handlers[0];
+        h.is_initialized = BoolByte(0);
+        h.desirability = Some(vec![
+            HashEntry { hash: 8, value: 99 },
+            HashEntry {
+                hash: 17,
+                value: 789,
+            },
+        ]);
+        h.cost = Some(vec![
+            HashEntry {
+                hash: 17,
+                value: 123,
+            },
+            HashEntry {
+                hash: 8,
+                value: 456,
+            },
+        ]);
+        let mut expected = value.clone();
+        expected.diplo_action_evaluator.handlers[0]
+            .desirability
+            .as_mut()
+            .unwrap()[1]
+            .value = 0;
+        expected.diplo_action_evaluator.handlers[0]
+            .cost
+            .as_mut()
+            .unwrap()[0]
+            .value = 0;
+        finish_sender_result(&mut value, 1, 0, 17).unwrap();
+        assert_eq!(value, expected);
+        value.diplo_action_evaluator.handlers[0]
+            .cost
+            .as_mut()
+            .unwrap()
+            .push(HashEntry { hash: 17, value: 1 });
+        let before = value.clone();
+        assert_eq!(
+            finish_sender_result(&mut value, 1, 0, 17),
             Err(Error::DuplicateDefinition)
         );
         assert_eq!(value, before);

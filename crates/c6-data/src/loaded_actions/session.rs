@@ -268,7 +268,11 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
                 delegation::Continuation::Decision(request) => {
                     Error::PendingDelegation(request.decision)
                 }
-                delegation::Continuation::Update { .. } => {
+                delegation::Continuation::HumanDecision(_) => {
+                    Error::DecisionBoundary("pending human delegation choice")
+                }
+                delegation::Continuation::Update { .. }
+                | delegation::Continuation::HumanUpdate { .. } => {
                     Error::DecisionBoundary("resume delegation action update")
                 }
             });
@@ -807,8 +811,12 @@ impl<P> Session<'_, '_, P> {
                     .delegation
                     .as_ref()
                     .and_then(|pending| match pending {
-                        delegation::Continuation::Update { choice, .. } => Some(choice.as_ref()),
-                        delegation::Continuation::Decision(_) => None,
+                        delegation::Continuation::Update { choice, .. }
+                        | delegation::Continuation::HumanUpdate { choice, .. } => {
+                            Some(choice.as_ref())
+                        }
+                        delegation::Continuation::Decision(_)
+                        | delegation::Continuation::HumanDecision(_) => None,
                     })
             });
         let resolving_result_choice = result_choice.is_some();
@@ -877,8 +885,10 @@ impl<P> Session<'_, '_, P> {
             if let Some(pending) = effects.backend.first_meeting_update.as_mut() {
                 pending.choice = None;
             }
-            if let Some(delegation::Continuation::Update { choice, .. }) =
-                effects.backend.delegation.as_mut()
+            if let Some(
+                delegation::Continuation::Update { choice, .. }
+                | delegation::Continuation::HumanUpdate { choice, .. },
+            ) = effects.backend.delegation.as_mut()
             {
                 *choice = None;
             }

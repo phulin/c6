@@ -28,6 +28,14 @@ pub enum StatementKind {
         response_type: u32,
         hospitality_city: crate::unit::PlotCoord,
     },
+    /// Source-bounded Delegation/ProposeAction payload. Embedded action endpoints
+    /// are the initiator and its other session player, always enable=true.
+    Delegation {
+        initiator: i32,
+        response_type: u32,
+        subtype: u32,
+        action_pending: bool,
+    },
     Other {
         type_hash: u32,
         subtype_hash: u32,
@@ -35,7 +43,10 @@ pub enum StatementKind {
 }
 impl StatementKind {
     pub(crate) fn ordinary_destructor(self) -> bool {
-        matches!(self, Self::Response | Self::FirstMeeting { .. })
+        matches!(
+            self,
+            Self::Response | Self::FirstMeeting { .. } | Self::Delegation { .. }
+        )
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -323,7 +334,7 @@ pub(crate) fn plan_with_creation(
 ) -> Result<Plan, Error> {
     plan_internal(context, statement, sessions, facts, Some(fresh), false)
 }
-/// Called only after the dedicated FirstMeeting owner validates its bounded
+/// Called only after a dedicated FirstMeeting or Delegation owner validates its bounded
 /// payload, current endpoint facts and required report/decision continuation.
 pub(crate) fn plan_first_meeting(
     context: Context,

@@ -23,6 +23,7 @@ pub mod cityless_managers;
 #[path = "stock_combat.rs"]
 pub mod combat;
 pub mod deactivation;
+pub mod delegation_human;
 pub mod era_changes;
 #[path = "stock_first_contact.rs"]
 pub mod first_contact;
@@ -194,6 +195,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     first_contact: Option<first_contact::State<'a, P>>,
     pub(crate) first_meeting_update: Option<first_contact_update::Continuation>,
     pub(crate) delegation: Option<super::session::delegation::Continuation>,
+    pub(crate) delegation_human: Option<delegation_human::State<'a, P>>,
     first_contact_unit_view: Option<first_contact_unit_view::Inputs<'a>>,
     combat: Option<combat::State<'a>>,
     capture_dispositions: Vec<crate::city_capture::PendingDisposition>,
@@ -264,6 +266,7 @@ impl<'a, P> Runtime<'a, P> {
             first_contact: None,
             first_meeting_update: None,
             delegation: None,
+            delegation_human: None,
             first_contact_unit_view: None,
             combat: None,
             capture_dispositions: Vec::new(),
@@ -685,11 +688,28 @@ impl<P> ProcessStatement<LoadedState> for Runtime<'_, P> {
         state: &mut LoadedState,
         statement: StatementHandle,
     ) -> Result<(), unit_operation_aftermath::Error> {
-        self.process_initial_first_meeting(state, statement)
-            .map_err(|error| {
-                self.last_error = Some(format!("{error:?}"));
-                unit_operation_aftermath::Error::Unsupported("diplomacy statement continuation")
-            })
+        let delegation = state
+            .diplomacy_manager()
+            .ok()
+            .and_then(|m| m.statement_inventory())
+            .is_some_and(|v| {
+                v.iter().any(|s| {
+                    s.handle == statement
+                        && matches!(
+                            s.kind,
+                            c6_core::diplomacy_statement::StatementKind::Delegation { .. }
+                        )
+                })
+            });
+        let result = if delegation {
+            self.process_initial_human_delegation(state, statement)
+        } else {
+            self.process_initial_first_meeting(state, statement)
+        };
+        result.map_err(|error| {
+            self.last_error = Some(format!("{error:?}"));
+            unit_operation_aftermath::Error::Unsupported("diplomacy statement continuation")
+        })
     }
 }
 impl<P> current_aftermath::Backend for Runtime<'_, P> {

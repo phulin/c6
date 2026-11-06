@@ -440,6 +440,7 @@ pub mod game_random_wire;
 
 pub mod trade_read_order;
 
+pub mod diplomacy_delegation;
 pub mod diplomacy_first_meeting;
 pub mod diplomacy_manager;
 pub mod diplomacy_meeting;

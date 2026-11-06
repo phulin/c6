@@ -1,8 +1,9 @@
-//! Source-ordered human-sender delegation command through an external AI response.
+//! Source-ordered delegation commands through external player decisions.
 //!
 //! This executes SetDelegation, not the broader UI offer/availability query.
-//! The admitted endpoints are met, peaceful, alive majors. Human recipients,
-//! uninitialized response handlers and arbitrary diplomacy remain unsupported.
+//! The admitted endpoints are met, peaceful, alive majors. Human senders use
+//! an initialized AI recipient response; AI senders use the local human statement
+//! boundary. Other control profiles and arbitrary diplomacy remain unsupported.
 use super::configuration::Configuration;
 use crate::{
     game_parameters::sql_integer, registry::linux_type_hash,
@@ -60,6 +61,7 @@ impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
 impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
 
 pub struct Definitions {
+    human_choices: bool,
     binding: WireBinding,
     cost: i32,
     divisor: i32,
@@ -114,6 +116,7 @@ impl Definitions {
             speed_multipliers.push((linux_type_hash(&speed.type_name), value));
         }
         Ok(Self {
+            human_choices: human_selection_rules(rules),
             binding: state.binding().clone(),
             cost,
             divisor,
@@ -308,6 +311,19 @@ pub(crate) fn respond<P, E: Effects<P>>(
     if !affordable {
         return Ok(Outcome::InsufficientGold);
     }
+    apply_accepted(state, backend, visibility, sender, recipient, cost, effects)
+}
+#[allow(clippy::too_many_arguments)]
+fn apply_accepted<P, E: Effects<P>>(
+    state: &mut LoadedState,
+    backend: &mut P,
+    visibility: &mut crate::game_update_state::deactivation::VisibilityHistory,
+    sender: i32,
+    recipient: i32,
+    cost: i32,
+    effects: &mut E,
+) -> Result<Outcome, Error<E::Error>> {
+    let cost_q8 = cost.wrapping_shl(8);
     change_gold(
         state,
         backend,
@@ -331,8 +347,145 @@ pub(crate) fn respond<P, E: Effects<P>>(
         .recheck_visibility(state, backend, sender, recipient)
         .map_err(Error::Effect)?;
     change_gold(state, backend, effects, recipient, cost_q8)?;
-    // The sender is human: ProcessActionResult's AI-only tail is not reached.
     Ok(Outcome::Accepted { gold_cost: cost })
+}
+
+fn human_selection_rules(rules: &Rules) -> bool {
+    let Some(statements) = rules.gameplay().table("DiplomacyStatements") else {
+        return false;
+    };
+    let Some(selections) = rules.gameplay().table("DiplomacySelections") else {
+        return false;
+    };
+    for (subtype, expected) in [
+        (
+            "NONE",
+            &["CHOICE_POSITIVE", "CHOICE_NEGATIVE", "CHOICE_EXIT"][..],
+        ),
+        ("HUMAN_ACCEPT_DEAL", &["CHOICE_EXIT"][..]),
+        ("HUMAN_REFUSE_DEAL", &["CHOICE_EXIT"][..]),
+    ] {
+        let mut found = false;
+        for row in statements.rows().filter(|r| {
+            r.text("Type").ok() == Some("DIPLOMATIC_DELEGATION")
+                && r.text("Initiator").ok() == Some("AI")
+                && r.text("SubType").ok() == Some(subtype)
+        }) {
+            found = true;
+            let Ok(selection) = row.text("Selections") else {
+                return false;
+            };
+            let mut variants =
+                std::collections::BTreeMap::<(String, String), Vec<(i64, String)>>::new();
+            for r in selections
+                .rows()
+                .filter(|r| r.text("Type").ok() == Some(selection))
+            {
+                let (Ok(leader), Ok(mood), Ok(sort), Ok(key)) = (
+                    r.text("Leader"),
+                    r.text("Mood"),
+                    r.integer("Sort"),
+                    r.text("Key"),
+                ) else {
+                    return false;
+                };
+                variants
+                    .entry((leader.into(), mood.into()))
+                    .or_default()
+                    .push((sort, key.into()));
+            }
+            if variants.is_empty() {
+                return false;
+            }
+            for rows in variants.values_mut() {
+                rows.sort_by_key(|r| r.0);
+                if rows.iter().map(|r| r.1.as_str()).collect::<Vec<_>>() != expected {
+                    return false;
+                }
+            }
+        }
+        if !found {
+            return false;
+        }
+    }
+    true
+}
+pub(crate) fn request_human<E>(
+    state: &LoadedState,
+    sender: i32,
+    recipient: i32,
+    definitions: &Definitions,
+    config: &Configuration<'_>,
+    capabilities: &c6_core::game_capabilities::Membership,
+) -> Result<(), Error<E>> {
+    definitions.cost(state, config)?;
+    if !definitions.human_choices
+        || !capabilities.has(c6_core::diplomacy_request::DIPLOMACY_CAPABILITY)
+    {
+        return Err(Error::Missing(
+            "current delegation capability and human selection rules",
+        ));
+    }
+    if config
+        .is_any_multiplayer(state.binding())
+        .map_err(Error::Configuration)?
+        || state.player_slot_status(sender).map_err(Error::State)? != 1
+        || state.player_slot_status(recipient).map_err(Error::State)? != 3
+        || state.retained().core.local_player != recipient
+        || sender == recipient
+    {
+        return Err(Error::Missing(
+            "AI sender and local human recipient single-player delegation",
+        ));
+    }
+    for owner in [sender, recipient] {
+        if config
+            .civilization_level_type_id(owner)
+            .map_err(Error::Configuration)?
+            != c6_core::diplomacy_meeting::MAJOR_LEVEL
+            || !state.player_alive(owner).map_err(Error::State)?
+        {
+            return Err(Error::Missing("alive major delegation endpoints"));
+        }
+    }
+    let r = state.game_relations().map_err(Error::State)?;
+    if !r.has_met(sender, recipient).map_err(Error::Relations)?
+        || r.is_at_war(sender, recipient).map_err(Error::Relations)?
+    {
+        return Err(Error::Rejected);
+    }
+    state
+        .validate_delegation_sender_result(sender, recipient, linux_type_hash(DEFINITION_NAME))
+        .map_err(Error::Policy)?;
+    Ok(())
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn apply_human_response<P, E: Effects<P>>(
+    state: &mut LoadedState,
+    backend: &mut P,
+    visibility: &mut crate::game_update_state::deactivation::VisibilityHistory,
+    sender: i32,
+    recipient: i32,
+    definitions: &Definitions,
+    config: &Configuration<'_>,
+    effects: &mut E,
+) -> Result<Outcome, Error<E::Error>> {
+    let cost = definitions.cost(state, config)?;
+    state
+        .validate_delegation_sender_result(sender, recipient, linux_type_hash(DEFINITION_NAME))
+        .map_err(Error::Policy)?;
+    let outcome = if player(state, sender)?.treasury.gold_balance_q8 >= cost.wrapping_shl(8) {
+        effects
+            .preflight(state, backend, visibility, sender, recipient)
+            .map_err(Error::Effect)?;
+        apply_accepted(state, backend, visibility, sender, recipient, cost, effects)?
+    } else {
+        Outcome::InsufficientGold
+    };
+    state
+        .finish_delegation_sender_result(sender, recipient, linux_type_hash(DEFINITION_NAME))
+        .map_err(Error::Policy)?;
+    Ok(outcome)
 }
 
 #[cfg(test)]
