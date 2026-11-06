@@ -376,14 +376,13 @@ impl Inputs<'_> {
         // positive/custom property branches, retaining no temporary UI output.
         if let Some(building) = d.airlift_building {
             for p in &state.retained().players {
-                if p.cities.records.entries.iter().any(|c| {
-                    c.value
-                        .buildings
-                        .building_locations
-                        .iter()
-                        .any(|b| b.definition_hash == building && b.value >= 0)
-                }) {
-                    return Err("snapshot positive Airlift building continuation".into());
+                for city in &p.cities.records.entries {
+                    if selected_building_present(
+                        &city.value.buildings.building_locations,
+                        building,
+                    )? {
+                        return Err("snapshot positive Airlift building continuation".into());
+                    }
                 }
             }
         }
@@ -402,6 +401,18 @@ impl Inputs<'_> {
         }
         Ok(())
     }
+}
+
+fn selected_building_present(pairs: &[c6_core::unit::HashValue<i16>], hash: u32) -> Result<bool> {
+    let mut cells = pairs.iter().filter(|cell| cell.definition_hash == hash);
+    let value = cells
+        .next()
+        .ok_or("snapshot current Airlift building location")?
+        .value;
+    if cells.next().is_some() {
+        return Err("snapshot aliased Airlift building location");
+    }
+    Ok(value >= 0)
 }
 
 // HasAbility (0x2c293b0) resolves the queried enum/hash through the actual
@@ -536,6 +547,17 @@ mod tests {
             },
         )
         .unwrap()
+    }
+    #[test]
+    fn selected_airlift_building_uses_known_cell_without_defaulting_missing_input() {
+        let cell = |value| c6_core::unit::HashValue {
+            definition_hash: 7,
+            value,
+        };
+        assert_eq!(selected_building_present(&[cell(-1)], 7), Ok(false));
+        assert_eq!(selected_building_present(&[cell(0)], 7), Ok(true));
+        assert!(selected_building_present(&[], 7).is_err());
+        assert!(selected_building_present(&[cell(-1), cell(-1)], 7).is_err());
     }
     #[test]
     fn subtype_ability_guards_read_only_their_actual_native_indices() {
