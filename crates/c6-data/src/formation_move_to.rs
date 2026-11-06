@@ -9,6 +9,7 @@ use c6_core::{
     movement::{MoveBudget, MovementPoints},
     movement_shore::PlacementRequest,
     pathfinder::TwoLayer,
+    skip_turn::placement as unit_placement,
     unit::{Formation, PlotCoord},
 };
 
@@ -231,6 +232,64 @@ fn preflight_children(state: &LoadedState, identity: (i32, u32)) -> Result<(), p
     Ok(())
 }
 
+/// Native post-Placement capture scan over the selected Plot and current
+/// Formation layer (2947add..2947e1d). The empty-candidate continuation includes
+/// the moving combat Unit itself. Noncombat candidates retain their explicit
+/// unsupported definition/diplomacy/capture continuation.
+fn capture_scan<E, P>(
+    state: &LoadedState,
+    definitions: &path::Definitions<'_, '_>,
+    identity: (i32, u32),
+    target: PlotCoord,
+) -> Result<(), Error<E, P>> {
+    let record = formation(state, identity).map_err(Error::Query)?;
+    if !record.can_capture {
+        return Ok(());
+    }
+    let world = state.world();
+    let layer = unit_placement::formation_layer(world, record)
+        .map_err(|e| Error::Query(path::Error::PlacementQuery(e)))?
+        .ok_or(Error::Unsupported(
+            "MoveTo capture scan missing current layer",
+        ))?;
+    let units = unit_placement::units_at(world, Some(layer), target)
+        .map_err(|e| Error::Query(path::Error::PlacementQuery(e)))?;
+    for &reference in units.iter().rev() {
+        let Some(unit) = world
+            .unit(reference)
+            .map_err(|e| Error::Query(path::Error::World(e)))?
+        else {
+            continue;
+        };
+        let unit = unit.record;
+        if unit.b_delayed_death {
+            continue;
+        }
+        // Unit.IsCombat20dee90 short-circuits melee, ranged, then bombard.
+        // These existing admitted getters are read-only and draw no RNG.
+        if definitions
+            .formation
+            .combat(state, unit)
+            .map_err(|e| Error::Query(path::Error::Rules(e)))?
+            > 0
+            || definitions
+                .formation
+                .ranged(state, unit)
+                .map_err(|e| Error::Query(path::Error::Rules(e)))?
+                > 0
+            || definitions
+                .formation
+                .bombard(state, unit)
+                .map_err(|e| Error::Query(path::Error::Rules(e)))?
+                > 0
+        {
+            continue;
+        }
+        return Err(Error::Unsupported("MoveTo noncombat capture candidate"));
+    }
+    Ok(())
+}
+
 fn placement_flags(flags: u32) -> u32 {
     ((flags & 4) << 1) | ((flags >> 4) & 3) | ((flags >> 6) & 0x80)
 }
@@ -275,12 +334,10 @@ where
     {
         return Err(Error::Unsupported("MoveTo air Formation Placement"));
     }
-    if formation(state, identity)
-        .map_err(Error::Query)?
-        .can_capture
-    {
-        return Err(Error::Unsupported("MoveTo civilian capture continuation"));
-    }
+    // Reject the current known noncombat-candidate branch before mutation.
+    // Placement callbacks can change membership; the native scan is repeated
+    // below in its actual post-Placement position over the selected step.
+    capture_scan(state, definitions, identity, destination)?;
     preflight_children(state, identity).map_err(Error::Query)?;
     upkeep::preflight_formation_movement(
         state,
@@ -437,14 +494,7 @@ where
     let result =
         place(state, visibility, effects, identity, to, validate).map_err(Error::Placement)?;
     if result == 1 {
-        if formation(state, identity)
-            .map_err(Error::Query)?
-            .can_capture
-        {
-            return Err(Error::Unsupported(
-                "callback introduced MoveTo capture continuation",
-            ));
-        }
+        capture_scan(state, definitions, identity, to)?;
         upkeep::change_formation_moves(
             state,
             identity.0,
@@ -535,8 +585,8 @@ pub enum PlacementError<E> {
 /// Formation::Movement::MoveTo (0x2947680) for supported initialized normal
 /// movement. The real Data Unit Placement adapter executes every member. The
 /// return retains native path-turn/false/deferred semantics used by MoveTo.Update.
-/// Reached air, capture, live-child and splitting/request branches remain explicit
-/// refusals; no action success is returned for an unfinished continuation.
+/// Reached air, noncombat capture candidates, live-child and splitting/request
+/// branches remain explicit refusals; no action success is returned for an unfinished continuation.
 #[allow(clippy::too_many_arguments)]
 pub fn move_to<'a, 'r, E>(
     state: &mut LoadedState,
