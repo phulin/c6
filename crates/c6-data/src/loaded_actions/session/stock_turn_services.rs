@@ -43,6 +43,23 @@ pub struct City<'s> {
     /// Current district completion services for naturally accrued production.
     pub district: Option<&'s crate::district_actions::stock::Inputs<'s>>,
 }
+/// Ordinary Train production borrows the ongoing factory and current legality
+/// inputs. Sight is borrowed from `influence.visibility` only during activation;
+/// creation callbacks and modifier owners remain on the Session backend.
+pub struct UnitProduction<'s, 'd, 'r> {
+    pub selection: &'s crate::city_production_turn::unit_selection::Definitions,
+    pub current: crate::city_production_turn::unit_selection::Current<'s>,
+    pub definitions: &'s crate::unit_creation::Definitions,
+    pub resources: &'s crate::resource_binding::ResourceAuthority<'r>,
+    pub combat: &'s crate::formation_rules::Definitions,
+    pub costs: &'s crate::research_unit_costs::Definitions,
+    pub placement: &'s crate::unit_placement_state::Definitions<'d, 'r>,
+    pub queries: &'s crate::unit_placement_state::Queries<'d>,
+    pub runtime: &'s crate::unit_creation::Runtime,
+    pub tags: &'s crate::loaded_actions::reporting::hold_cycling::commands::Tags,
+    pub finish: &'s crate::city_production_turn::units::Definitions,
+    pub reports: Vec<stock::city_production::unit::Record>,
+}
 /// Camp factories and subscribers are retained, including their unsaved state.
 pub struct Camp<'s, 'd, 'r> {
     pub definitions: &'s crate::barbarian_camps::queries::Definitions,
@@ -84,6 +101,7 @@ pub struct StockTurnServices<'s, 'd, 'r> {
     pub phases: &'s activation::Phases,
     pub forced_rebase: &'s activation::forced_rebase::Definitions,
     pub city: Option<City<'s>>,
+    pub unit_production: Option<UnitProduction<'s, 'd, 'r>>,
     pub camps: Option<Camp<'s, 'd, 'r>>,
     pub city_outcomes: Vec<(i32, u32, crate::city_production_turn::Outcome)>,
     pub city_reports: Vec<stock::city_production::Record>,
@@ -308,28 +326,64 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                 let current = q.current;
                 backend
                     .with_modifier_requirement_sets(requirements.sets_mut(), |backend| {
-                        let building = city_production::Effects::new(
-                            backend,
-                            &q.definitions.buildings,
-                            q.appeal,
-                            city_production::Scope::StockPlainHeadlessNoAddedConsumers,
-                        );
-                        let mut production = match state
-                            .city(player, city)
-                            .map_err(|_| {
-                                city_turn::Error::Unsupported("current City production owner")
-                            })?
-                            .build_queue
-                            .entries
-                            .first()
-                            .map(|e| e.order)
-                        {
-                            Some(c6_core::city_production::Order::Zone { .. }) => {
+                        let kind = production_dispatch::Kind::for_order(
+                            state
+                                .city(player, city)
+                                .map_err(|_| {
+                                    city_turn::Error::Unsupported("current City production owner")
+                                })?
+                                .build_queue
+                                .entries
+                                .first()
+                                .map(|e| e.order),
+                        )
+                        .map_err(city_turn::Error::Production)?;
+                        // Borrow the actual shared sight owner only on the Train path.
+                        // A conflicting loan is an explicit incomplete transition.
+                        let mut sight = kind
+                            .borrow_sight(self.influence.visibility)
+                            .map_err(city_turn::Error::Production)?;
+                        let mut production = match kind {
+                            production_dispatch::Kind::Unit => {
+                                let input = self.unit_production.as_ref().ok_or(
+                                    city_turn::Error::Unsupported(
+                                        "current Unit production services",
+                                    ),
+                                )?;
+                                production_dispatch::Effects::Unit(city_production::unit::Effects {
+                                    selection: city_production::unit::Selection {
+                                        runtime: backend,
+                                        definitions: input.selection,
+                                        current:
+                                            crate::city_production_turn::unit_selection::Current {
+                                                build_maps: input.current.build_maps,
+                                                fallout_turns: input.current.fallout_turns,
+                                                civilization_levels: input
+                                                    .current
+                                                    .civilization_levels,
+                                            },
+                                        reports: vec![],
+                                    },
+                                    factory: city_production::unit::Factory {
+                                        definitions: input.definitions,
+                                        resources: input.resources,
+                                        movement: self.movement,
+                                        combat: input.combat,
+                                        costs: input.costs,
+                                        placement: input.placement,
+                                        queries: input.queries,
+                                        runtime: input.runtime,
+                                        tags: input.tags,
+                                        sight: sight.as_deref_mut().expect("Train sight loan"),
+                                        finish: input.finish,
+                                    },
+                                })
+                            }
+                            production_dispatch::Kind::District => {
                                 let district =
                                     q.district.as_ref().ok_or(city_turn::Error::Unsupported(
                                         "current district production services",
                                     ))?;
-                                drop(building);
                                 production_dispatch::Effects::District(
                                     crate::district_actions::stock::Effects {
                                         backend,
@@ -341,7 +395,16 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                                     },
                                 )
                             }
-                            _ => production_dispatch::Effects::Building(building),
+                            production_dispatch::Kind::Building => {
+                                production_dispatch::Effects::Building(
+                                    city_production::Effects::new(
+                                        backend,
+                                        &q.definitions.buildings,
+                                        q.appeal,
+                                        city_production::Scope::StockPlainHeadlessNoAddedConsumers,
+                                    ),
+                                )
+                            }
                         };
                         let outcome = {
                             let mut effects = current_upkeep::Context {
@@ -370,7 +433,15 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                         if let production_dispatch::Effects::Building(effects) = &mut production {
                             self.city_reports.append(&mut effects.reports);
                         }
+                        if let production_dispatch::Effects::Unit(effects) = &mut production {
+                            self.unit_production
+                                .as_mut()
+                                .expect("Train inputs retained")
+                                .reports
+                                .append(&mut effects.selection.reports);
+                        }
                         drop(production);
+                        drop(sight);
                         let outcome = outcome?;
                         if matches!(
                             outcome,
