@@ -40,5 +40,6 @@ These limitations do not silently complete the action.
 Retained Linux comparisons cover Warrior/Warrior combat with a living defender
 and a wounded defender killed by the attack. Both finish through the public
 Session and match the compared current gameplay state, visibility, callback
-effects, history, modifier lifetimes and ordered GameSync draws. These are
-representative profile comparisons, not arbitrary melee or complete-turn parity.
+effects, history, modifier lifetimes and ordered GameSync draws. [Clearing a stock barbarian camp](linux-camp-clear.md) through a wounded Scout
+kill is also compared, including its positive civic boost and tribe updates.
+These are representative profile comparisons, not arbitrary melee or complete-turn parity.
