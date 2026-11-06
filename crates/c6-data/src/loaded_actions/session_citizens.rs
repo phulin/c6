@@ -69,6 +69,16 @@ pub fn manage_citizen(
     }
     let c = state.city(owner, city)?;
     let center = PlotCoord { x: c.header.location_x, y: c.header.location_y };
+    // Map.GetPlot(PlotCoord)2a48ba0 checks the invalid sentinel BEFORE
+    // CoordRange on each axis. Resolve the actual plot's canonical location,
+    // then pass it to Citizens, as the native command passes a plot pointer.
+    let map = state.world().map();
+    let location = if c6_core::geometry::plot_valid(location.x, location.y) {
+        PlotCoord {
+            x: c6_core::movement_world::coord_range(location.x, map.header.width, map.header.wrap_x),
+            y: c6_core::movement_world::coord_range(location.y, map.header.height, map.header.wrap_y),
+        }
+    } else { location };
     // Map.GetPlot may return null; the native inverse then yields -1.
     let index = if c6_core::movement_world::plot_at(state.world().map(), location).is_ok() {
         kernel::plot_index(state.world().map(), center, location).map_err(missing)?
