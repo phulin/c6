@@ -6,9 +6,10 @@ pub mod collection;
 pub mod definitions;
 pub mod destruction;
 pub mod government;
+pub mod governors;
 pub mod policy;
-pub mod requirement_cleanup;
 mod primary;
+pub mod requirement_cleanup;
 use super::{EffectRuntime, QueryError};
 use c6_core::{
     loaded_state::LoadedState,
@@ -76,6 +77,7 @@ pub(super) struct Creation {
     city_removed_subscriptions: Vec<policy::CitySubscription>,
     modifiers: Vec<Dynamic>,
     government: government::State,
+    governors: Vec<u64>,
     primary: primary::State,
     requirement_cleanup: requirement_cleanup::State,
     objects: Vec<Object>,
@@ -129,6 +131,7 @@ impl EffectRuntime {
             city_removed_subscriptions: Vec::new(),
             modifiers: Vec::new(),
             government: government::State::default(),
+            governors: Vec::new(),
             primary: primary::State::default(),
             requirement_cleanup: requirement_cleanup::State::default(),
             objects,
@@ -433,7 +436,8 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .object(subject)
             .map_err(Error::Query)?
             .kind
-            .city_component()
+            .current_city_component(self.state)
+            .map_err(Error::Query)?
         else {
             return Err(Error::Missing("ICity removal subject"));
         };
@@ -490,7 +494,8 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
             .object(self.subject)
             .map_err(Error::Query)?
             .kind
-            .city_component()
+            .current_city_component(self.state)
+            .map_err(Error::Query)?
         else {
             return Err(Error::Missing("ICity effect context"));
         };
@@ -791,13 +796,16 @@ impl EffectRuntime {
                     .owner
             }
             super::ContextObject::Policy { owner, .. }
-            | super::ContextObject::Government { owner, .. } => owner,
+            | super::ContextObject::Government { owner, .. }
+            | super::ContextObject::Governor { owner, .. } => owner,
             _ => return Err(Error::Missing("City effect attachment owner interface")),
         };
 
         if matches!(
             self.object(owner).map_err(Error::Query)?.kind,
-            super::ContextObject::Policy { .. } | super::ContextObject::Government { .. }
+            super::ContextObject::Policy { .. }
+                | super::ContextObject::Government { .. }
+                | super::ContextObject::Governor { .. }
         ) {
             self.ensure_policy_city_lifecycle(owner)?;
         }
@@ -1055,6 +1063,7 @@ impl EffectRuntime {
         }
         if !self.allocations.constructed_policies.contains(&owner)
             && !creation.government.constructed.contains(&owner)
+            && !creation.governors.contains(&owner)
         {
             return Err(Error::Missing("current imported Policy City lifecycle"));
         }
@@ -1074,7 +1083,9 @@ impl EffectRuntime {
         let object = self.object(owner).map_err(Error::Query)?;
         if !matches!(
             object.kind,
-            super::ContextObject::Policy { .. } | super::ContextObject::Government { .. }
+            super::ContextObject::Policy { .. }
+                | super::ContextObject::Government { .. }
+                | super::ContextObject::Governor { .. }
         ) {
             return Err(Error::Missing("Policy object retirement"));
         }
@@ -1129,6 +1140,7 @@ impl EffectRuntime {
                 return Err(Error::Missing("Government live flat modifiers"));
             }
             creation.government.constructed.retain(|h| *h != owner);
+            creation.governors.retain(|h| *h != owner);
             creation.objects.retain(|o| o.handle != owner);
         }
         self.allocations
@@ -1284,7 +1296,8 @@ impl EffectRuntime {
                     .object(subject)
                     .map_err(Error::Query)?
                     .kind
-                    .city_component()
+                    .current_city_component(state)
+                    .map_err(Error::Query)?
                     .ok_or(Error::Missing("owned modifier Remove ICity"))?;
                 let (_, effect) = self
                     .prepare_city_effect(state, effect, city, effects)

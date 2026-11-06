@@ -366,7 +366,8 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
             ContextObject::Player(id)
             | ContextObject::Research { owner: id, .. }
             | ContextObject::Policy { owner: id, .. }
-            | ContextObject::Government { owner: id, .. } => Ok(id),
+            | ContextObject::Government { owner: id, .. }
+            | ContextObject::Governor { owner: id, .. } => Ok(id),
             ContextObject::Unit(unit) => Ok(i32::from(unit.component_id().owner)),
             ContextObject::Building { district, .. } | ContextObject::District { district, .. } => {
                 Ok(i32::from(district.owner))

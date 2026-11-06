@@ -71,6 +71,13 @@ pub(super) fn city_key(runtime: &EffectRuntime, subject: u64) -> Result<u64, Err
     let city = match runtime.object(subject).map_err(Error::Query)?.kind {
         ContextObject::City(city) => city,
         ContextObject::Building { district, .. } => district,
+        // GovernorID.GetComponentID242fd90 uses component type77. Reached
+        // Governor wrappers have subtype/subvalue0/0, as do these subjects.
+        ContextObject::Governor { owner, id } => c6_core::unit::ComponentId {
+            owner: owner as i16,
+            component_type: 77,
+            id: id as u32,
+        },
         _ => {
             return Err(Error::Missing("current normal City subject"));
         }

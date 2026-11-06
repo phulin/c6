@@ -54,6 +54,11 @@ pub enum ContextObject {
         owner: i32,
         government_hash: u32,
     },
+    /// Native Governor wrapper, keyed by owning Player and Governor instance ID.
+    Governor {
+        owner: i32,
+        id: i32,
+    },
     /// Objects.Unit's IPlayer interface uses its stored CID owner, while its
     /// IUnit interface resolves the CURRENT corresponding canonical Unit.
     Unit(UnitReference),
@@ -121,6 +126,10 @@ pub enum CityEffect {
     /// AdjustCityInnerDefense2347210/2347230 delegates to the add-only RET
     /// setter2420270; no report, query or RNG callback accompanies the write.
     InnerDefense {
+        amount: i32,
+    },
+    YieldModifier {
+        yield_hash: u32,
         amount: i32,
     },
     YieldChanges {
@@ -208,6 +217,18 @@ impl CityEffect {
                     state,
                     i32::from(city.owner),
                     city.id,
+                    *amount,
+                    remove,
+                    effects,
+                )
+                .map_err(CityEffectError::Production)?;
+                Ok(true)
+            }
+            Self::YieldModifier { yield_hash, amount } => {
+                city_creation::governors::adjust_yield_modifier(
+                    state,
+                    city,
+                    *yield_hash,
                     *amount,
                     remove,
                     effects,
@@ -407,6 +428,9 @@ impl EffectRuntime {
                         "current Building District/City ownership",
                     ));
                 }
+            }
+            ContextObject::Governor { owner, id } => {
+                city_creation::governors::governor(state, owner, id)?;
             }
             ContextObject::Player(owner)
             | ContextObject::Belief { founder: owner, .. }
@@ -900,7 +924,8 @@ impl player_strength::Context for EffectContext<'_> {
             ContextObject::Player(owner)
             | ContextObject::Policy { owner, .. }
             | ContextObject::Research { owner, .. }
-            | ContextObject::Government { owner, .. } => owner,
+            | ContextObject::Government { owner, .. }
+            | ContextObject::Governor { owner, .. } => owner,
             ContextObject::Unit(u) => i32::from(u.component_id().owner),
             ContextObject::Building { district, .. } | ContextObject::District { district, .. } => {
                 i32::from(district.owner)

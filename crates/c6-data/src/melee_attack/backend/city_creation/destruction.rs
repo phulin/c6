@@ -243,7 +243,8 @@ fn primary_object(
         | ContextObject::Belief { .. }
         | ContextObject::Game
         | ContextObject::Team(_)
-        | ContextObject::Improvement { .. } => Ok(handle),
+        | ContextObject::Improvement { .. }
+        | ContextObject::Governor { .. } => Ok(handle),
         ContextObject::Plot(_)
         | ContextObject::Alliance { .. }
         | ContextObject::Emergency { .. } => Err(Error::Missing(
@@ -267,6 +268,7 @@ fn current_city(
             }
         }
         ContextObject::Improvement { city, .. } => Some(city),
+        governor @ ContextObject::Governor { .. } => governor.current_city_component(state).map_err(Error::Query)?,
         _ => None,
     })
 }
