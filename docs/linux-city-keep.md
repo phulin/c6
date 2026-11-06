@@ -38,8 +38,8 @@ and wrong-City rejection are checked separately on the same initialized input.
 The supported callback profile excludes active spy-mission aborts, positive unit
 expulsion placement, other war types and reactivation of an existing diplomatic
 penalty tracker. Dead/free-city previous owners and cultural transfers require
-separate transitions. Raze, Return and Liberate require their own native
-qualification. Known GameSync, script RNG and native endpoint checks do not
+separate transitions. [Raze](linux-city-raze.md) has a separately qualified bounded
+transition; Return and Liberate remain unimplemented. Known GameSync, script RNG and native endpoint checks do not
 establish a complete gameplay RNG inventory or arbitrary action chaining.
 
 One Cargo release sample measured **2.718 ms** (2,718,128 ns) for the complete

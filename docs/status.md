@@ -23,7 +23,7 @@ does not initialize a new Civ VI game. See the
 | Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and first physical step | Representative Linux cases; not district/building pillage or complete trade-route lifecycle coverage |
 | Research and government | Technology/civic selection and progress; explicit government and policy choices | Bounded definitions, effects and decision paths |
 | Religion | Human and bounded nonhuman major Initiation Rites pantheon choice and founding | Representative initialized Linux cases, including stored modifiers, owned-city propagation, reached callbacks and NPC continuation on the same controller; other belief effects remain unsupported |
-| Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; city-center melee without walls, including bounded noncapital capture and explicit [Keep City](linux-city-keep.md); promotions and upgrades | Representative Linux cases through the persistent Session; other dispositions, combat types, modifiers and aftermath branches remain outside the qualified profiles |
+| Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; city-center melee without walls, including bounded noncapital capture and explicit [Keep City](linux-city-keep.md) and [Raze City](linux-city-raze.md); promotions and upgrades | Representative Linux cases through the persistent Session; Return/Liberate, other combat types, modifiers and aftermath branches remain outside the qualified profiles |
 | Diplomacy | Direct surprise-war declaration | Bounded cityless case; not complete diplomacy or war consequences in arbitrary worlds |
 | Turns and decisions | FoundCity → explicit research/Monument choices → Fortify → three ordinary rounds on one Session; bounded major NPC activation → external Pantheon choice → deactivation to the next player's decision | Compared typed gameplay state, core processors, global religion, represented requirements and known RNG match; raw AI/control differences and incomplete RNG/runtime coverage remain explicit |
 | Supporting components | Explicit RNG records/streams, numerical helpers, typed wire codecs, owned component state and registered SQLite rules profiles | Schema/profile-specific; wire transport is distinct from complete save import or live-world reconstruction |
@@ -106,7 +106,9 @@ capture case completes destruction/reconstruction and melee cleanup with 12
 attacker damage, 10 XP and five matching ordered GameSync draws. It yields a typed
 pending disposition that survives rewrapping and gates later Session actions.
 Disposition execution and a complete gameplay RNG inventory remain outside that
-comparison.
+comparison. Separate initialized [Keep](linux-city-keep.md) and
+[Raze](linux-city-raze.md) cases resolve the external choice through the same
+Session boundary; arbitrary disposition chaining remains unqualified.
 
 The main remaining gap is generality and integration across a whole game: complete
 initialized gameplay state, all reached action effects and upkeep, full gameplay
