@@ -409,13 +409,12 @@ pub fn healing_world(
             .iter()
             .find(|p| p.header.owner == owner)
             .ok_or(Error::Missing("healing current plot owner"))?;
-        if plot_player.influence.suzerain == a.0 {
-            HealingTerritory::Friendly
-        } else if state
-            .game_relations()
-            .map_err(Error::State)?
-            .is_allied(a.0, owner)
-            .map_err(|_| Error::Missing("healing current alliance relationship"))?
+        if plot_player.influence.suzerain == a.0
+            || state
+                .game_relations()
+                .map_err(Error::State)?
+                .is_allied(a.0, owner)
+                .map_err(|_| Error::Missing("healing current alliance relationship"))?
         {
             HealingTerritory::Friendly
         } else {
