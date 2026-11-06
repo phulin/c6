@@ -141,9 +141,15 @@ impl<P> super::Effects for Current<'_, '_, '_, '_, P> {
             .plots
             .get(plot)
             .ok_or_else(|| err("feature plot", "missing"))?;
-        if p.feature_hash != self.dispatcher.definitions.feature_hash
+        if !self
+            .dispatcher
+            .definitions
+            .passable_terrains
+            .contains(&p.terrain_hash)
+            || p.feature_hash != self.dispatcher.definitions.feature_hash
             || p.feature_layout != 0
             || p.improvement_hash != u32::MAX
+            || p.resource_hash != u32::MAX
             || p.flags.get(c6_core::map::PlotFlag::Impassable)
         {
             return Err(err(
@@ -306,8 +312,8 @@ impl<P> super::Effects for Current<'_, '_, '_, '_, P> {
             let economic = self.dispatcher.economic;
             amount = ((economic.game_cost_escalation.wrapping_mul(base) / 100).wrapping_sub(base))
                 .wrapping_mul(percent)
-                / 100
-                + base;
+                .wrapping_div(100)
+                .wrapping_add(base);
             amount = c6_core::research_acquisition::units::adjust_for_game_speed(
                 amount,
                 economic.speed_cost_multiplier,

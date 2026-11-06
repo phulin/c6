@@ -8,7 +8,9 @@ pub type ChopError = move_to::ActionError<
 >;
 impl Session<'_, '_, c6_core::unit::OperationParameters> {
     /// Execute Chop through the same operation queue and stock aftermath.
-    /// Errors preserve reached effects; the selected Builder charge is consumed.
+    /// The supported stock scope is an ordinary owned, resource-free forest.
+    /// Production uses canonical progress/completion services. Unsupported
+    /// branches preserve reached effects and return an incomplete action.
     #[allow(clippy::too_many_arguments)]
     pub fn chop(
         &mut self,

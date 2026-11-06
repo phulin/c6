@@ -26,6 +26,7 @@ pub struct Definitions {
     pub production: i32,
     pub(crate) technologies: Vec<u32>,
     pub(crate) civics: Vec<u32>,
+    pub(crate) passable_terrains: Vec<u32>,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error<()>> {
@@ -54,6 +55,29 @@ impl Definitions {
         {
             return Err(Error::Unsupported("nonremovable forest definition"));
         }
+        for (field, value) in [("NaturalWonder", 0), ("Tiles", 1), ("Impassable", 0)] {
+            if row
+                .integer(field)
+                .map_err(|_| Error::Missing("ordinary forest rule"))?
+                != value
+            {
+                return Err(Error::Unsupported(
+                    "ordinary single-plot passable forest definition",
+                ));
+            }
+        }
+        let passable_terrains = rules
+            .gameplay()
+            .table("Terrains")
+            .ok_or(Error::Missing("forest terrain definitions"))?
+            .rows()
+            .filter(|r| r.integer("Impassable").ok() == Some(0))
+            .map(|r| {
+                r.text("TerrainType")
+                    .map(|n| linux_type_hash(n.as_bytes()))
+                    .map_err(|_| Error::Missing("forest terrain type"))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let remove_tech = match row
             .get("RemoveTech")
             .map_err(|_| Error::Missing("forest RemoveTech"))?
@@ -76,7 +100,7 @@ impl Definitions {
             }
             _ => return Err(Error::Missing("forest RemoveTech reference")),
         };
-        let mut production = 0;
+        let mut production = None;
         for row in rules
             .gameplay()
             .table("Feature_Removes")
@@ -91,9 +115,13 @@ impl Definitions {
             {
                 return Err(Error::Unsupported("additional forest removal yields"));
             }
-            production =
+            if production.is_some() {
+                return Err(Error::Unsupported("multiple forest removal yield rows"));
+            }
+            production = Some(
                 row.integer("Yield")
-                    .map_err(|_| Error::Missing("forest removal yield"))? as i32;
+                    .map_err(|_| Error::Missing("forest removal yield"))? as i32,
+            );
         }
         let hashes = |table, column| -> Result<Vec<u32>, Error<()>> {
             let definitions =
@@ -110,7 +138,8 @@ impl Definitions {
             feature_hash,
             feature_index: index as i32,
             remove_tech,
-            production,
+            production: production.ok_or(Error::Missing("forest removal production row"))?,
+            passable_terrains,
             technologies: hashes("Technologies", "TechnologyType")?,
             civics: hashes("Civics", "CivicType")?,
         })
