@@ -148,6 +148,9 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     growth: Option<growth::Inputs>,
     social_capabilities: Option<c6_core::game_capabilities::Membership>,
     era_changes: Option<era_changes::State<'a>>,
+    /// Derived from the SAME Session history only for the current ordinary
+    /// action scope; restored on every normal result, never an imported answer.
+    pub(crate) action_gossip_history_empty: Option<bool>,
     queued_operations: Option<Box<dyn queued_operations::Services<P> + 'a>>,
     pantheon_definitions: Option<super::pantheon_actions::Definitions>,
     pending_pantheons: Vec<(i32, bool)>,
@@ -236,6 +239,7 @@ impl<'a, P> Runtime<'a, P> {
             growth: None,
             social_capabilities: None,
             era_changes: None,
+            action_gossip_history_empty: None,
             unit_production_signals: None,
             movement: None,
             combat: None,

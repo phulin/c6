@@ -453,6 +453,10 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
             return Err(Error::PendingResearch);
         }
         self.begin_action_research()?;
+        // Unit creation reached by this action reads the live Session history;
+        // it does not inherit an unavailable turn-activation-only scope.
+        let previous_history = self.context.notifications.backend
+            .action_gossip_history_empty.replace(self.visibility.history.is_empty());
         let result = super::move_to::execute_active_request(
             &mut self.context,
             issuer,
@@ -464,6 +468,7 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
             movement,
             budget,
         );
+        self.context.notifications.backend.action_gossip_history_empty = previous_history;
         self.end_action_research()?;
         self.retain(result, true)
     }
