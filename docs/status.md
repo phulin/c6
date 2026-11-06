@@ -22,6 +22,7 @@ does not initialize a new Civ VI game. See the
 | Production and districts | Natural Scout, Warrior, Monument and Campus completion; Campus placement | Representative Linux cases through supported turn progression and externally supplied production choices; not arbitrary production or district branches |
 | Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and first physical step | Representative Linux cases; not district/building pillage or complete trade-route lifecycle coverage |
 | Research and government | Technology/civic selection and progress; explicit government and policy choices | Bounded definitions, effects and decision paths |
+| Religion | Human Initiation Rites pantheon choice and founding | Representative initialized Linux case, including stored modifiers, owned-city propagation and reached callbacks; NPC continuation and other beliefs remain unsupported |
 | Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; nonlethal city-center melee without walls; promotions and upgrades | Representative Linux cases, including persistent Session melee; city capture remains under integration and lacks native acceptance; not all combat types, modifiers or aftermath branches |
 | Diplomacy | Direct surprise-war declaration | Bounded cityless case; not complete diplomacy or war consequences in arbitrary worlds |
 | Turns and decisions | FoundCity → explicit research/Monument choices → Fortify → three ordinary rounds on one Session, with human and NPC decisions supplied externally | Compared gameplay state, core processors, global religion, represented requirements and known RNG match; raw annotations/reference differences and incomplete RNG/runtime coverage remain explicit |
@@ -57,6 +58,16 @@ the other five standard yields, compared typed state and known RNG match. Repeat
 unlock requests, forced-worker capacity/population clamps and noncanonical wrapped
 request coordinates are implemented from Linux source but lack separate native
 comparisons. This does not establish complete citizen management or RNG coverage.
+
+Use [`Session::available_pantheons` and `Session::request_pantheon`](../crates/c6-data/src/loaded_actions/session_pantheon.rs)
+for the supported human choice. Legal options retain an `effects_supported` flag;
+unsupported effects return an explicit error. The accepted Initiation Rites case
+spends 25 Faith, stores +50 Faith from camp dispersal and +100 healing from camp
+dispersal, and preserves availability, shared requirements and owned-city
+propagation. Its reached script, Mysticism inspiration and first-pantheon history
+moment (+2 era score) match the original, alongside compared typed state and known
+RNG. NPC pantheon continuation, other beliefs and camp dispersal itself lack
+acceptance; this does not establish complete religion or RNG coverage.
 
 The accepted [city-center melee](linux-city-melee.md) case attacks a noncapital
 city with no walls and both combatants surviving: 18 attacker damage, 50 city

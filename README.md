@@ -7,7 +7,8 @@ rules and upkeep between them.
 **A bounded early-game gameplay slice is implemented; the complete headless engine
 is not.** The Rust Session supports consecutive actions including founding,
 movement, improvements, ordinary Farm Repair and forest Chop, production,
-research, citizen tile locks, purchases and representative combat, including
+research, citizen tile locks, human Initiation Rites pantheon choice, purchases
+and representative combat, including
 nonlethal city-center melee without walls, plus bounded turn progression. A Linux
 comparison now follows
 one Session from pre-founding state through research and production choices,
