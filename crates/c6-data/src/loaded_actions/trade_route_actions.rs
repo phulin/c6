@@ -365,14 +365,12 @@ pub fn can_start<E>(
     origin: ComponentId,
     destination: ComponentId,
     major: bool,
-    mut pathfinder: Option<&mut Pathfinder<'_>>,
+    pathfinder: Option<&mut Pathfinder<'_>>,
 ) -> Result<bool, Error<E>> {
     if origin.owner == destination.owner {
         return can_start_domestic(state, origin, destination, major, pathfinder);
     }
-    let finder = pathfinder
-        .as_deref_mut()
-        .ok_or(Error::Missing("Trade destination civilization level"))?;
+    let finder = pathfinder.ok_or(Error::Missing("Trade destination civilization level"))?;
     let destination_major = finder
         .civilization_levels
         .iter()
