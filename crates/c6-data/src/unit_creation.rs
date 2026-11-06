@@ -799,8 +799,8 @@ pub struct Context<'a, 'd, 'r, E> {
     pub effects: &'a mut E,
 }
 impl<E: FactoryEffects> Context<'_, '_, '_, E> {
-    /// Ordinary Builder completion. Reuses canonical allocation, actual Unit
-    /// getters, Formation restoration, placement/occupancy/sight and signals.
+    /// Ordinary admitted city-unit completion. Reuses canonical allocation,
+    /// actual Unit getters, Formation restoration, placement/occupancy/sight and signals.
     /// Other unit classes return explicit unsupported branches, never dummy units.
     pub fn create_from_city(
         &mut self,
@@ -819,6 +819,7 @@ impl<E: FactoryEffects> Context<'_, '_, '_, E> {
         };
         if ![
             b"UNIT_BUILDER".as_slice(),
+            b"UNIT_SETTLER".as_slice(),
             b"UNIT_SCOUT".as_slice(),
             b"UNIT_WARRIOR".as_slice(),
         ]
