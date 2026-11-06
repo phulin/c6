@@ -7,12 +7,15 @@ rules and upkeep between them.
 **A bounded early-game gameplay slice is implemented; the complete headless engine
 is not.** The Rust Session supports consecutive actions including founding,
 movement, improvements, ordinary Farm Repair and forest Chop, production,
-research, citizen tile locks, human Initiation Rites pantheon choice, purchases
+research, citizen tile locks, Initiation Rites pantheon choice, purchases
 and representative combat, including
 nonlethal city-center melee without walls, plus bounded turn progression. A Linux
 comparison now follows
 one Session from pre-founding state through research and production choices,
-Fortify, and three ordinary rounds with explicit decisions for every player. Coverage remains
+Fortify, and three ordinary rounds with explicit decisions for every player.
+A separate bounded Linux case covers nonhuman major activation with a city and
+Warrior, an external Pantheon choice, and deactivation to the next player's decision.
+Coverage remains
 specific to supported states, rules and effects; it is not ready for complete-game
 AI evaluation.
 See [current coverage and limits](docs/status.md).
