@@ -255,6 +255,9 @@ pub enum ReadinessPath {
     /// A bound stock command's CanStart returned true, so CanCyclePast does
     /// not acquire the operation manager or invoke its script callbacks.
     CommandHoldCycling,
+    /// The headless snapshot omits query output after the current stock
+    /// Warrior's entire holding-query effect frontier has been qualified.
+    DiscardedHoldCycling,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -446,6 +449,7 @@ pub struct Provider<'a> {
     notification_activated_publications: Vec<NotificationActivatedPublication>,
     move_complete_publications: Vec<MoveCompletePublication>,
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
+    snapshot_effects: Option<hold_cycling::snapshot_effects::Inputs<'a>>,
     placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
     current_placement_queries: Option<CurrentPlacementQueries<'a>>,
     combat_placement_queries: Option<(
@@ -482,6 +486,7 @@ impl<'a> Provider<'a> {
             notification_activated_publications: Vec::new(),
             move_complete_publications: Vec::new(),
             command_queries: None,
+            snapshot_effects: None,
             placement_queries: None,
             current_placement_queries: None,
             combat_placement_queries: None,
@@ -545,6 +550,21 @@ impl<'a> Provider<'a> {
             return Err(Error::ConfigurationIdentity);
         }
         self.command_queries = Some(inputs);
+        Ok(())
+    }
+    /// Qualify omitted Unit-cache output only. Direct semantic readiness
+    /// queries continue to use the command/operation providers.
+    pub fn bind_snapshot_effects(
+        &mut self,
+        inputs: hold_cycling::snapshot_effects::Inputs<'a>,
+    ) -> Result<(), Error> {
+        if self.snapshot_effects.is_some() {
+            return Err(Error::Provider("snapshot effects already bound"));
+        }
+        if inputs.definitions.binding() != &self.definitions.binding {
+            return Err(Error::ConfigurationIdentity);
+        }
+        self.snapshot_effects = Some(inputs);
         Ok(())
     }
     pub fn pending_publication_order(&self) -> &[PublicationIndex] {
@@ -1455,6 +1475,10 @@ impl<'a> Provider<'a> {
         }
         if let Some(witness) = self.has_adjacent_move(state, unit)? {
             return Ok(ReadinessPath::AdjacentMove(witness));
+        }
+        if let Some(inputs) = self.snapshot_effects {
+            inputs.check(state, unit).map_err(Error::Provider)?;
+            return Ok(ReadinessPath::DiscardedHoldCycling);
         }
         // FillVariants reaches the same CanCyclePast fallback as direct
         // readiness callers. In particular, do not discard a bound command

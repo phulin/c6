@@ -3,6 +3,8 @@
 //! these scans neither select a player action nor assume callbacks are pure.
 #[path = "hold_cycling_commands.rs"]
 pub mod commands;
+#[path = "hold_cycling_snapshot_effects.rs"]
+pub mod snapshot_effects;
 use crate::{
     registry::LinuxDefinitionRegistry, resource_binding::ResourceAuthority,
     unit_initialization_definitions as definitions, Rules, SqlValue,
