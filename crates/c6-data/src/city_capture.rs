@@ -90,6 +90,20 @@ pub trait Effects<'a>: founding::Effects<'a> + crate::melee_attack::city::resolv
         territory: &mut crate::city_territory::Runtime,
         old: ComponentId,
     ) -> Result<(), String>;
+    /// Borrow the same ongoing territory while the public population kernel
+    /// assigns workers. Unsupported implementations fail before assignment.
+    fn assign_transferred_citizens(
+        &mut self,
+        _state: &mut LoadedState,
+        _territory: &mut crate::city_territory::Runtime,
+        _owner: i32,
+        _city: u32,
+        _reallocate: bool,
+    ) -> Result<(), crate::city_turn::Error> {
+        Err(crate::city_turn::Error::Unsupported(
+            "capture current worker assignment",
+        ))
+    }
     fn cultural_identity_transferred(
         &mut self,
         state: &mut LoadedState,
@@ -571,13 +585,20 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
             .population;
         step!(
             Population,
-            crate::city_turn::change_population(
+            crate::city_turn::change_population_with_assignment(
                 self.state,
                 new_owner,
                 fresh.id,
                 population.wrapping_sub(current_population),
                 self.founding.growth,
-                self.effects
+                self.effects,
+                |state, effects, reallocate| effects.assign_transferred_citizens(
+                    state,
+                    self.territory,
+                    new_owner,
+                    fresh.id,
+                    reallocate
+                )
             )
         );
         step!(

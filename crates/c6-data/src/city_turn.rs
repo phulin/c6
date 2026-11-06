@@ -4,6 +4,7 @@
 use crate::{unit_initialization_definitions::collection, Rules, RulesProfile, SqlValue};
 use c6_core::{city_growth, loaded_state::LoadedState};
 pub mod amenities;
+pub mod current_upkeep;
 pub mod district_yields;
 pub mod economy;
 pub mod growth;
@@ -12,10 +13,9 @@ pub mod religion;
 pub mod religion_callbacks;
 pub mod resources;
 pub mod tiles;
-pub mod yield_definitions;
-pub mod yield_calculation;
 pub mod upkeep;
-pub mod current_upkeep;
+pub mod yield_calculation;
+pub mod yield_definitions;
 
 #[derive(Debug)]
 pub enum Error {
@@ -170,6 +170,29 @@ pub fn change_population(
     rules: &GrowthRules,
     effects: &mut impl PopulationEffects,
 ) -> Result<(), Error> {
+    change_population_with_assignment(
+        state,
+        owner,
+        city,
+        delta,
+        rules,
+        effects,
+        |state, effects, reallocate| effects.assign_citizens(state, owner, city, reallocate),
+    )
+}
+/// The same ChangePopulation transition with an explicitly borrowed current
+/// assignment domain. Capture lends its ongoing territory owner at this point;
+/// religion, population signals and reports still use the same effects owner.
+#[allow(clippy::too_many_arguments)]
+pub fn change_population_with_assignment<E: PopulationEffects>(
+    state: &mut LoadedState,
+    owner: i32,
+    city: u32,
+    delta: i32,
+    rules: &GrowthRules,
+    effects: &mut E,
+    mut assign: impl FnMut(&mut LoadedState, &mut E, bool) -> Result<(), Error>,
+) -> Result<(), Error> {
     let next = state
         .city(owner, city)?
         .header
@@ -188,7 +211,7 @@ pub fn change_population(
         .city_mut(owner, city)?
         .citizens
         .num_unassigned_citizens = unassigned;
-    effects.assign_citizens(state, owner, city, unassigned < 0)?;
+    assign(state, effects, unassigned < 0)?;
     religion::population_changed(state, owner, city, delta, rules, effects)?;
     effects.population_changed_signal(state, owner, city, delta)?;
     let population = state.city(owner, city)?.header.population;
