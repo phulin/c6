@@ -14,12 +14,12 @@ use super::{
 mod activation;
 mod capture_owners;
 pub mod city_production;
-#[path = "stock_combat.rs"]
-pub mod combat;
+pub mod city_queries;
 #[path = "stock_city_strike.rs"]
 pub mod city_strike;
-pub mod city_queries;
 pub mod cityless_managers;
+#[path = "stock_combat.rs"]
+pub mod combat;
 pub mod deactivation;
 pub mod era_changes;
 pub mod founding;
@@ -39,6 +39,7 @@ pub mod movement;
 pub mod npc_activation;
 pub mod npc_deactivation;
 pub mod npc_leaves;
+pub mod npc_pantheon;
 pub mod npc_unit_decisions;
 pub mod npc_unit_operations;
 pub mod policy_modifiers;
@@ -132,6 +133,8 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     social_capabilities: Option<c6_core::game_capabilities::Membership>,
     era_changes: Option<era_changes::State>,
     queued_operations: Option<Box<dyn queued_operations::Services<P> + 'a>>,
+    pantheon_definitions: Option<super::pantheon_actions::Definitions>,
+    pending_pantheons: Vec<(i32, bool)>,
     npc_unit_decisions: Option<Box<dyn npc_unit_decisions::Provider<P> + 'a>>,
     pub reporting: reporting::Provider<'a>,
     pub decisions: Vec<Decision>,
@@ -227,6 +230,8 @@ impl<'a, P> Runtime<'a, P> {
             turn_messages: std::collections::VecDeque::new(),
             queued_operations: None,
             npc_unit_decisions: None,
+            pantheon_definitions: None,
+            pending_pantheons: Vec::new(),
         })
     }
     /// Semantic stock informational publication. The source caller has run its

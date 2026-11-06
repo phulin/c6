@@ -25,8 +25,38 @@ pub enum Kind {
     Military,
     Tactical,
 }
+/// CultureAi202f44f clears the pending policy byte before calling the
+/// external government/policy selection site. This is canonical state shared
+/// with later callbacks; a deferred response must not restore the request.
+pub fn take_culture_policy_request(state: &mut LoadedState, owner: i32) -> Result<bool, Error> {
+    let player = state
+        .retained
+        .players
+        .iter()
+        .position(|p| p.header.owner == owner)
+        .ok_or(Error::Unsupported("NPC Culture policy owner"))?;
+    let culture = state.retained.players[player]
+        .ai_culture
+        .as_ref()
+        .ok_or(Error::Unsupported("NPC Culture policy component"))?;
+    if culture.must_change_policies.0 == 0 {
+        return Ok(false);
+    }
+    state.revision = state
+        .revision
+        .checked_add(1)
+        .ok_or(Error::Unsupported("NPC Culture policy revision"))?;
+    state.retained.players[player]
+        .ai_culture
+        .as_mut()
+        .unwrap()
+        .must_change_policies
+        .0 = 0;
+    Ok(true)
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DecisionKind {
+    Pantheon,
     Technology,
     Civic,
     PlayerActions,
@@ -484,6 +514,7 @@ mod tests {
             let decision_kind = match (priority, kind) {
                 (3, Kind::Research) => Some(DecisionKind::Technology),
                 (2, Kind::Culture) => Some(DecisionKind::Civic),
+                (1, Kind::Religious) => Some(DecisionKind::Pantheon),
                 _ => None,
             };
             Ok(match decision_kind {
@@ -524,6 +555,58 @@ mod tests {
             report: false,
             fail: false,
         }
+    }
+    #[test]
+    fn pantheon_pause_keeps_religious_cursor_until_external_choice() {
+        let (mut state, mut runtime, owner) = fixture();
+        begin_controller(
+            &state,
+            &mut runtime,
+            owner,
+            vec![],
+            true,
+            vec![Kind::Religious],
+        )
+        .unwrap();
+        let mut p = probe();
+        assert!(matches!(
+            advance(&mut state, &mut runtime, &mut p).unwrap(),
+            Progress::ChoicePending(Decision {
+                kind: DecisionKind::Pantheon,
+                ..
+            })
+        ));
+        let stamp = state.action_stamp();
+        let trace = p.trace.clone();
+        let depth = runtime.global_ai_processing_depth;
+        assert!(matches!(
+            advance(&mut state, &mut runtime, &mut p).unwrap(),
+            Progress::ChoicePending(_)
+        ));
+        assert!(resume_choice(&mut state, &mut runtime, 99, &mut p).is_err());
+        assert_eq!(state.action_stamp(), stamp);
+        assert_eq!(p.trace, trace);
+        assert_eq!(runtime.global_ai_processing_depth, depth);
+        assert_eq!(
+            resume_choice(&mut state, &mut runtime, 11, &mut p).unwrap(),
+            Progress::PlayerTurn
+        );
+        assert_eq!(p.resumes, [Kind::Religious]);
+        assert_eq!(
+            p.trace,
+            [
+                (4, Kind::Religious),
+                (3, Kind::Religious),
+                (2, Kind::Religious),
+                (1, Kind::Religious),
+                (0, Kind::Religious)
+            ]
+        );
+        assert_eq!(
+            advance(&mut state, &mut runtime, &mut p).unwrap(),
+            Progress::PlayerTurn
+        );
+        assert_eq!(p.resumes, [Kind::Religious]);
     }
     #[test]
     fn two_policy_pauses_preserve_callback_cursor_and_processing_depth() {

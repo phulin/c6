@@ -80,6 +80,12 @@ impl Definitions {
         }
         Ok(())
     }
+    pub(crate) fn belief_index(&self, hash: u32) -> Option<i32> {
+        self.choices
+            .iter()
+            .find(|choice| choice.hash == hash)
+            .map(|choice| choice.native_type)
+    }
     pub fn belief_hash(&self, native_type: i32) -> Option<u32> {
         usize::try_from(native_type)
             .ok()

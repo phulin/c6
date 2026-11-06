@@ -289,6 +289,9 @@ impl<P> Effects<'_, '_, '_, P> {
     }
 }
 impl<P> upkeep::Effects for Effects<'_, '_, '_, P> {
+    fn queue_pantheon(&mut self, state: &mut LoadedState, owner: i32) -> Result<(), Error> {
+        self.backend.queue_pantheon(state, owner)
+    }
     fn notification(
         &mut self,
         state: &mut LoadedState,
@@ -323,6 +326,7 @@ pub fn run<P>(
     limits: OccurrenceLimits,
     owner: i32,
 ) -> Result<(), Error> {
+    backend.bind_social_capabilities(queries.capabilities);
     let queries = upkeep::Queries {
         cities: backend.city_query_inputs().or(queries.cities),
         ..*queries

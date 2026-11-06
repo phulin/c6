@@ -26,6 +26,8 @@ pub struct Inputs {
     /// Unsaved CultureAi_GreatWorks request vector, required at Culture.
     pub great_work_request_count: Option<usize>,
     callbacks: Vec<Kind>,
+    /// Unsaved CityBuild+1a0 values keyed by the current recycled City AI id.
+    city_priorities: Option<Vec<(u32, i32)>>,
 }
 impl Inputs {
     #[allow(clippy::too_many_arguments)]
@@ -53,6 +55,7 @@ impl Inputs {
             religious_contract_count,
             great_work_request_count: None,
             callbacks,
+            city_priorities: None,
         })
     }
     /// Bind the current unsaved GreatWorks request vector length. A missing
@@ -60,6 +63,17 @@ impl Inputs {
     pub fn with_great_work_request_count(mut self, count: Option<usize>) -> Self {
         self.great_work_request_count = count;
         self
+    }
+    pub fn with_city_priorities(mut self, priorities: Vec<(u32, i32)>) -> Result<Self, Error> {
+        for (index, &(id, _)) in priorities.iter().enumerate() {
+            if priorities[..index].iter().any(|v| v.0 == id) {
+                return Err(Error::Unsupported(
+                    "duplicate NPC CityBuild priority identity",
+                ));
+            }
+        }
+        self.city_priorities = Some(priorities);
+        Ok(self)
     }
     fn check(&self, state: &LoadedState, owner: i32) -> Result<(), Error> {
         if state.binding() != &self.binding || owner != self.owner {
@@ -123,12 +137,6 @@ fn player(state: &LoadedState, owner: i32) -> Result<&RetainedPlayer, Error> {
         .iter()
         .find(|p| p.header.owner == owner)
         .ok_or(Error::Unsupported("NPC leaves current player"))
-}
-fn no_cities(state: &LoadedState, owner: i32) -> Result<(), Error> {
-    if !player(state, owner)?.cities.records.entries.is_empty() {
-        return Err(Error::Unsupported("NPC City activation callbacks"));
-    }
-    Ok(())
 }
 fn no_units<P>(
     state: &LoadedState,
@@ -292,6 +300,18 @@ impl<'i, P> Leaves<'i, P> {
     }
 }
 impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
+    fn pantheon_requested(
+        &self,
+        state: &LoadedState,
+        backend: &mut Runtime<'_, P>,
+        owner: i32,
+        full: bool,
+    ) -> Result<bool, Error> {
+        if !self.inputs.reached(state, owner, Kind::Religious, full)? {
+            return Ok(false);
+        }
+        backend.pending_pantheon(owner, self.inputs.pending_pantheon)
+    }
     fn research_sight(&self) -> Option<&crate::unit_sight_state::Runtime> {
         Some(self.visibility())
     }
@@ -411,7 +431,67 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
         }
         let p = player(state, owner)?;
         match kind {
-            Kind::City => no_cities(state, owner),
+            Kind::City => {
+                let manager = p
+                    .ai_city_manager
+                    .as_ref()
+                    .ok_or(Error::Unsupported("NPC current CityBuild manager"))?;
+                if manager.city_ais.entries.is_empty() {
+                    return Ok(());
+                }
+                let free_cities = backend
+                    .player_services
+                    .as_ref()
+                    .and_then(|s| s.players.iter().find(|p| p.owner == owner))
+                    .and_then(|p| p.civilization_level)
+                    .ok_or(Error::Unsupported("NPC City civilization level"))?
+                    == 0x04e6_b0a0;
+                let mut reached = Vec::new();
+                let priority = current_priority(state, owner)?;
+                for entry in &manager.city_ais.entries {
+                    let city = &entry.city_build;
+                    let configured = self
+                        .inputs
+                        .city_priorities
+                        .as_ref()
+                        .and_then(|v| v.iter().find(|v| v.0 == city.city_ai_id))
+                        .ok_or(Error::Unsupported("NPC current CityBuild priority"))?
+                        .1;
+                    if configured != priority {
+                        continue;
+                    }
+                    if free_cities {
+                        continue;
+                    }
+                    // UpdateWorkingContract1fda930 precedes all policy sites.
+                    // An existing handle can fail/cancel and pop production.
+                    if city.managed_working_contract.player_id >= 0
+                        && city.managed_working_contract.id != u32::MAX
+                    {
+                        return Err(Error::Unsupported(
+                            "NPC existing CityBuild working contract",
+                        ));
+                    }
+                    if !city.managed_contracts.is_empty() {
+                        return Err(Error::Unsupported("NPC existing CityBuild contracts"));
+                    }
+                    reached.push(city.city_ai_id);
+                }
+                // Scores/terrain/food/defender analyses are excluded native
+                // planning storage, as on the stock human activation path.
+                state
+                    .omit_city_build_planning(owner)
+                    .map_err(|_| Error::Unsupported("NPC CityBuild planning owner"))?;
+                for id in reached {
+                    backend.activation_policy_decisions(
+                        state,
+                        owner,
+                        super::npc_unit_decisions::Stage::CityBuild,
+                        Some(id),
+                    )?;
+                }
+                Ok(())
+            }
             Kind::FreeCities => empty_free_cities(state),
             Kind::Barbarian => {
                 if state.retained().barbarian.player_ordinal != owner {
@@ -502,7 +582,6 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::GrandStrategic => {
-                no_cities(state, owner)?;
                 // 2121e72..2121fd5 visits units only for great-person
                 // analysis. IsGreatPerson203b890 requires both identifiers;
                 // controlled people also leave before the AiEvent dispatch.
@@ -561,22 +640,48 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     .ok_or(Error::Unsupported("NPC Economic civilization level"))?;
                 // 20a5aba/20a5ace return for barbarians and FreeCities
                 // before Treasury, contracts, purchases or RNG.
-                if !matches!(current_level, 0xd959_ec24 | 0x04e6_b0a0) {
+                if matches!(current_level, 0xd959_ec24 | 0x04e6_b0a0) {
+                    return Ok(());
+                }
+                let economic = p
+                    .ai_economic
+                    .as_ref()
+                    .ok_or(Error::Unsupported("NPC Economic owner"))?;
+                if !economic.managed_contracts.is_empty() {
                     return Err(Error::Unsupported(
-                        "NPC Economic non-exempt civilization continuation",
+                        "NPC Economic existing contract continuation",
                     ));
                 }
-                Ok(())
+                // 20a5ad8..60ac updates budget estimates only: all Treasury
+                // accesses are getters. External policies supply purchases,
+                // tribe payoffs and maintenance disband choices after6191.
+                backend.activation_policy_decisions(
+                    state,
+                    owner,
+                    super::npc_unit_decisions::Stage::Economic,
+                    None,
+                )?;
+                // 20a6392 reaches Trade even after a deferred purchase. Route
+                // choice and selected-unit SetProcessedTurn are explicit policy
+                // actions; no unit is marked merely by reaching this suffix.
+                backend.activation_policy_decisions(
+                    state,
+                    owner,
+                    super::npc_unit_decisions::Stage::EconomicTrade,
+                    None,
+                )
             }
             Kind::Governors => {
-                no_cities(state, owner)?;
-                if !p.governors.entries.is_empty() {
-                    return Err(Error::Unsupported("NPC existing Governor assignments"));
-                }
-                // 2117120 chooses appointments/promotions and then knapsack
-                // city assignments. These new choices belong to external
-                // PlayerActions; no native policy command is executed.
-                Ok(())
+                // 2117120 logs analysis, chooses appointment/promotion, then
+                // DoKnapsackAssignments21178e0 chooses city assignments.
+                // Each selected gameplay operation belongs to the external
+                // response; the scoring algorithm and log are omitted.
+                backend.activation_policy_decisions(
+                    state,
+                    owner,
+                    super::npc_unit_decisions::Stage::Governors,
+                    None,
+                )
             }
             Kind::Espionage => {
                 for slot in state
@@ -670,9 +775,9 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     .and_then(|s| s.players.iter().find(|p| p.owner == owner))
                     .and_then(|p| p.civilization_level)
                     .ok_or(Error::Unsupported("Homeland current civilization level"))?;
-                if level != 0xd959_ec24 {
-                    // Preserve the existing cityless, unitless activation
-                    // admission; this branch adds the reached barbarian write.
+                if level != 0xd959_ec24 && player(state, owner)?.cities.records.entries.is_empty() {
+                    // Without a city, a matching MoveList policy can request
+                    // additional priority3. Its policy list is not yet bound.
                     no_units(state, backend, owner, kind)?;
                     return Ok(());
                 }
@@ -717,10 +822,14 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 {
                     return Err(Error::Unsupported("NPC GreatWorks queued PlayerOperations"));
                 }
-                if major(backend, owner)? {
-                    return Err(Error::Unsupported(
-                        "NPC government/policy external decisions",
-                    ));
+                let requested = c6_core::loaded_state::game_update::npc_activation::take_culture_policy_request(state, owner)?;
+                if requested && major(backend, owner)? {
+                    backend.activation_policy_decisions(
+                        state,
+                        owner,
+                        super::npc_unit_decisions::Stage::CultureGovernmentPolicies,
+                        None,
+                    )?;
                 }
                 empty_congress_choices(state, backend, owner, self.managers)?;
                 // Government policy selection2030100 returns for nonmajors;
@@ -732,11 +841,7 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 Ok(())
             }
             Kind::Religious => {
-                if self
-                    .inputs
-                    .pending_pantheon
-                    .ok_or(Error::Unsupported("NPC pending pantheon input"))?
-                {
+                if backend.pending_pantheon(owner, self.inputs.pending_pantheon)? {
                     return Err(Error::ExternalDecisionRequired(
                         "pending pantheon belief selection",
                     ));
@@ -755,10 +860,24 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                     .and_then(|s| s.players.iter().find(|p| p.owner == owner))
                     .and_then(|p| p.civilization_level)
                     .ok_or(Error::Unsupported("Religious current civilization level"))?;
-                // 2173c48 bypasses the complete Delete-unit traversal for
-                // barbarians before consulting any Unit or issuing a command.
+                // 2173c48 bypasses the traversal for barbarians. Other
+                // units are filtered by ReligiousStrength at2173cdb before
+                // religion comparison or command construction. Ordinary
+                // Settlers/Warriors therefore require no Delete continuation.
                 if level != 0xd959_ec24 {
-                    no_units(state, backend, owner, kind)?;
+                    for entry in state
+                        .world()
+                        .player(owner)
+                        .map_err(|_| Error::Unsupported("Religious current unit owner"))?
+                        .unit_records()
+                        .map_err(|_| Error::Unsupported("Religious current unit roster"))?
+                    {
+                        if entry.value.k_religion.i_religious_strength > 0 {
+                            return Err(Error::Unsupported(
+                                "Religious positive-strength unit continuation",
+                            ));
+                        }
+                    }
                 }
                 // The barbarian guard skips the Delete command traversal.
                 // PurchaseGreatPeople2175d90 evaluates CanPatronize and
@@ -848,10 +967,9 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
         if event != 0xa235ddf7 {
             return Err(Error::Unsupported("NPC control report type"));
         }
-        // a235ddf7 -> City.OnAiAdvisorUpdated27171f0 ->2717700 walks
-        // current owned Cities; the empty roster reaches no Fill/query.
+        // a235ddf7 -> City.OnAiAdvisorUpdated27171f0 ->2717700 fills
+        // advisor presentation DTOs, as in the stock human boundary.
         // Host3210ae0 queues176 for advisor presentation only.
-        no_cities(state, owner)?;
         backend.reached.push("stock NPC control activation report");
         Ok(())
     }

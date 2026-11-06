@@ -80,6 +80,14 @@ pub fn finish_active_return<P>(
 /// Required source leaves; unknown subscribers have no successful default.
 pub trait Leaves<P> {
     fn callbacks(&self) -> &[Kind];
+    /// Source Religious priority/full-turn guards, before ChoosePantheonBelief.
+    fn pantheon_requested(
+        &self,
+        state: &LoadedState,
+        backend: &mut Runtime<'_, P>,
+        owner: i32,
+        full: bool,
+    ) -> Result<bool, Error>;
     fn research_sight(&self) -> Option<&crate::unit_sight_state::Runtime> {
         None
     }
@@ -193,6 +201,9 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
         owner: i32,
         kind: core::DecisionKind,
     ) -> Result<Option<i32>, Error> {
+        if kind == core::DecisionKind::Pantheon {
+            return self.backend.selected_pantheon(state, owner);
+        }
         let mut effects =
             stock_research::Effects::new(self.backend, self.research, self.choices, self.culture)
                 .with_sight(self.leaves.research_sight());
@@ -204,6 +215,7 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
         let result = match kind {
             core::DecisionKind::Technology => context.selected_technology(owner),
             core::DecisionKind::Civic => context.selected_civic(owner),
+            core::DecisionKind::Pantheon => unreachable!("handled before research borrow"),
             core::DecisionKind::PlayerActions => {
                 return Err(Error::Unsupported("player action is not research"))
             }
@@ -347,6 +359,7 @@ impl<P, L: Leaves<P>> Context<'_, '_, P, L> {
                     }
                     core::DecisionKind::Civic => PolicyKind::Research(research::Kind::Civic),
                     core::DecisionKind::PlayerActions => PolicyKind::PlayerActions,
+                    core::DecisionKind::Pantheon => PolicyKind::Pantheon,
                 },
                 options: decision.legal_indices,
             }),
@@ -368,6 +381,17 @@ impl<P, L: Leaves<P>> core::Effects for Context<'_, '_, P, L> {
         kind: Kind,
         full: bool,
     ) -> Result<core::CallbackProgress, Error> {
+        if kind == Kind::Religious
+            && self
+                .leaves
+                .pantheon_requested(state, self.backend, owner, full)?
+        {
+            return Ok(core::CallbackProgress::ChoicePending(core::Decision {
+                player: owner,
+                kind: core::DecisionKind::Pantheon,
+                legal_indices: self.backend.pantheon_options(state, owner)?,
+            }));
+        }
         self.leaves
             .callback(state, self.backend, owner, kind, full)?;
         if kind == Kind::Barbarian && self.leaves.barbarian_reached(state, owner, full)? {
@@ -404,14 +428,23 @@ impl<P, L: Leaves<P>> core::Effects for Context<'_, '_, P, L> {
         _: &mut loaded::Runtime,
         owner: i32,
         kind: Kind,
-        _: bool,
+        full: bool,
         decision: &core::Decision,
         index: i32,
     ) -> Result<core::CallbackProgress, Error> {
         if self.selected(state, owner, decision.kind)? != Some(index) {
             return Err(Error::Unsupported("NPC policy request was not applied"));
         }
-        self.suffix(state, owner, kind)?;
+        if decision.kind == core::DecisionKind::Pantheon {
+            if kind != Kind::Religious {
+                return Err(Error::Unsupported("NPC pantheon callback differs"));
+            }
+            self.backend.complete_pantheon(owner)?;
+            self.leaves
+                .callback(state, self.backend, owner, kind, full)?;
+        } else {
+            self.suffix(state, owner, kind)?;
+        }
         Ok(core::CallbackProgress::Continue)
     }
     fn report(&mut self, state: &mut LoadedState, owner: i32, event: u32) -> Result<(), Error> {

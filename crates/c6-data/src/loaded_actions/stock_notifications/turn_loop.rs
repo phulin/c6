@@ -496,6 +496,46 @@ pub fn resume_end_turn<'b, P, E>(
         .as_ref()
         .ok_or(Error::Policy("no suspended player action"))?;
     let owner = choice.player;
+    if choice.kind == PolicyKind::Pantheon {
+        if !progress
+            .stamp
+            .same_instance(context.notifications.state.action_stamp())
+            || runtime.pending_player_effect().is_none_or(|effect| {
+                !matches!(effect,
+                c6_core::game_update::PlayerEffect::Activation { player, .. } if player == owner)
+            })
+            || context
+                .notifications
+                .backend
+                .selected_pantheon(context.notifications.state, owner)
+                .map_err(|_| Error::Policy("current pantheon selection unavailable"))?
+                .is_none()
+        {
+            return Err(Error::Policy(
+                "pantheon choice has not been applied to its activation",
+            ));
+        }
+        let mut progress = context
+            .notifications
+            .backend
+            .turn_progress
+            .take()
+            .expect("checked");
+        progress.choice = None;
+        let result = drive(
+            context,
+            runtime,
+            research_runtime,
+            inputs,
+            visibility,
+            budget,
+            &mut progress,
+            &mut activation,
+            &mut inactive,
+            &mut active,
+        );
+        return retain(context, runtime, progress, result);
+    }
     if !progress
         .stamp
         .same_instance(context.notifications.state.action_stamp())
@@ -611,7 +651,7 @@ pub fn resume_research<'b, P, E>(
         .clone();
     let kind = match choice.kind {
         PolicyKind::Research(kind) => kind,
-        PolicyKind::PlayerActions => {
+        PolicyKind::PlayerActions | PolicyKind::Pantheon => {
             return Err(Error::Policy("current choice requires a player action"))
         }
     };

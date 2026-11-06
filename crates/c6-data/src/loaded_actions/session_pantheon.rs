@@ -34,13 +34,23 @@ impl<'a, P, S: Services<'a, P>> action::Effects for Effects<'_, 'a, P, S> {
     }
 }
 impl<'a, P> Session<'_, 'a, P> {
+    fn pantheon_action_boundary<E>(&self, owner: i32) -> Result<(), Error<E>> {
+        self.check()?;
+        if self.pending_choice().is_some_and(|choice| choice.player == owner
+            && choice.kind == crate::game_update_state::activation::upkeep::PolicyKind::Pantheon)
+            && matches!(self.update.pending_player_effect(), Some(c6_core::game_update::PlayerEffect::Activation {player, ..}) if player == owner)
+            && c6_core::loaded_state::game_update::npc_activation::pending(&self.update)
+                .is_some_and(|decision| decision.player == owner && decision.kind == c6_core::loaded_state::game_update::npc_activation::DecisionKind::Pantheon)
+        { return Ok(()); }
+        self.ordinary_player_action(owner)
+    }
     pub fn available_pantheons(
         &self,
         owner: i32,
         defs: &action::Definitions,
         current: &action::Current<'_>,
     ) -> Result<Vec<action::Choice>, Error<action::Error>> {
-        self.ordinary_player_action(owner)?;
+        self.pantheon_action_boundary(owner)?;
         action::available(self.state(), defs, current, owner).map_err(Error::Action)
     }
     /// An invalid choice is rejected without mutation. A reached callback
@@ -53,7 +63,7 @@ impl<'a, P> Session<'_, 'a, P> {
         current: &action::Current<'_>,
         services: &mut S,
     ) -> Result<bool, Error<action::Error<S::Error>>> {
-        self.ordinary_player_action(owner)?;
+        self.pantheon_action_boundary(owner)?;
         let stamp = self.state().action_stamp();
         let mut effects = Effects {
             backend: &mut self.context.notifications.backend,

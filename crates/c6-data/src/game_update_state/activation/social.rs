@@ -158,6 +158,8 @@ pub struct Queries<'a> {
 /// Forward these into the SAME stock reporting/notification runtime. No default
 /// succeeds without executing the actual current semantic consumer path.
 pub trait Effects {
+    /// ChoosePantheon2b624c0 queues the request; policy runs later in Religious activation.
+    fn queue_pantheon(&mut self, state: &mut LoadedState, owner: i32) -> Result<(), Error>;
     fn report(&mut self, state: &mut LoadedState, owner: i32, event: u32) -> Result<(), Error>;
     fn notification(&mut self, state: &mut LoadedState, owner: i32, kind: u32)
         -> Result<(), Error>;
@@ -601,7 +603,7 @@ pub fn religion(
                 .map_err(|_| Error::Unsupported("pantheon current human"))?
                 != 3
         {
-            return Err(Error::ExternalDecisionRequired("pantheon selection"));
+            effects.queue_pantheon(state, owner)?;
         }
     }
     if state

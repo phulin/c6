@@ -29,6 +29,7 @@ fn failure(stage: &'static str, cause: impl std::fmt::Debug) -> Error {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PolicyKind {
+    Pantheon,
     Research(research::Kind),
     PlayerActions,
 }

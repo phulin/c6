@@ -29,6 +29,8 @@ pub struct Inputs {
     pub flags: Flags,
     readiness_only: Vec<(Kind, bool)>,
     failed: bool,
+    city_analysis_finished_turn: Option<i32>,
+    city_research_ready: Option<bool>,
 }
 impl Inputs {
     pub fn from_initial(
@@ -51,7 +53,15 @@ impl Inputs {
             flags,
             readiness_only: Vec::new(),
             failed: false,
+            city_analysis_finished_turn: None,
+            city_research_ready: None,
         })
+    }
+    /// Current Research readiness for CityBuild.DoOffTurn. A readiness-only
+    /// Research subscriber, when present, supplies its live value instead.
+    pub fn with_city_research_ready(mut self, ready: Option<bool>) -> Self {
+        self.city_research_ready = ready;
+        self
     }
     /// Bind a captured stock nonmember lambda that only sets readiness and
     /// invokes its continuation; it does not run the full analysis member.
@@ -75,24 +85,6 @@ fn readiness_status(ready: &mut bool) -> core::Status {
 }
 fn flag(value: Option<bool>, name: &'static str) -> Result<bool, Error> {
     value.ok_or(Error::Unsupported(name))
-}
-fn empty_cities(state: &LoadedState, owner: i32) -> Result<(), Error> {
-    let p = state
-        .retained()
-        .players
-        .iter()
-        .find(|p| p.header.owner == owner)
-        .ok_or(Error::Unsupported("inactive current player"))?;
-    if !p.cities.records.entries.is_empty() {
-        return Err(Error::Unsupported("inactive CityBuild/yield continuations"));
-    }
-    if p.ai_city_manager
-        .as_ref()
-        .is_some_and(|m| !m.city_ais.entries.is_empty())
-    {
-        return Err(Error::Unsupported("inactive retained CityBuild analysis"));
-    }
-    Ok(())
 }
 // UnitProduction::IsReady21bee80 checks the calculated flag before its
 // efficiencies vector; an unknown vector is irrelevant on the cold branch.
@@ -124,8 +116,54 @@ impl<P> Effects<'_, '_, P> {
         }
         match kind {
             Kind::City => {
-                empty_cities(state, owner)?;
-                Ok(Status::Complete)
+                let player = state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Unsupported("inactive City current owner"))?;
+                let manager = player
+                    .ai_city_manager
+                    .as_ref()
+                    .ok_or(Error::Unsupported("inactive City current manager"))?;
+                // CityManager1fcfc60 returns0 when every CityBuild is done.
+                if self.input.city_analysis_finished_turn
+                    == Some(state.retained().core.current_turn)
+                    || manager
+                        .city_ais
+                        .entries
+                        .iter()
+                        .all(|e| e.city_build.done_off_turn.0 != 0)
+                {
+                    return Ok(Status::Complete);
+                }
+                // CityBuild1fd8cb0 returns1 before its job/continuation unless
+                // Research, Culture and Diplomacy are ready, in that order.
+                let readiness = |kind, fallback| {
+                    self.input
+                        .readiness_only
+                        .iter()
+                        .find(|v| v.0 == kind)
+                        .map(|v| v.1)
+                        .or(fallback)
+                };
+                if !flag(
+                    readiness(Kind::Research, self.input.city_research_ready),
+                    "inactive CityBuild Research readiness",
+                )? || !flag(
+                    readiness(Kind::Culture, self.input.flags.culture_analyzed),
+                    "inactive CityBuild Culture readiness",
+                )? || !flag(
+                    self.input.flags.diplomatic_done,
+                    "inactive CityBuild Diplomatic readiness",
+                )? {
+                    return Ok(Status::Pending);
+                }
+                // CalculateYields/CityPlotEvaluation produce only policy inputs
+                // in this explicit stock scope. UpdateWorkingContract remains
+                // at activation; no production contract is completed here.
+                self.input.city_analysis_finished_turn = Some(state.retained().core.current_turn);
+                Ok(Status::Yield)
             }
             Kind::Culture => {
                 if flag(
@@ -196,7 +234,6 @@ impl<P> Effects<'_, '_, P> {
                 if unit_production_ready(self.input.flags)? {
                     return Ok(Status::Complete);
                 }
-                empty_cities(state, owner)?;
                 // DoOffTurn2122f70 evaluates victory/settlement/unit scores,
                 // then invokes the supplied continuation (status2). These
                 // outputs belong to the external policy, not gameplay state.
@@ -220,7 +257,6 @@ impl<P> Effects<'_, '_, P> {
                 }
                 // Native writes this readiness flag before AnalyzeIncome.
                 self.input.flags.economic_analyzed = Some(true);
-                empty_cities(state, owner)?;
                 // AnalyzeIncome20a44b0 stores only AI budget estimates. Its
                 // no-city path reads retained maintenance, beliefs and envoy
                 // yields, not Treasury setters/commands/signals or game RNG.

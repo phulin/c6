@@ -8,6 +8,11 @@ use c6_core::{game_update::Error, loaded_state::LoadedState};
 pub enum Stage {
     Tactical,
     Homeland,
+    CityBuild,
+    CultureGovernmentPolicies,
+    Governors,
+    Economic,
+    EconomicTrade,
 }
 
 /// A source-positioned invocation, created only by the stock deactivation
@@ -17,8 +22,13 @@ pub struct Context {
     stage: Stage,
     priority: i32,
     turn: i32,
+    city_ai_id: Option<u32>,
 }
 impl Context {
+    /// Current CityBuild identity at the per-city activation boundary.
+    pub fn city_ai_id(&self) -> Option<u32> {
+        self.city_ai_id
+    }
     pub fn owner(&self) -> i32 {
         self.owner
     }
@@ -43,6 +53,16 @@ pub trait Provider<P> {
         backend: &mut Runtime<'_, P>,
         context: &Context,
     ) -> Result<(), String>;
+    /// New activation sites require an explicit implementation. A provider for
+    /// existing unit stages cannot accidentally defer unrelated decisions.
+    fn provide_activation(
+        &mut self,
+        _state: &mut LoadedState,
+        _backend: &mut Runtime<'_, P>,
+        _context: &Context,
+    ) -> Result<(), String> {
+        Err("external activation policy response is not bound".into())
+    }
 }
 
 impl<'a, P> Runtime<'a, P> {
@@ -69,18 +89,55 @@ impl<'a, P> Runtime<'a, P> {
         stage: Stage,
         priority: i32,
     ) -> Result<(), Error> {
+        self.policy_decisions(state, owner, stage, priority, None, false)
+    }
+
+    /// Activation requires an explicitly supplied policy, including an explicit
+    /// defer response (`Ok(())` without actions). Absence is unsupported.
+    pub(super) fn activation_policy_decisions(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        stage: Stage,
+        city_ai_id: Option<u32>,
+    ) -> Result<(), Error> {
+        let priority =
+            c6_core::loaded_state::game_update::human_activation::current_priority(state, owner)?;
+        self.policy_decisions(state, owner, stage, priority, city_ai_id, true)
+    }
+
+    fn policy_decisions(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        stage: Stage,
+        priority: i32,
+        city_ai_id: Option<u32>,
+        required: bool,
+    ) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("NPC unit decision runtime"))?;
         let Some(mut provider) = self.npc_unit_decisions.take() else {
-            return Ok(());
+            return if required {
+                Err(Error::Unsupported(
+                    "NPC activation requires explicit external policy response",
+                ))
+            } else {
+                Ok(())
+            };
         };
         let context = Context {
             owner,
             stage,
             priority,
             turn: state.retained().core.current_turn,
+            city_ai_id,
         };
-        let result = provider.provide(state, self, &context);
+        let result = if required {
+            provider.provide_activation(state, self, &context)
+        } else {
+            provider.provide(state, self, &context)
+        };
         self.npc_unit_decisions = Some(provider);
         result.map_err(|cause| {
             self.last_error = Some(format!("external NPC unit decision: {cause}"));
