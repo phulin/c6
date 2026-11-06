@@ -481,6 +481,21 @@ impl<P> processing::Backend for Runtime<'_, P> {
         )
         .map_err(|_| processing::Error::Unsupported("current pantheon eligibility"))
     }
+    fn capture_disposition_pending(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+    ) -> Result<bool, processing::Error> {
+        self.check(state)?;
+        Ok(self.combat.as_ref().is_some_and(|combat| {
+            combat.city_melees.iter().any(|row| {
+                row.captured.as_ref().is_some_and(|capture| {
+                    i32::from(capture.disposition.city.owner) == owner
+                        && capture.disposition.legal.len() > 1
+                })
+            })
+        }))
+    }
     fn manager_initialized(&mut self, state: &mut LoadedState) -> Result<bool, processing::Error> {
         self.check(state)?;
         self.reached.push("notification manager initialized");

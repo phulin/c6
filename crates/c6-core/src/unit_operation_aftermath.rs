@@ -91,6 +91,15 @@ fn spend(budget: &mut usize) -> Result<(), Error> {
 /// Cursor methods follow the current native list links; no snapshot list is used.
 /// The definition array's allocation/end must stay stable during SendAutoNotify,
 /// as required by the original captured begin/end pointer iteration.
+/// Source-qualified pending decisions can retain their blocking effect without
+/// constructing a native presentation object. They follow retained list entries
+/// in tie order; callers must preserve every reached gameplay/RNG callback.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SemanticBlocking {
+    pub kind: i32,
+    pub severity: i32,
+}
+
 pub trait Notifications {
     type Object: Copy;
     type Cursor: Copy + Eq;
@@ -98,6 +107,12 @@ pub trait Notifications {
     type Configuration: Copy;
     type Collection: Copy;
     type Definitions: Copy;
+    fn semantic_blocking(
+        &mut self,
+        _collection: Self::Collection,
+    ) -> Result<Option<SemanticBlocking>, Error> {
+        Ok(None)
+    }
     fn configuration(&mut self) -> Result<Self::Configuration, Error>;
     fn definitions(&mut self) -> Result<Self::Definitions, Error>;
     /// `edit=false` is GetPlayerNotifications, `true` is EditPlayerNotifications.
@@ -283,6 +298,17 @@ pub fn notification_blocking<W: Notifications>(
             }
         }
         current = w.next(current)?;
+    }
+    if let Some(candidate) = w.semantic_blocking(collection)? {
+        if candidate.kind != 0 {
+            let replace = match selected {
+                None => true,
+                Some(previous) => (candidate.severity as u32) > (w.severity(previous)? as u32),
+            };
+            if replace {
+                return Ok(candidate.kind);
+            }
+        }
     }
     match selected {
         Some(object) => w.blocking(object),

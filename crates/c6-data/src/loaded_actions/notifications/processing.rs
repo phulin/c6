@@ -73,6 +73,16 @@ pub struct Allocation {
 /// There are no successful defaults. Unknown script consumers, text effects,
 /// allocator failure and pool history must be reported by the implementation.
 pub trait Backend: lifecycle::Backend {
+    /// True only for a retained completed capture awaiting external disposition.
+    /// Called only after a live just-conquered marker reaches this source path.
+    fn capture_disposition_pending(
+        &self,
+        _state: &LoadedState,
+        _owner: i32,
+    ) -> Result<bool, Error> {
+        Err(Error::Unsupported("current captured-city decision owner"))
+    }
+
     /// ChoosePantheon::IsExpired2d29f70 repeats current human/religion queries.
     fn pantheon_needed(&self, _state: &LoadedState, _owner: i32) -> Result<bool, Error> {
         Err(Error::Unsupported("current pantheon eligibility binding"))
@@ -205,7 +215,8 @@ impl<'a, B: Backend> Provider<'a, B> {
             }
             current = self.step(|s| Ok(s.state.player_notifications()?.next(object)?))?;
         }
-        Ok(false)
+        Ok(Notifications::semantic_blocking(self, owner)?
+            .is_some_and(|candidate| candidate.kind as u32 == kind))
     }
     fn step<T>(
         &mut self,
@@ -412,6 +423,61 @@ impl<B: Backend> Notifications for Provider<'_, B> {
     type Configuration = ();
     type Collection = i32;
     type Definitions = ();
+    fn semantic_blocking(
+        &mut self,
+        owner: i32,
+    ) -> Result<Option<aftermath::SemanticBlocking>, aftermath::Error> {
+        self.step(|s| {
+            let player = s
+                .state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.header.owner == owner)
+                .ok_or(Error::Unsupported("current captured-city Player"))?;
+            // ConsiderRazeCity.IsExpired2d2b760 visits the current City roster.
+            if !player
+                .cities
+                .records
+                .entries
+                .iter()
+                .any(|c| c.value.header.just_conquered_from != -1)
+            {
+                return Ok(None);
+            }
+            if s.state.player_slot_status(owner)? != 3
+                || !s.backend.capture_disposition_pending(s.state, owner)?
+            {
+                return Ok(None);
+            }
+            // IsValidForPhase2d2b820 forwards to IsAllowTacticalCommands.
+            if !s
+                .inputs
+                .cities
+                .phases
+                .from_processor(&s.state.retained().core.phase_processor, owner)
+                .map_err(|_| Error::Unsupported("capture decision tactical phase"))?
+            {
+                return Ok(None);
+            }
+            let definition = s
+                .inputs
+                .definitions
+                .find(0xdac0_133b)
+                .ok_or(Error::Unsupported("ConsiderRazeCity definition"))?;
+            let severity = definition
+                .severity_type
+                .as_ref()
+                .map(|name| super::severity_type(crate::registry::linux_type_hash(name.as_bytes())))
+                .unwrap_or(-1);
+            // Initialize2d2b730 stores this value. Native UI/pool identities are
+            // omitted; the same normal blocking setter/callback timing remains.
+            Ok(Some(aftermath::SemanticBlocking {
+                kind: 0xf510_ddc3u32 as i32,
+                severity,
+            }))
+        })
+    }
     fn configuration(&mut self) -> Result<(), aftermath::Error> {
         Ok(())
     }
