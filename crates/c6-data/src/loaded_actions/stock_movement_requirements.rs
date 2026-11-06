@@ -219,10 +219,11 @@ impl<P> normal::Effects for Runtime<'_, P> {
         &mut self,
         state: &mut LoadedState,
         _: &mut sight::Runtime,
+        current: ComponentId,
         old: PlotCoord,
         new: PlotCoord,
     ) -> Result<(), normal::Error<Error>> {
-        crate::unit_moved_achievement::omit_stock_same_owner(state, old, new)
+        crate::unit_moved_achievement::omit_stock_current(state, current, old, new)
             .map_err(|e| normal::Error::Effect(Error::Requirement(format!("{e:?}"))))
     }
     fn on_unit_moved_requirement(

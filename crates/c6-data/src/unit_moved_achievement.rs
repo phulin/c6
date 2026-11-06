@@ -13,6 +13,10 @@ use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
 pub enum Error {
     MissingCanonicalPlot(PlotCoord),
     PlotOwner(movement_placement_state::Error),
+    World(c6_core::world::MissingInput),
+    State(c6_core::loaded_state::Error),
+    Relations(c6_core::game_diplomatic_relations::Error),
+    ActorIdentity,
     UnsupportedCrossOwner { old: i32, new: i32 },
 }
 impl std::fmt::Display for Error {
@@ -48,6 +52,62 @@ pub fn omit_stock_same_owner(
     let old_owner = movement_placement_state::plot_owner(old_plot).map_err(Error::PlotOwner)?;
     let new_owner = movement_placement_state::plot_owner(new_plot).map_err(Error::PlotOwner)?;
     equal_owner(old_owner, new_owner)
+}
+/// The cross-owner continuation queries the moving Unit owner's current
+/// diplomacy against the current destination Plot owner (2901a75..2901aa4).
+/// A false war predicate returns before distance or platform effects/RNG.
+pub fn omit_stock_current(
+    state: &LoadedState,
+    current: c6_core::unit::ComponentId,
+    old: PlotCoord,
+    new: PlotCoord,
+) -> Result<(), Error> {
+    match omit_stock_same_owner(state, old, new) {
+        Ok(()) => Ok(()),
+        Err(Error::UnsupportedCrossOwner {
+            old: old_owner,
+            new: new_owner,
+        }) => {
+            if current.component_type != 1 {
+                return Err(Error::ActorIdentity);
+            }
+            let owner = i32::from(current.owner);
+            let unit = state
+                .world()
+                .player(owner)
+                .map_err(Error::World)?
+                .unit(current.id)
+                .map_err(Error::World)?
+                .ok_or(Error::ActorIdentity)?
+                .record;
+            if unit.e_owner != owner {
+                return Err(Error::ActorIdentity);
+            }
+            // IsAtWarWith2aa4bb0 validates the other Player and tests IsAlive
+            // before the canonical DiplomaticRelations.IsAtWar query.
+            if !state
+                .world()
+                .player_is_valid(new_owner)
+                .map_err(Error::World)?
+                || !state.player_alive(new_owner).map_err(Error::State)?
+            {
+                return Ok(());
+            }
+            if !state
+                .game_relations()
+                .map_err(Error::State)?
+                .is_at_war(owner, new_owner)
+                .map_err(Error::Relations)?
+            {
+                return Ok(());
+            }
+            Err(Error::UnsupportedCrossOwner {
+                old: old_owner,
+                new: new_owner,
+            })
+        }
+        Err(error) => Err(error),
+    }
 }
 fn null_sentinel(point: PlotCoord) -> bool {
     point.x == -9999 || point.y == -9999

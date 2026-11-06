@@ -107,6 +107,7 @@ pub trait Effects:
         &mut self,
         _state: &mut LoadedState,
         _runtime: &mut sight::Runtime,
+        _current: ComponentId,
         _old: PlotCoord,
         _new: PlotCoord,
     ) -> Result<(), Error<EffectsError<Self>>> {
@@ -1434,8 +1435,15 @@ impl<E: Effects> c6_core::unit_moved_signal::Context for UnitMovedContext<'_, E>
         old: PlotCoord,
         new: PlotCoord,
     ) -> Result<(), c6_core::unit_moved_signal::Error<Self::Error>> {
+        let unit = c6_core::unit_moved_signal::Context::unit(self)
+            .map_err(c6_core::unit_moved_signal::Error::Context)?;
+        let current = ComponentId {
+            owner: unit.e_owner as i16,
+            component_type: 1,
+            id: unit.id,
+        };
         self.effects
-            .on_unit_moved_achievement(self.state, self.runtime, old, new)
+            .on_unit_moved_achievement(self.state, self.runtime, current, old, new)
             .map_err(c6_core::unit_moved_signal::Error::Context)
     }
     fn call_on_unit_moved(
