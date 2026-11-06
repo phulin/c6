@@ -2,8 +2,9 @@
 
 Ordinary `Session::move_to` sight can discover an unmet major civilization and
 yield a first-meeting response on the same persistent Session. The supported
-Linux case has a local active human major and an AI major, both cityless, in
-single-player mode. Complete diplomacy and arbitrary first-contact states remain
+Linux cases have a local active human major and an AI major in single-player
+mode. They cover cityless players and two founded original capitals when the
+meeting is outside both cities’ hospitality range. Complete diplomacy and arbitrary first-contact states remain
 unimplemented.
 
 Initialize the actual current relationship matrices, diplomacy manager inventories,
@@ -40,6 +41,17 @@ mandatory single `Game.Update` using the same retained owners before closing.
 These flags record the completed greeting; declared friendship is a separate
 relationship.
 
+For a meeting with capitals, use
+`Session::respond_first_meeting_with_visibility_update` with
+`Some(stock_notifications::first_contact::cities::Visibility { runtime, definitions })`.
+Loan the same live sight runtime and sight definitions used by movement. The
+result reveals the human capital to the AI, then the AI capital to the human,
+through the existing visibility and discovery callbacks. Each reveal covers the
+capital and its six neighbors in native order. It permanently discovers those
+plots with a zero visibility-count change. The Session loans its current research
+owner for any reached callback and then runs the mandatory update. Missing sight
+inputs return an explicit error before delivering the response prefix.
+
 If that update reaches a genuine player choice, the Session retains its result
 continuation. Inspect `pending_choice()` and `pending_first_meeting_update()`.
 Matching research choices use the existing explicit technology/civic request
@@ -56,10 +68,13 @@ covers contact and meeting turns, unit discovery, reached boosts and history,
 era score, diplomacy knowledge and active fields, shared requirements and
 modifier lifetimes, opinion trackers, conversation identities and reached RNG.
 
-Two complete response sequences are checked against the original Linux target:
+Both cityless and founded-capital fixtures check these complete response sequences
+against the original Linux target:
 
 - Two external `Positive` choices retain four history statements, complete the
-  mandatory update and close with both greeting flags set.
+  mandatory update and close with both greeting flags set. The capital case also
+  compares every allocated player’s own/shared visibility layers and reveal mask
+  after each response.
 - An external `Exit` retains the initial history statement and closes with both
   greeting flags clear.
 
@@ -69,9 +84,15 @@ planning-handler differences remain recorded and have a finite source-qualified
 policy exclusion. Represented gameplay fields and reached RNG match; the global
 RNG inventory remains incomplete.
 
-These cases have no cities, active deals or routes, positive pledges, active
-third-party diplomatic relations or nonzero third-party grievances. Capital
-hospitality/reveal branches, positive pledge accumulation, active third-party
-opinion calculations and other unqualified effects remain unsupported. The
+The founded-capital fixture retains both original cities and their complete
+imported components. The meeting remains neutral: a reached city within the
+current hospitality distance is explicitly unsupported. Capital discovery uses
+the existing geographic naming owner; the compared neighborhoods’ naming gates
+and reached RNG are recorded separately, without claiming arbitrary naming cases.
+
+These cases have no active deals or routes, positive pledges, active third-party
+diplomatic relations or nonzero third-party grievances. Capital hospitality
+conversations, positive pledge accumulation, active third-party opinion
+calculations and other unqualified effects remain unsupported. The
 comparison does not establish complete diplomacy, arbitrary content or full-turn
 equivalence. See [overall status](status.md) and the [target profile](targets.md).
