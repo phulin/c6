@@ -66,6 +66,7 @@ pub enum Continuation {
     DestroyRequirement(u64),
     DestroySet(u64),
     TradeRelations(&'static str),
+    OpinionLifecycle(&'static str),
 }
 #[derive(Debug)]
 pub enum Cause {
@@ -78,6 +79,7 @@ pub enum Cause {
     Change(changes::Error<Continuation>),
     MissingRequirement(u64),
     MissingVictoryInputs,
+    DynamicOpinionSignal(&'static str),
     Unsupported(u64),
 }
 #[derive(Debug)]
@@ -96,10 +98,11 @@ pub struct Progress {
     pub completed: usize,
     pub skipped_unsubscribed: usize,
 }
-struct StockServices<'s, 'a, P> {
+struct StockServices<'s, 'a, 'r, P> {
     backend: &'s mut stock::Runtime<'a, P>,
+    relationship_definitions: &'r relationship::Definitions,
 }
-impl<P> changes::Services for StockServices<'_, '_, P> {
+impl<P> changes::Services for StockServices<'_, '_, '_, P> {
     type Error = Continuation;
     fn test_requirement(
         &mut self,
@@ -134,10 +137,17 @@ impl<P> changes::Services for StockServices<'_, '_, P> {
         sets: &mut subject_sets::Runtime,
         row: &mut changes::OwnerModifier,
     ) -> Result<bool, Continuation> {
+        let definitions = self.relationship_definitions;
         self.backend
             .with_growth_requirement_effects(state, |_, state, canonical| {
                 let result = canonical.with_opinion_graph(|graph, canonical| {
-                    graph.owner_changed_current(state, sets, canonical, row.receiver)
+                    graph.owner_changed_current_with_relationships(
+                        state,
+                        sets,
+                        canonical,
+                        row.receiver,
+                        definitions,
+                    )
                 });
                 // This row is comparison metadata; canonical graph controls own the
                 // transition, including writes made before an unsupported callback.
@@ -161,20 +171,69 @@ impl<P> changes::Services for StockServices<'_, '_, P> {
     }
     fn destroy_requirement(
         &mut self,
-        _: &mut LoadedState,
+        state: &mut LoadedState,
         _: &mut subject_sets::Runtime,
         id: u64,
     ) -> Result<(), Continuation> {
-        Err(Continuation::DestroyRequirement(id))
+        if self
+            .backend
+            .growth_requirement_effects()
+            .and_then(|m| m.opinion_graph())
+            .is_none()
+        {
+            return Err(Continuation::DestroyRequirement(id));
+        }
+        let handled = self
+            .backend
+            .with_growth_requirement_effects(state, |_, _, canonical| {
+                canonical.with_opinion_graph(|graph, _| graph.retire_requirement(id))
+            })
+            .map_err(Continuation::OpinionLifecycle)?;
+        if handled {
+            Ok(())
+        } else {
+            Err(Continuation::DestroyRequirement(id))
+        }
     }
     fn destroy_set(
         &mut self,
-        _: &mut LoadedState,
+        state: &mut LoadedState,
         _: &mut subject_sets::Runtime,
         id: u64,
     ) -> Result<(), Continuation> {
-        Err(Continuation::DestroySet(id))
+        if self
+            .backend
+            .growth_requirement_effects()
+            .and_then(|m| m.opinion_graph())
+            .is_none()
+        {
+            return Err(Continuation::DestroySet(id));
+        }
+        let handled = self
+            .backend
+            .with_growth_requirement_effects(state, |_, _, canonical| {
+                canonical.with_opinion_graph(|graph, _| graph.destroy_set(id))
+            })
+            .map_err(Continuation::OpinionLifecycle)?;
+        if handled {
+            Ok(())
+        } else {
+            Err(Continuation::DestroySet(id))
+        }
     }
+}
+/// Loan each cursor operation separately: callbacks must see the same restored
+/// graph owner and may synchronously append or destroy signal registrations.
+fn opinion_signal<P, T>(
+    state: &mut LoadedState,
+    backend: &mut stock::Runtime<'_, P>,
+    apply: impl FnOnce(&mut super::opinion_subject_graph::Runtime) -> Result<T, &'static str>,
+) -> Result<T, Cause> {
+    backend
+        .with_growth_requirement_effects(state, |_, _, canonical| {
+            canonical.with_opinion_graph(|graph, _| apply(graph))
+        })
+        .map_err(Cause::DynamicOpinionSignal)
 }
 /// A preceding callback may remove a later requirement's final shared owner.
 /// Known released records are skipped; an absent initial record is an error.
@@ -236,7 +295,10 @@ pub fn dispatch<P>(
                         inputs.relationship_definitions,
                         inputs.alive_majors,
                         requirements,
-                        &mut StockServices { backend },
+                        &mut StockServices {
+                            backend,
+                            relationship_definitions: inputs.relationship_definitions,
+                        },
                         relationship::Invocation {
                             receiver: id,
                             descriptor: receiver,
@@ -265,7 +327,16 @@ pub fn dispatch<P>(
                         )
                         .map_err(Cause::Victory)?;
                         requirements
-                            .set_state(state, &mut StockServices { backend }, id, tested, true)
+                            .set_state(
+                                state,
+                                &mut StockServices {
+                                    backend,
+                                    relationship_definitions: inputs.relationship_definitions,
+                                },
+                                id,
+                                tested,
+                                true,
+                            )
                             .map_err(Cause::Change)?;
                     }
                 }
@@ -287,6 +358,97 @@ pub fn dispatch<P>(
                     cause: Box::new(cause),
                 })
             }
+        }
+    }
+    // Native signal append inserts at the live tail, so requirements created
+    // by inherited subscribers are visited in this same Emit. The registry's
+    // retained cursor handles both append and synchronous destruction.
+    if backend
+        .growth_requirement_effects()
+        .and_then(|m| m.opinion_graph())
+        .is_some()
+    {
+        const SIGNAL: u32 = 0x990;
+        let fail = |cause| Error::Listener {
+            index: inputs.listeners.len(),
+            cause: Box::new(cause),
+        };
+        let mut cursor = opinion_signal(state, backend, |graph| graph.signal_cursor_start(SIGNAL))
+            .map_err(fail)?;
+        let mut dynamic_index = inputs.listeners.len();
+        loop {
+            let next = match opinion_signal(state, backend, |graph| {
+                graph.signal_cursor_next(SIGNAL, cursor)
+            }) {
+                Ok(next) => next,
+                Err(cause) => {
+                    let _ = opinion_signal(state, backend, |graph| {
+                        graph.signal_cursor_release(SIGNAL, cursor)
+                    });
+                    return Err(Error::Listener {
+                        index: dynamic_index,
+                        cause: Box::new(cause),
+                    });
+                }
+            };
+            let Some(next) = next else {
+                break;
+            };
+            cursor = next;
+            let result = (|| -> Result<bool, Cause> {
+                let route = opinion_signal(state, backend, |graph| {
+                    graph.signal_cursor_route(SIGNAL, cursor)
+                })?;
+                let Some(route) = route else {
+                    return Ok(false);
+                };
+                if removed(requirements, route.label)? {
+                    return Ok(false);
+                }
+                match route.receiver {
+                    super::opinion_subject_graph::SignalReceiver::Relationship(receiver) => {
+                        relationship::dispatch(
+                            state,
+                            inputs.relationship_definitions,
+                            inputs.alive_majors,
+                            requirements,
+                            &mut StockServices {
+                                backend,
+                                relationship_definitions: inputs.relationship_definitions,
+                            },
+                            relationship::Invocation {
+                                receiver: route.label,
+                                descriptor: receiver,
+                                reported: owner,
+                            },
+                        )
+                        .map_err(Cause::Relationship)?;
+                    }
+                    super::opinion_subject_graph::SignalReceiver::Meeting(_) => {
+                        return Err(Cause::Unsupported(route.label))
+                    }
+                }
+                Ok(true)
+            })();
+            match result {
+                Ok(true) => {
+                    progress.completed += 1;
+                    backend
+                        .reached
+                        .push("turn-start dynamic opinion subscriber complete");
+                }
+                Ok(false) => progress.skipped_unsubscribed += 1,
+                Err(cause) => {
+                    let _ = opinion_signal(state, backend, |graph| {
+                        graph.signal_cursor_release(SIGNAL, cursor)
+                    });
+                    return Err(Error::Listener {
+                        index: dynamic_index,
+                        cause: Box::new(cause),
+                    });
+                }
+            }
+            dynamic_index += 1;
         }
     }
     Ok(progress)
