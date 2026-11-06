@@ -264,6 +264,11 @@ impl Modifiers {
         self.opinion_alive_majors = Some(owners);
         Ok(self)
     }
+    pub(crate) fn opinion_remove_is_inert(&self, label: u64) -> bool {
+        self.opinion_effects
+            .iter()
+            .any(|(receiver, effect)| *receiver == label && effect.remove_is_inert())
+    }
     /// Bind reached concrete opinion leaves to the same physical controls.
     pub fn with_opinion_effects(
         mut self,
@@ -688,12 +693,7 @@ impl modifiers::Context for Apply<'_> {
         {
             return Ok(());
         }
-        if self
-            .owner
-            .opinion_effects
-            .iter()
-            .any(|(label, effect)| *label == m.label && effect.remove_is_inert())
-        {
+        if self.owner.opinion_remove_is_inert(m.label) {
             return Ok(());
         }
         let subject_owner = self.owner.object(object)?.owner;
@@ -879,6 +879,15 @@ impl modifiers::EffectContext for Apply<'_> {
             a.maximum = value;
         }
         let mut values = a.clone();
+        if let Some(name) = self
+            .owner
+            .opinion_effects
+            .iter()
+            .find(|(label, _)| *label == m.label)
+            .and_then(|(_, effect)| effect.effect_name())
+        {
+            values.name = name.to_vec();
+        }
         let board = &mut self
             .state
             .war_diplomacy_mut(m.owner)

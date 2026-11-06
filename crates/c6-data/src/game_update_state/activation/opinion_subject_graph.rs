@@ -589,6 +589,9 @@ impl modifiers::Context for Apply<'_> {
         {
             return Ok(());
         }
+        if self.canonical.opinion_remove_is_inert(self.row.label) {
+            return Ok(());
+        }
         leaf::remove(self.state, owner, k.0, instance)
     }
 }
