@@ -145,7 +145,7 @@ impl Definitions {
             if let SqlValue::Text(civic) =
                 row.get("InitiatorObsoleteCivic").map_err(Error::Rules)?
             {
-                if matches!(row.get("RemoveOnEntry").map_err(Error::Rules)?, SqlValue::Integer(v) if *v != 0)
+                if matches!(row.get("NoCurrentDelegation").map_err(Error::Rules)?, SqlValue::Integer(v) if *v != 0)
                 {
                     delegation_removal_civics.push(linux_type_hash(civic));
                 }
@@ -166,7 +166,8 @@ impl Definitions {
             .count()
     }
 }
-/// RemoveOnEntry sets the delegation flag and dispatches its removal signal
+/// An obsolete action marked NoCurrentDelegation sets the flag and dispatches
+/// its removal signal
 /// even when already false. Visibility rechecking follows that signal for each
 /// other alive player, unconditionally, in the manager's current order.
 pub fn remove_delegations_on_civic<E>(
