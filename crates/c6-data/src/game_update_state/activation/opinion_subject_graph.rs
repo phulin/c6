@@ -543,7 +543,7 @@ impl Services for KnownMajor {
             sets::Subject::ModifierObject(subject),
             definition,
         )
-        .map_err(|_| "opinion KnownMajor initialization")
+        .map_err(initialization_error)
     }
 }
 struct KnownMajorFactory<'a> {
@@ -681,5 +681,27 @@ impl sets::changes::Context for KnownMajorFactory<'_> {
     }
     fn reset_trigger(&mut self, set: u64) -> Result<(), sets::Error<Self::Error>> {
         sets::changes::reset_trigger_state(self.sets, set)
+    }
+}
+
+fn initialization_error(error: sets::Error<&'static str>) -> &'static str {
+    match error {
+        sets::Error::Context(reason) | sets::Error::CurrentInput(reason) => reason,
+        sets::Error::MissingDefinitionInput => {
+            "opinion subject set definition absent from immutable catalog"
+        }
+        sets::Error::MissingRequirementDefinition => {
+            "opinion subject child definition absent from immutable catalog"
+        }
+        sets::Error::MissingSet => "opinion subject initialization missing live set",
+        sets::Error::MissingSubscription => "opinion subject initialization subscription missing",
+        sets::Error::DynamicReleaseRequired(_) => {
+            "opinion initial child destruction requires concrete callback"
+        }
+        sets::Error::UnsupportedPredicate(_) => "opinion unsupported subject predicate factory",
+        sets::Error::UnsupportedSubject => "opinion unsupported subject object",
+        sets::Error::Allocation => "opinion subject initialization allocation",
+        sets::Error::CounterExhausted => "opinion subject logical identity exhausted",
+        sets::Error::Ring(_) => "opinion subject initialization listener ring",
     }
 }
