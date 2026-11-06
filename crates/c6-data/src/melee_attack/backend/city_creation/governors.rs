@@ -11,6 +11,84 @@ pub struct Recipe {
     pub amount: i32,
 }
 
+/// Borrowed canonical Governor lifetime. These are the same affected entries
+/// and destruction ring used by application/removal, rather than the optional
+/// Unit-dispatch role carried by the normal object record.
+pub struct GovernorObservation<'a> {
+    pub context: u64,
+    pub context_instance: i32,
+    pub affected: &'a AffectedModifiers,
+    pub destroyed: &'a ListenerRing<DestroyedListener>,
+    modifiers: &'a [Dynamic],
+}
+/// Actual persistent DynamicModifier fields; handles are logical runtime
+/// identities, not reconstructed native addresses.
+pub struct GovernorModifierObservation<'a> {
+    pub identity: u64,
+    pub instance: i32,
+    pub owner: u64,
+    pub effect: u64,
+    pub definition: &'a definitions::Attachment,
+    pub control: &'a c6_core::unit_moved_signal::modifiers::Modifier,
+    pub tracked: &'a [collection::Subject],
+    pub applied: &'a [u64],
+    pub activated: bool,
+    pub owner_destruction: Option<Subscription>,
+}
+impl GovernorObservation<'_> {
+    /// Preserve the actual runtime order of this owner's modifiers.
+    pub fn modifiers(&self) -> impl Iterator<Item = GovernorModifierObservation<'_>> {
+        self.modifiers
+            .iter()
+            .filter(move |m| m.owner == self.context)
+            .map(|m| GovernorModifierObservation {
+                identity: m.identity,
+                instance: m.instance,
+                owner: m.owner,
+                effect: m.effect,
+                definition: &m.definition,
+                control: &m.modifier,
+                tracked: &m.tracked,
+                applied: &m.applied_subjects,
+                activated: m.activated,
+                owner_destruction: m.owner_destruction,
+            })
+    }
+}
+impl EffectRuntime {
+    /// Observe this owner's canonical modifier lifecycle without applying or
+    /// importing anything. Missing imported lifecycle data stays an error.
+    pub fn governor_modifier_observation(
+        &self,
+        owner: i32,
+        id: i32,
+    ) -> Result<Option<GovernorObservation<'_>>, Error> {
+        let Some((context, object)) = self
+            .objects
+            .iter()
+            .find(|(_, o)| o.kind == ContextObject::Governor { owner, id })
+        else {
+            return Ok(None);
+        };
+        let creation = self
+            .city_creation
+            .as_ref()
+            .ok_or(Error::Missing("Governor current modifier lifecycle"))?;
+        let lifecycle = creation
+            .objects
+            .iter()
+            .find(|o| o.handle == *context)
+            .ok_or(Error::Missing("Governor canonical object lifecycle"))?;
+        Ok(Some(GovernorObservation {
+            context: *context,
+            context_instance: object.instance_id,
+            affected: &lifecycle.affected,
+            destroyed: &lifecycle.destroyed,
+            modifiers: &creation.modifiers,
+        }))
+    }
+}
+
 pub(in crate::melee_attack::backend) fn governor(
     state: &LoadedState,
     owner: i32,
