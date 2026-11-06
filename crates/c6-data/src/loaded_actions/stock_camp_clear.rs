@@ -63,7 +63,7 @@ impl Definitions {
             if camp.is_none() && integer(row, "BarbarianCamp")? != 0 {
                 let on_remove = match row.get("ImprovementOnRemove").map_err(error)? {
                     SqlValue::Null => None,
-                    SqlValue::Text(name) => Some(linux_type_hash(&name)),
+                    SqlValue::Text(name) => Some(linux_type_hash(name)),
                     _ => return Err(missing("camp ImprovementOnRemove type")),
                 };
                 camp = Some((
