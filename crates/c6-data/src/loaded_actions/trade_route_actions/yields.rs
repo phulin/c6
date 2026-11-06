@@ -1,4 +1,4 @@
-//! Bounded Linux XP2 numerical queries for an existing domestic route.
+//! Bounded Linux XP2 numerical queries for an existing domestic or bounded international route.
 //!
 //! Computes from current rules, city districts, player/city Trade and the actual
 //! active route bonuses. This does not qualify the transitive effects of native
@@ -17,12 +17,14 @@ pub struct Definitions {
     inputs: c6_core::core_player::initialization::InputIdentities,
     yields: Vec<u32>,
     district_yields: Vec<DistrictYield>,
+    transport: Transport,
 }
 struct DistrictYield {
     yield_hash: u32,
     district: u32,
     origin: f32,
     domestic_destination: f32,
+    foreign_destination: f32,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
@@ -53,6 +55,10 @@ impl Definitions {
                     row.text("DistrictType").map_err(Error::Rules)?.as_bytes(),
                 ),
                 origin: number(row.get("YieldChangeAsOrigin").map_err(Error::Rules)?)?,
+                foreign_destination: number(
+                    row.get("YieldChangeAsInternationalDestination")
+                        .map_err(Error::Rules)?,
+                )?,
                 domestic_destination: number(
                     row.get("YieldChangeAsDomesticDestination")
                         .map_err(Error::Rules)?,
@@ -63,6 +69,7 @@ impl Definitions {
             inputs: state.binding().inputs.clone(),
             yields,
             district_yields,
+            transport: Transport::from_rules(rules)?,
         })
     }
 }
@@ -344,6 +351,487 @@ pub(crate) fn active_domestic_on_graph(
             raw: multiply(
                 bonus,
                 pair_value(&trade.destination_yield_modifier, hash, 256)?,
+            ),
+        });
+    }
+    Ok(amounts)
+}
+
+struct Transport {
+    best_route: i32,
+    best_score: i32,
+    water_score: i32,
+    portal_score: i32,
+    maximum: i32,
+    waters: Vec<u32>,
+    terrains: Vec<u32>,
+    foreign_post_gold: i32,
+    own_post_gold: i32,
+    extended_domains: Vec<u32>,
+}
+impl Transport {
+    fn from_rules(rules: &Rules) -> Result<Self, Error> {
+        let table = |name| rules.gameplay().table(name).ok_or(Error::Missing(name));
+        let parameter = |name: &'static str| -> Result<f32, Error> {
+            for row in table("GlobalParameters")?.rows() {
+                if row.text("Name").map_err(Error::Rules)? == name {
+                    return match row.get("Value").map_err(Error::Rules)? {
+                        SqlValue::Text(v) => std::str::from_utf8(v)
+                            .ok()
+                            .and_then(|v| v.parse().ok())
+                            .ok_or(Error::Missing(name)),
+                        v => number(v),
+                    };
+                }
+            }
+            Err(Error::Missing(name))
+        };
+        let parameter_int = |name: &'static str| -> Result<i32, Error> {
+            for row in table("GlobalParameters")?.rows() {
+                if row.text("Name").map_err(Error::Rules)? == name {
+                    return crate::game_parameters::sql_integer(
+                        row.get("Value").map_err(Error::Rules)?,
+                    )
+                    .ok_or(Error::Missing(name));
+                }
+            }
+            Err(Error::Missing(name))
+        };
+        let registry =
+            crate::unit_initialization_definitions::collection(rules, "Routes", "RouteType")
+                .map_err(|_| Error::Missing("Trade Routes registry"))?;
+        let mut best_route = -1;
+        let mut best_value = -1;
+        for (index, entry) in registry.entries().iter().enumerate() {
+            let value = table("Routes")?
+                .row_by_id(entry.database_rowid)
+                .ok_or(Error::Missing("Trade Route row"))?
+                .integer("PlacementValue")
+                .map_err(Error::Rules)? as i32;
+            if value > best_value {
+                best_value = value;
+                best_route = index as i32;
+            }
+        }
+        let mut waters = Vec::new();
+        let registry =
+            crate::unit_initialization_definitions::collection(rules, "Terrains", "TerrainType")
+                .map_err(|_| Error::Missing("Trade Terrains registry"))?;
+        let mut terrains = Vec::new();
+        for (index, entry) in registry.entries().iter().enumerate() {
+            let hash = linux_type_hash(&entry.type_name);
+            terrains.push(hash);
+            let row = table("Terrains")?
+                .row_by_id(entry.database_rowid)
+                .ok_or(Error::Missing("Trade Terrain row"))?;
+            if index == 15 || index == 16 || row.integer("Water").map_err(Error::Rules)? != 0 {
+                waters.push(hash);
+            }
+        }
+        let mut extended_domains = Vec::new();
+        for row in table("Districts")?.rows() {
+            if row.integer("InternalOnly").map_err(Error::Rules)? != 0 {
+                extended_domains.push(linux_type_hash(
+                    row.text("DistrictType").map_err(Error::Rules)?.as_bytes(),
+                ));
+            }
+        }
+        if let Some(xp2) = rules.gameplay().table("Districts_XP2") {
+            for row in xp2.rows() {
+                if row.integer("Canal").map_err(Error::Rules)? != 0 {
+                    extended_domains.push(linux_type_hash(
+                        row.text("DistrictType").map_err(Error::Rules)?.as_bytes(),
+                    ));
+                }
+            }
+        }
+        Ok(Self {
+            best_route,
+            waters,
+            terrains,
+            extended_domains,
+            best_score: parameter_int(
+                "TRADE_ROUTE_TRANSPORTATION_EFFICIENCY_SCORE_BEST_ROUTE_TILE",
+            )?,
+            water_score: parameter_int("TRADE_ROUTE_TRANSPORTATION_EFFICIENCY_SCORE_WATER_TILE")?,
+            portal_score: parameter_int("TRADE_ROUTE_TRANSPORTATION_EFFICIENCY_SCORE_PORTAL_USE")?,
+            foreign_post_gold: parameter_int("TRADING_POST_GOLD_IN_FOREIGN_CITY")?.wrapping_shl(8),
+            own_post_gold: parameter_int("TRADING_POST_GOLD_IN_OWN_CITY")?.wrapping_shl(8),
+            maximum: from_float(parameter(
+                "TRADE_ROUTE_TRANSPORTATION_EFFICIENCY_MAX_RATIO",
+            )?)?,
+        })
+    }
+    fn ratio(&self, state: &LoadedState, path: &[i32]) -> Result<i32, Error> {
+        use c6_core::map::PlotFlag;
+        let map = state.world().map();
+        if map.header.width <= 0
+            || map.header.height <= 0
+            || map.header.wrap_y
+            || (map.header.width as usize).checked_mul(map.header.height as usize)
+                != Some(map.plots.len())
+        {
+            return Err(Error::Requires("canonical trade transport geometry"));
+        }
+        // Domain rebuilding starts with terrain (coastal city centers are
+        // excluded by CountTransportationFeatures). Complete canal/internal
+        // districts can extend domains on other plots; preserve that boundary.
+        if state.retained().players.iter().any(|p| {
+            p.districts.records.entries.iter().any(|d| {
+                d.value.is_complete && self.extended_domains.contains(&d.value.district_hash)
+            })
+        }) {
+            return Err(Error::Requires(
+                "canal/wonder transport domain reconstruction",
+            ));
+        }
+        let mut score = 0i32;
+        // 2c08b35/2c08bc5 pass includeOrigin=false: start at index one,
+        // while the denominator remains the complete path vector length.
+        for (position, &index) in path.iter().enumerate().skip(1) {
+            let index = usize::try_from(index).map_err(|_| Error::Missing("Trade path plot"))?;
+            let plot = map
+                .plots
+                .get(index)
+                .ok_or(Error::Missing("Trade path plot"))?;
+            if plot.flags.get(PlotFlag::HasCityAttributes) != plot.city_attributes.is_some() {
+                return Err(Error::Requires("canonical transport CityAttributes"));
+            }
+            if plot.route_type != -1
+                && !plot.flags.get(PlotFlag::RoutePillaged)
+                && i32::from(plot.route_type) == self.best_route
+            {
+                score = score.wrapping_add(self.best_score);
+            }
+            if !self.terrains.contains(&plot.terrain_hash) {
+                return Err(Error::Missing("Trade transport terrain definition"));
+            }
+            if self.waters.contains(&plot.terrain_hash) {
+                score = score.wrapping_add(self.water_score);
+            }
+            let previous = path[position - 1];
+            if previous < 0 || previous as usize >= map.plots.len() {
+                return Err(Error::Missing("Trade previous path plot"));
+            }
+            if c6_core::geometry::plot_distance(
+                map.header.width,
+                map.header.wrap_x,
+                previous % map.header.width,
+                previous / map.header.width,
+                index as i32 % map.header.width,
+                index as i32 / map.header.width,
+            ) > 1
+            {
+                score = score.wrapping_add(self.portal_score);
+            }
+        }
+        let length =
+            i32::try_from(path.len()).map_err(|_| Error::Requires("bounded Trade path length"))?;
+        if length <= 0 {
+            return Err(Error::Requires("current forward trade path"));
+        }
+        let numerator = score.wrapping_shl(8);
+        let denominator = length.wrapping_shl(8);
+        if denominator == 0 {
+            return Err(Error::Requires("nonzero Q8 Trade path length"));
+        }
+        Ok((((i64::from(numerator) << 8) / i64::from(denominator)) as i32).min(self.maximum))
+    }
+}
+
+/// Current economic yield query, dispatching by endpoint ownership.
+pub fn active(
+    state: &LoadedState,
+    rules: &Rules,
+    origin: ComponentId,
+    destination: ComponentId,
+) -> Result<Amounts, Error> {
+    active_with_definitions(
+        state,
+        &Definitions::from_rules(state, rules)?,
+        origin,
+        destination,
+    )
+}
+pub fn active_with_definitions(
+    state: &LoadedState,
+    definitions: &Definitions,
+    origin: ComponentId,
+    destination: ComponentId,
+) -> Result<Amounts, Error> {
+    active_on_graph(
+        state,
+        definitions,
+        state.trade_graph().map_err(Error::State)?,
+        origin,
+        destination,
+    )
+}
+pub(crate) fn active_on_graph(
+    state: &LoadedState,
+    definitions: &Definitions,
+    graph: &c6_core::trade_graph_state::GraphState,
+    origin: ComponentId,
+    destination: ComponentId,
+) -> Result<Amounts, Error> {
+    if origin.owner == destination.owner {
+        active_domestic_on_graph(state, definitions, graph, origin, destination)
+    } else {
+        active_international_on_graph(state, definitions, graph, origin, destination)
+    }
+}
+/// Bounded foreign economic query. Class-dependent, alliance, suzerain,
+/// cultural-dominance and resource/policy branches require explicit zero terms.
+pub fn active_international(
+    state: &LoadedState,
+    rules: &Rules,
+    origin: ComponentId,
+    destination: ComponentId,
+) -> Result<Amounts, Error> {
+    active_international_with_definitions(
+        state,
+        &Definitions::from_rules(state, rules)?,
+        origin,
+        destination,
+    )
+}
+pub fn active_international_with_definitions(
+    state: &LoadedState,
+    definitions: &Definitions,
+    origin: ComponentId,
+    destination: ComponentId,
+) -> Result<Amounts, Error> {
+    active_international_on_graph(
+        state,
+        definitions,
+        state.trade_graph().map_err(Error::State)?,
+        origin,
+        destination,
+    )
+}
+pub(crate) fn active_international_on_graph(
+    state: &LoadedState,
+    definitions: &Definitions,
+    graph: &c6_core::trade_graph_state::GraphState,
+    origin: ComponentId,
+    destination: ComponentId,
+) -> Result<Amounts, Error> {
+    if definitions.inputs != state.binding().inputs {
+        return Err(Error::Binding);
+    }
+    if origin.owner == destination.owner
+        || origin.component_type != 2
+        || destination.component_type != 2
+    {
+        return Err(Error::Requires("international city route yield query"));
+    }
+    let origin_city = state
+        .city(i32::from(origin.owner), origin.id)
+        .map_err(Error::State)?;
+    let destination_city = state
+        .city(i32::from(destination.owner), destination.id)
+        .map_err(Error::State)?;
+    let player = |owner| {
+        state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Missing("Trade player"))
+    };
+    let source = player(i32::from(origin.owner))?;
+    let target = player(i32::from(destination.owner))?;
+    let trade = &source.trade;
+    let other = &target.trade;
+    if state
+        .game_relations()
+        .map_err(Error::State)?
+        .is_at_war(i32::from(origin.owner), i32::from(destination.owner))
+        .map_err(|_| Error::Missing("Trade peace relationship"))?
+    {
+        return Err(Error::Requires("peaceful international yields"));
+    }
+    if source
+        .culture
+        .dominant_over
+        .get(destination.owner as usize)
+        .copied()
+        .ok_or(Error::Missing("Trade cultural dominance"))?
+    {
+        return Err(Error::Requires("cultural dominance trade yields"));
+    }
+    if trade.techs_civics_per_yield != 0 {
+        return Err(Error::Requires("progress difference trade yields"));
+    }
+    for table in [
+        &trade.yield_bonus_per_trading_post_in_foreign_city,
+        &trade.yield_bonus_per_trading_post_in_own_city,
+        &trade.yield_bonus_per_path_tile,
+        &trade.per_specialty_district_yield_bonus_for_international,
+        &trade.yield_bonus_per_follower,
+        &trade.origin_yield_for_ally_route,
+        &trade.origin_yield_for_suzerain_route,
+        &trade.destination_yield_for_ally_route,
+        &trade.destination_yield_for_suzerain_route,
+        &trade.flat_yield_bonus_for_city_state,
+        &trade.yield_bonus_for_districts_city_state,
+    ] {
+        zero(
+            table,
+            "unsupported international path/specialty/follower/alliance/suzerain/city-state yields",
+        )?;
+    }
+    for table in [
+        &trade.flat_origin_yield_per_improvement_at_destination,
+        &other.flat_destination_yield_per_improvement_at_destination,
+        &trade.flat_international_yield_per_improvement_at_origin,
+        &trade.flat_origin_yield_per_terrain_for_international,
+        &other.flat_destination_yield_per_terrain_for_international,
+    ] {
+        nested_zero(table, "international improvement/terrain yields")?;
+    }
+    let edge = graph
+        .graph()
+        .get_edge(
+            c6_core::trade_graph_state::city_vertex(origin),
+            c6_core::trade_graph_state::city_vertex(destination),
+        )
+        .filter(|e| e.has_active_route)
+        .ok_or(Error::Requires("active international route"))?;
+    let route = &edge.most_recent_route;
+    if route.origin_city != origin || route.destination_city != destination {
+        return Err(Error::Requires("active route endpoint identity"));
+    }
+    if route.resource_type_hash != u32::MAX {
+        return Err(Error::Requires("resource-attached international yields"));
+    }
+    let ratio = definitions.transport.ratio(state, &edge.most_recent_path)?;
+    let map = state.world().map();
+    let mut post_gold = 0i32;
+    for &index in edge.most_recent_path.iter().skip(1) {
+        let city = state
+            .retained()
+            .players
+            .iter()
+            .flat_map(|p| p.cities.records.entries.iter())
+            .find(|c| {
+                c.value.header.location_x == index % map.header.width
+                    && c.value.header.location_y == index / map.header.width
+            });
+        if let Some(city) = city {
+            if city
+                .value
+                .trade
+                .constructed_trading_posts
+                .get(origin.owner as usize)
+                .copied()
+                .unwrap_or(false)
+                && !state
+                    .game_relations()
+                    .map_err(Error::State)?
+                    .is_at_war(city.value.header.owner, i32::from(origin.owner))
+                    .map_err(|_| Error::Missing("Trade trading-post peace relationship"))?
+            {
+                post_gold =
+                    post_gold.wrapping_add(if city.value.header.owner == i32::from(origin.owner) {
+                        definitions.transport.own_post_gold
+                    } else {
+                        definitions.transport.foreign_post_gold
+                    });
+            }
+        }
+    }
+    // Intercontinental status is irrelevant only when its coefficient is zero.
+    zero(
+        &trade.flat_yield_bonus_for_intercontinental_international,
+        "intercontinental international yields",
+    )?;
+    let mut amounts = Amounts {
+        origin: vec![],
+        destination: vec![],
+    };
+    for &hash in &definitions.yields {
+        for table in [
+            &origin_city
+                .trade
+                .yield_per_local_bonus_resource_for_international,
+            &origin_city
+                .trade
+                .yield_per_destination_luxury_resource_for_international,
+            &origin_city
+                .trade
+                .yield_per_destination_strategic_resource_for_international,
+            &origin_city
+                .trade
+                .yield_per_local_luxury_resource_for_international,
+            &origin_city
+                .trade
+                .yield_per_local_strategic_resource_for_international,
+        ] {
+            if city_value(table, hash)? > 0 {
+                return Err(Error::Requires("international resource yields"));
+            }
+        }
+        // This term is scaled by Congress for some minor classes. Bound it to
+        // zero so no missing civilization-level fact selects a foreign branch.
+        if city_value(&destination_city.trade.flat_yield_bonus_to_others, hash)? != 0 {
+            return Err(Error::Requires(
+                "destination city international bonus class",
+            ));
+        }
+        let mut potential = 0i32;
+        for row in &definitions.district_yields {
+            if row.yield_hash == hash {
+                potential = potential.wrapping_add(from_float(
+                    count(state, origin, row.district)? as f32 * row.origin,
+                )?);
+                potential = potential.wrapping_add(from_float(
+                    count(state, destination, row.district)? as f32 * row.foreign_destination,
+                )?);
+            }
+        }
+        let mut value = potential;
+        if hash == linux_type_hash(b"YIELD_GOLD") {
+            value = value.wrapping_add(post_gold);
+            if ratio > 0 {
+                value = value.wrapping_add(multiply(potential, ratio));
+            }
+        }
+        for amount in [
+            pair_value(&trade.flat_yield_bonus, hash, 0)?,
+            pair_value(&trade.flat_yield_bonus_for_international, hash, 0)?,
+            pair_value(&other.flat_yield_bonus_to_others, hash, 0)?,
+            city_value(&origin_city.trade.flat_yield_bonus_for_international, hash)?,
+        ] {
+            value = value.wrapping_add(amount);
+        }
+        let mut bonus = None;
+        for entry in &route.origin_yields {
+            if entry.type_hash == hash && bonus.replace(entry.raw).is_some() {
+                return Err(Error::Requires("unambiguous current route yield overlay"));
+            }
+        }
+        let bonus = bonus.ok_or(Error::Missing("current active route origin yield"))?;
+        value = value.wrapping_add(bonus);
+        value = multiply(value, pair_value(&trade.origin_yield_modifier, hash, 256)?);
+        value = multiply(
+            value,
+            pair_value(&trade.international_yield_modifier, hash, 256)?,
+        );
+        amounts.origin.push(YieldValue {
+            type_hash: hash,
+            raw: value,
+        });
+        let incoming = city_value(&destination_city.trade.flat_yield_bonus_from_others, hash)?
+            .wrapping_add(bonus);
+        amounts.destination.push(YieldValue {
+            type_hash: hash,
+            raw: multiply(
+                multiply(
+                    incoming,
+                    pair_value(&other.international_yield_modifier, hash, 256)?,
+                ),
+                pair_value(&other.destination_yield_modifier, hash, 256)?,
             ),
         });
     }
