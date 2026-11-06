@@ -203,13 +203,12 @@ fn destroy(
         h.location_x = -9999;
         h.location_y = -9999;
     }
-    let exists = crate::unit_placement_services::plot_index_at::<std::convert::Infallible>(
+    let original_plot = crate::unit_placement_services::plot_index_at::<std::convert::Infallible>(
         context.state(),
         location,
     )
-    .map_err(|e| err("original plot", e))?
-    .is_some();
-    if exists {
+    .map_err(|e| err("original plot", e))?;
+    if let Some(original_plot) = original_plot {
         remove_all_queue(context.state_mut(), city).map_err(|e| err("BuildQueue.RemoveAll", e))?;
         // Real nonempty building removal remains a mandatory gameplay service.
         call("Buildings.RemoveAll", context.remove_buildings(city))?;
@@ -323,7 +322,16 @@ fn destroy(
             context.report_city_removed(city, 0x53f22816),
         )?;
         call("CityPlots.Clear", context.clear_city_plots(city))?;
-        call("coastal domains", context.update_coastal_domains(location))?;
+        // Clear's SetOwner(NO_PLAYER) normally removes these attributes.
+        // A reentrant owner callback can create new current attributes; only
+        // then can the source's coastal-and-HasCityAttributes guard reach the
+        // positive SetValidDomains continuation.
+        if context.state().world().map().plots[original_plot as usize]
+            .city_attributes
+            .is_some()
+        {
+            call("coastal domains", context.update_coastal_domains(location))?;
+        }
     }
     // transfer=true skips the post-removal unit relocation loop.
     call("City destructor", context.destroy_city_lifetime(city))?;
