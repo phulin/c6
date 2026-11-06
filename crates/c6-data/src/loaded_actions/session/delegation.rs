@@ -33,6 +33,7 @@ pub enum ResponseError<E, U> {
     Ingress(stock::movement::Error),
     Update(stock::turn_loop::Error<U>),
 }
+pub type ResponseResult<E, U> = Result<Progress, Error<ResponseError<E, U>>>;
 impl<E: std::fmt::Debug, U: std::fmt::Debug> std::fmt::Display for ResponseError<E, U> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "delegation response/update: {self:?}")
@@ -87,7 +88,7 @@ impl<'a, P> Session<'_, 'a, P> {
         inputs: &deactivation::Inputs<'_, '_, '_>,
         services: &mut S,
         budget: &mut usize,
-    ) -> Result<Progress, Error<ResponseError<E::Error, S::Error>>>
+    ) -> ResponseResult<E::Error, S::Error>
     where
         E::Error: std::fmt::Debug,
     {
@@ -127,7 +128,7 @@ impl<'a, P> Session<'_, 'a, P> {
         inputs: &deactivation::Inputs<'_, '_, '_>,
         services: &mut S,
         budget: &mut usize,
-    ) -> Result<Progress, Error<ResponseError<std::convert::Infallible, S::Error>>> {
+    ) -> ResponseResult<std::convert::Infallible, S::Error> {
         if let Some(failure) = &self.failed {
             return Err(Error::Failed(failure.clone()));
         }
@@ -147,7 +148,7 @@ impl<'a, P> Session<'_, 'a, P> {
         services: &mut S,
         budget: &mut usize,
         resuming: bool,
-    ) -> Result<Progress, Error<ResponseError<E, S::Error>>> {
+    ) -> ResponseResult<E, S::Error> {
         let result = stock::first_contact_update::execute(
             &mut self.context,
             &mut self.update,
