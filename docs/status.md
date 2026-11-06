@@ -18,7 +18,7 @@ does not initialize a new Civ VI game. See the
 | Area | Supported scope | Qualification |
 | --- | --- | --- |
 | Founding and unit orders | FoundCity; MoveTo, SkipTurn, Fortify and healing | Supported initialized states, movement rules and callbacks; not arbitrary terrain, units or effect branches |
-| Development and economy | Farm/Mine construction, ordinary resource-free Farm Repair and forest Chop, and builder charges; city yields and growth; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported |
+| Development and economy | Farm/Mine construction, ordinary resource-free Farm Repair and forest Chop, and builder charges; city yields and growth; ordinary city tile worker locks; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported; citizen unlock/clamp and noncanonical wrapped requests lack separate native cases |
 | Production and districts | Natural Scout, Warrior, Monument and Campus completion; Campus placement | Representative Linux cases through supported turn progression and externally supplied production choices; not arbitrary production or district branches |
 | Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and first physical step | Representative Linux cases; not district/building pillage or complete trade-route lifecycle coverage |
 | Research and government | Technology/civic selection and progress; explicit government and policy choices | Bounded definitions, effects and decision paths |
@@ -46,6 +46,17 @@ Builder charge. The accepted ordinary owned, resource-free forest
 and reduces Builder charges from 3 to 2 in its native comparison; production
 completion and last-charge removal were not exercised natively. These are
 bounded action results, not complete builder coverage.
+
+Use [`Session::managed_city_plots` and `Session::manage_city_citizen`](../crates/c6-data/src/loaded_actions/session_citizens.rs)
+to query current managed tiles and request the native citizen lock cycle at the
+ordinary player-action boundary. The request reuses the Session's current yield,
+territory and callback owners, then reallocates citizens deterministically. In the
+accepted ordinary tile-lock case, an unworked tile becomes the locked worked tile,
+the previous tile loses its worker, and current Gold yield changes from 7 to 5;
+the other five standard yields, compared typed state and known RNG match. Repeated
+unlock requests, forced-worker capacity/population clamps and noncanonical wrapped
+request coordinates are implemented from Linux source but lack separate native
+comparisons. This does not establish complete citizen management or RNG coverage.
 
 The accepted [city-center melee](linux-city-melee.md) case attacks a noncapital
 city with no walls and both combatants surviving: 18 attacker damage, 50 city
