@@ -141,6 +141,23 @@ impl<P> Effects<'_, '_, P> {
     }
 }
 impl<P> Runtime<'_, P> {
+    /// Admit the stock owner-only culture-yield report after the caller has
+    /// qualified its current cache delegate, host translator, Utility provider
+    /// and absence of synchronous host hooks from the same initial state.
+    pub fn bind_civic_overflow_report(
+        &mut self,
+        state: &LoadedState,
+    ) -> Result<(), processing::Error> {
+        self.check(state)?;
+        if self.civic_overflow_report.is_some() {
+            return Err(processing::Error::Unsupported(
+                "current civic overflow report already bound",
+            ));
+        }
+        self.civic_overflow_report = Some(state.binding().clone());
+        Ok(())
+    }
+
     /// A successfully selected queue satisfies this semantic choice. Native
     /// presentation-object expiration is independent of pending arena decisions.
     pub(crate) fn resolve_research_choice(&mut self, owner: i32, kind: research::Kind) {
@@ -413,6 +430,31 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                 self.backend
                     .reached
                     .push("stock technology publication current yield queries");
+                Ok(())
+            }
+            research::Effect::Report(ref report) if report.event == 0x8aba2360 => {
+                if self.backend.civic_overflow_report.as_ref() != Some(state.binding())
+                    || report.specialization.is_some()
+                    || report.index.is_some()
+                    || report.old_progress.is_some()
+                    || report.source.is_some()
+                {
+                    return Err(Error::Effect(effect));
+                }
+                // The canonical overflow store already happened. The stock
+                // OnCultureYieldChanged delegate uses the same current query
+                // path as other civic publications; retain those effects while
+                // omitting its discarded native cache and host UI payloads.
+                research::Context {
+                    state,
+                    definitions,
+                    effects: self,
+                }
+                .stock_civic_publication_yields(report)
+                .map_err(|_| Error::Effect(effect))?;
+                self.backend
+                    .reached
+                    .push("stock civic overflow report current yield queries");
                 Ok(())
             }
             research::Effect::Report(ref report)

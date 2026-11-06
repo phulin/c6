@@ -704,8 +704,9 @@ impl<E: Effects> Context<'_, E> {
         self.check()?;
         let completed = matches!(
             report.event,
-            0xc5613042 | 0xac2769a3 | 0x87667464 | 0x80f1366d
-        ) && report.specialization.is_none()
+            0xc5613042 | 0xac2769a3 | 0x87667464 | 0x80f1366d | 0x8aba2360
+        ) && (report.event != 0x8aba2360 || report.index.is_none())
+            && report.specialization.is_none()
             && report.old_progress.is_none()
             && report.source.is_none();
         let boosted = report.event == 0x3feaad02
