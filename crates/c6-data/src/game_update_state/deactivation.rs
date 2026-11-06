@@ -2,10 +2,12 @@
 //! requires the actual gossip effects; it is not a player-policy boundary.
 use crate::registry::LinuxDefinitionHashRegistry;
 pub mod resources;
+pub mod visibility_sources;
 use c6_core::{
     city_power_activation::gossip_delivery::TurnVisibility,
     loaded_state::{ActionStamp, LoadedState},
 };
+use visibility_sources::Definitions;
 
 /// The visibility portion of the live gossip owner, independent of its pending
 /// gossip queues. Initial history and fallback must come from this world.
@@ -16,6 +18,7 @@ pub struct VisibilityHistory {
     pub alive_majors: Vec<i32>,
     sources: LinuxDefinitionHashRegistry,
     stock: Option<StockVisibility>,
+    definitions: Option<Definitions>,
 }
 /// Initialized synchronous consumers of the visibility-changed signal.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -41,6 +44,9 @@ pub enum Error {
     /// VisibilityChanged before deactivation may continue.
     ChangedVisibility(TurnVisibility),
     Allocation(std::collections::TryReserveError),
+    Random(c6_core::loaded_state::game_sync::AccessError),
+    Rules(crate::Error),
+    Definitions(crate::unit_initialization_definitions::Error),
 }
 impl VisibilityHistory {
     pub fn new(
@@ -57,12 +63,36 @@ impl VisibilityHistory {
             alive_majors,
             sources: LinuxDefinitionHashRegistry::from_native_order(native_source_hashes),
             stock: None,
+            definitions: None,
         }
+    }
+
+    /// Source definitions are bound to this world's current rules identity.
+    pub fn configure_definitions(
+        &mut self,
+        state: &LoadedState,
+        definitions: Definitions,
+    ) -> Result<(), Error> {
+        if !self.instance.same_instance(state.action_stamp())
+            || state.binding() != &definitions.binding
+        {
+            return Err(Error::Missing("visibility source definitions world/rules"));
+        }
+        if self
+            .sources
+            .hashes()
+            .iter()
+            .any(|hash| !definitions.sources.iter().any(|v| v.hash == *hash))
+        {
+            return Err(Error::Missing("visibility source definition hash"));
+        }
+        self.definitions = Some(definitions);
+        Ok(())
     }
 
     /// Bind current civilization name extents and actual initialized listener
     /// order. Empty civilization collections return -1 before usage/RNG reads.
-    /// Nonempty collections remain explicit until their selection is supplied.
+    /// Name usage and the shared GameSync remain owned by the loaded world.
     pub fn configure_stock(
         &mut self,
         state: &LoadedState,
@@ -89,7 +119,7 @@ impl VisibilityHistory {
     /// Record current visibility in alive-major order. An unchanged source and
     /// level returns before name selection; changes choose the source name,
     /// archive, then notify. Historical levels never replace current diplomacy.
-    pub fn record(&mut self, state: &LoadedState, owner: i32) -> Result<usize, Error> {
+    pub fn record(&mut self, state: &mut LoadedState, owner: i32) -> Result<usize, Error> {
         if !self.instance.same_instance(state.action_stamp()) {
             return Err(Error::Missing("visibility history world instance"));
         }
@@ -158,21 +188,30 @@ impl VisibilityHistory {
                         "current civilization citizen-name collection",
                     ))?
                     .1;
-                // With no source definition, native ChooseNewSource still runs
-                // for visibility 0. A zero civilization collection returns -1
-                // before touching usage counts or the shared GameSync stream.
+                // Spy sources bypass ordinary name allocation. Prerequisite/trait
+                // sources inspect their retained diplomatic source selector.
                 if value.source != -1 {
-                    return Err(Error::Missing(
-                        "visibility source spy/dynamic-name selection",
-                    ));
+                    let definitions = self
+                        .definitions
+                        .as_ref()
+                        .ok_or(Error::Missing("visibility source definitions"))?;
+                    let definition = definitions
+                        .sources
+                        .iter()
+                        .find(|v| v.hash == hash)
+                        .ok_or(Error::Missing("visibility source definition"))?;
+                    if definition.spy {
+                        return Err(Error::Missing("visibility source spy name"));
+                    }
+                    if definition.dynamic {
+                        return Err(Error::Missing("visibility dynamic citizen-name selector"));
+                    }
                 }
-                if name_count != 0 {
-                    return Err(Error::Missing("visibility citizen-name selection"));
-                }
+                let name = choose_citizen_name(state, owner, name_count)?;
                 append_changed(
                     &mut self.history,
                     value,
-                    || Ok(-1),
+                    || Ok(name),
                     |_| {
                         for listener in &stock.listeners {
                             match listener {
@@ -187,6 +226,63 @@ impl VisibilityHistory {
         }
         Ok(unchanged)
     }
+}
+
+/// Ordinary diplomatic source (selector zero): scan the first nonnegative
+/// usage tier in native index order, give each candidate weight one, draw from
+/// GameSync even for one candidate, and increment the selected signed short.
+fn choose_citizen_name(
+    state: &mut LoadedState,
+    owner: i32,
+    name_count: usize,
+) -> Result<i32, Error> {
+    if name_count == 0 {
+        return Ok(-1);
+    }
+    let counts = &state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == owner)
+        .ok_or(Error::Missing("visibility citizen-name player"))?
+        .name_manager
+        .citizen_name_usage_counts;
+    let candidates = citizen_candidates(counts, name_count)?;
+    let index = draw_citizen_index(&candidates, |bound| {
+        state.game_sync_rand(bound).map_err(Error::Random)
+    })?;
+    let counts = state
+        .player_citizen_name_usage_mut(owner)
+        .map_err(Error::State)?;
+    counts[index] = counts[index].wrapping_add(1);
+    Ok(index as i32)
+}
+fn draw_citizen_index(
+    candidates: &[usize],
+    draw: impl FnOnce(u16) -> Result<u16, Error>,
+) -> Result<usize, Error> {
+    let choice = usize::from(draw(candidates.len() as u16)?);
+    candidates
+        .get(choice)
+        .copied()
+        .ok_or(Error::Missing("visibility name random index"))
+}
+fn citizen_candidates(counts: &[i16], name_count: usize) -> Result<Vec<usize>, Error> {
+    let counts = &counts[..counts.len().min(name_count)];
+    let min = counts
+        .iter()
+        .copied()
+        .filter(|v| *v >= 0)
+        .min()
+        .ok_or(Error::Missing(
+            "visibility nonnegative citizen-name usage tier",
+        ))?;
+    Ok(counts
+        .iter()
+        .enumerate()
+        .filter(|(_, v)| **v == min)
+        .map(|(i, _)| i)
+        .collect())
 }
 
 /// Source ordering: choose a source name even at visibility 0, assign it only
@@ -210,6 +306,36 @@ fn append_changed(
 mod tests {
     use super::*;
     use std::cell::Cell;
+    #[test]
+    fn citizen_selection_draws_even_for_single_option_and_uses_native_order() {
+        let calls = Cell::new(0);
+        assert_eq!(
+            draw_citizen_index(&[7], |bound| {
+                assert_eq!(bound, 1);
+                calls.set(calls.get() + 1);
+                Ok(0)
+            })
+            .unwrap(),
+            7
+        );
+        assert_eq!(calls.get(), 1);
+        assert_eq!(
+            draw_citizen_index(&[2, 5, 6], |bound| {
+                assert_eq!(bound, 3);
+                Ok(1)
+            })
+            .unwrap(),
+            5
+        );
+        assert!(draw_citizen_index(&[1], |_| Err(Error::Missing("GameSync"))).is_err());
+    }
+    #[test]
+    fn citizen_tiers_preserve_native_order_and_skip_negative_usage() {
+        assert_eq!(citizen_candidates(&[-1, 2, 0, 0, 7], 4).unwrap(), [2, 3]);
+        assert_eq!(citizen_candidates(&[4, 2, 2, 0], 3).unwrap(), [1, 2]);
+        assert!(citizen_candidates(&[-1], 1).is_err());
+        assert!(citizen_candidates(&[], 40).is_err());
+    }
     #[test]
     fn zero_visibility_still_chooses_before_append_and_dispatch() {
         let mut history = vec![];
