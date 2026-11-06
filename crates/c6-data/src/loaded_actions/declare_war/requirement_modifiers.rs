@@ -63,6 +63,10 @@ pub struct Modifiers {
     stamp: ActionStamp,
     human_statement_owners: Vec<i32>,
     activations: Vec<Activation>,
+    random_effects: Vec<(
+        u64,
+        crate::loaded_actions::stock_notifications::first_contact::random_modifier::Parameters,
+    )>,
     modifiers: Vec<Modifier>,
     objects: Vec<Object>,
     opinion_graph: Option<crate::game_update_state::activation::opinion_subject_graph::Runtime>,
@@ -91,6 +95,7 @@ impl Modifiers {
             stamp: state.action_stamp(),
             human_statement_owners: Vec::new(),
             activations: Vec::new(),
+            random_effects: Vec::new(),
             modifiers,
             objects,
             opinion_graph: None,
@@ -135,6 +140,29 @@ impl Modifiers {
             }
         }
         self.activations = activations;
+        Ok(self)
+    }
+    /// Bind concrete RandomEffect parameters to this canonical modifier owner.
+    /// Their Activation must describe the base effect before SetModifierValue:
+    /// explicit RandomEffect removal is distinct from BaseEffect+48.
+    pub fn with_random_effects(
+        mut self,
+        effects: Vec<(
+            u64,
+            crate::loaded_actions::stock_notifications::first_contact::random_modifier::Parameters,
+        )>,
+    ) -> Result<Self, Error> {
+        for (at, (label, _)) in effects.iter().enumerate() {
+            if effects[..at].iter().any(|(previous, _)| previous == label)
+                || !self
+                    .activations
+                    .iter()
+                    .any(|a| a.label == *label && !a.remove_immediately)
+            {
+                return Err(Error::Missing("random diplomacy activation receiver"));
+            }
+        }
+        self.random_effects = effects;
         Ok(self)
     }
     fn object(&self, label: u64) -> Result<&Object, Error> {
@@ -440,6 +468,15 @@ impl modifiers::Context for Apply<'_> {
         if m.stack_limit != 0 {
             return Err(Error::Missing("diplomacy removal subject stack limit"));
         }
+        // RandomEffect::Remove returns true without touching the blackboard.
+        if self
+            .owner
+            .random_effects
+            .iter()
+            .any(|(label, _)| *label == m.label)
+        {
+            return Ok(());
+        }
         let subject_owner = self.owner.object(object)?.owner;
         if !self
             .state
@@ -561,6 +598,20 @@ impl modifiers::EffectContext for Apply<'_> {
             return Err(Error::Missing("current human diplomacy statement guard"));
         }
         let subject = self.owner.object(m.tracked[self.subject].object)?.owner;
+        let random = self
+            .owner
+            .random_effects
+            .iter()
+            .find(|(label, _)| *label == m.label)
+            .map(|(_, parameters)| *parameters);
+        let subject_is_human = if random.is_some() {
+            self.state
+                .player_slot_status(subject)
+                .map_err(Error::State)?
+                == 3
+        } else {
+            false
+        };
         let a = self
             .owner
             .activations
@@ -570,11 +621,30 @@ impl modifiers::EffectContext for Apply<'_> {
         if !self.state.player_alive(subject).map_err(Error::State)? && !m.allow_dead {
             return Ok(true);
         }
-        let entries = self
+        let mut values = a.clone();
+        let board = &mut self
             .state
             .war_diplomacy_mut(m.owner)
             .map_err(Error::State)?
-            .blackboard
+            .blackboard;
+        if let Some(parameters) = random {
+            if let Some(extra) =
+                crate::loaded_actions::stock_notifications::first_contact::random_modifier::prepare(
+                    board,
+                    parameters,
+                    m.instance as u32,
+                    subject,
+                    subject_is_human,
+                )
+                .map_err(|_| Error::Missing("random diplomacy value preparation"))?
+            {
+                // SetModifierValue supplies initial AND maximum. BaseApply
+                // clears the temporary extra fields after consuming them.
+                values.initial = extra;
+                values.maximum = extra;
+            }
+        }
+        let entries = board
             .diplomatic_modifiers
             .get_mut(usize::try_from(subject).map_err(|_| Error::Missing("diplomacy subject"))?)
             .ok_or(Error::Missing("diplomacy subject"))?;
@@ -588,13 +658,36 @@ impl modifiers::EffectContext for Apply<'_> {
         }
         // BaseEffect skips Activate when its integer value already equals the
         // current value (zero for the absent tracker).
-        if a.initial == 0 {
+        if values.initial == 0 {
+            if random.is_some() {
+                // Random's explicit SimpleRemove uses map::operator[] even
+                // when BaseApply skipped the zero-valued Activate.
+                entries.insert(
+                    at,
+                    c6_core::player_diplomacy_blackboard::ModifierEntry {
+                        key,
+                        tracker: c6_core::player_diplomacy_blackboard::DiplomaticModifierTracker {
+                            is_active: false,
+                            current_value: 0,
+                            initial_value: 0,
+                            max_value: 0,
+                            increment: 0,
+                            increment_turns: 0,
+                            cooldown_turns: 0,
+                            accumulation_turn_count: 0,
+                            reduction: 0,
+                            modifier_name: b"Unknown".to_vec(),
+                            visibility: -1,
+                        },
+                    },
+                );
+                return Ok(true);
+            }
             if a.remove_immediately {
                 return Err(Error::Missing("zero-value immediate diplomacy removal"));
             }
             return Ok(true);
         }
-        let mut values = a.clone();
         if a.remove_immediately {
             // Fresh tracker GetCurrentValue is zero at both native reads in
             // Apply/AccumulateExtraValue. Existing trackers are rejected above.
@@ -610,7 +703,7 @@ impl modifiers::EffectContext for Apply<'_> {
             values.maximum = a.initial;
         }
         let mut tracker = first_tracker(&values);
-        if a.remove_immediately {
+        if a.remove_immediately || random.is_some() {
             tracker.is_active = false;
             tracker.accumulation_turn_count = 0;
             if tracker.cooldown_turns <= 0 {
