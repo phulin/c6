@@ -425,7 +425,6 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         if limit != 0 && affected.count(&id) >= i32::from(limit) {
             return Ok(());
         }
-        let (_, effect) = self.runtime.city_effect(effect).map_err(Error::Query)?;
         let Some(city) = self
             .runtime
             .object(subject)
@@ -435,6 +434,10 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         else {
             return Err(Error::Missing("ICity removal subject"));
         };
+        let (_, effect) = self
+            .runtime
+            .prepare_city_effect(self.state, effect, city, self.effects)
+            .map_err(Error::Effect)?;
         effect
             .apply(self.state, city, self.features, true, self.effects)
             .map_err(Error::Effect)?;
@@ -478,11 +481,7 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         Ok(())
     }
     fn apply_concrete_effect(&mut self) -> Result<bool, Error> {
-        let record = self.record()?;
-        let (_, effect) = self
-            .runtime
-            .city_effect(record.effect)
-            .map_err(Error::Query)?;
+        let effect = self.record()?.effect;
         let Some(city) = self
             .runtime
             .object(self.subject)
@@ -492,6 +491,10 @@ impl<E: crate::city_production_turn::modifier_effects::Effects>
         else {
             return Err(Error::Missing("ICity effect context"));
         };
+        let (_, effect) = self
+            .runtime
+            .prepare_city_effect(self.state, effect, city, self.effects)
+            .map_err(Error::Effect)?;
         effect
             .apply(self.state, city, self.features, false, self.effects)
             .map_err(Error::Effect)
@@ -1249,13 +1252,15 @@ impl EffectRuntime {
                 if limit != 0 && affected.count(&id) >= i32::from(limit) {
                     continue;
                 }
-                let (_, effect) = self.city_effect(effect).map_err(Error::Query)?;
                 let city = self
                     .object(subject)
                     .map_err(Error::Query)?
                     .kind
                     .city_component()
                     .ok_or(Error::Missing("owned modifier Remove ICity"))?;
+                let (_, effect) = self
+                    .prepare_city_effect(state, effect, city, effects)
+                    .map_err(Error::Effect)?;
                 effect
                     .apply(state, city, features, true, effects)
                     .map_err(Error::Effect)?;

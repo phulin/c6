@@ -1,6 +1,8 @@
 //! Concrete components of Linux City destruction. The complete destruction
 //! transition is unfinished; these operations do not release the City identity.
 //! Positive unsupported components fail before silently discarding gameplay.
+pub mod effects;
+pub mod requirements;
 use c6_core::{loaded_state::LoadedState, unit::ComponentId};
 
 #[derive(Debug)]
