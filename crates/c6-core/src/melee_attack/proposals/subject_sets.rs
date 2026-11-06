@@ -222,6 +222,9 @@ impl Runtime {
             .find(|s| s.label == id && s.alive)
             .map(|s| s.native_id)
     }
+    pub fn native_requirement_id(&self, label: u64) -> Option<u32> {
+        self.requirements.iter().find(|r| r.label == label).map(|r| r.native_id)
+    }
     pub fn native_requirement_ids(&self) -> impl Iterator<Item = u32> + '_ {
         self.requirements.iter().map(|r| r.native_id)
     }

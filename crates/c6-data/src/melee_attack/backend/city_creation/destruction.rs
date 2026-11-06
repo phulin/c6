@@ -238,11 +238,11 @@ fn primary_object(
         // ordinary object; Team/Improvement vtable+20 routes to ModifierObject
         // self-weak GetPrimaryObject2335920 on this target.
         ContextObject::Player(_)
+        | ContextObject::Belief { .. }
         | ContextObject::Game
         | ContextObject::Team(_)
         | ContextObject::Improvement { .. } => Ok(handle),
-        ContextObject::Belief { .. }
-        | ContextObject::Plot(_)
+        ContextObject::Plot(_)
         | ContextObject::Alliance { .. }
         | ContextObject::Emergency { .. } => Err(Error::Missing(
             "DistrictDestroyed source-qualified primary object class",

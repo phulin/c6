@@ -4,10 +4,12 @@ use crate::loaded_actions::pantheon_actions as action;
 use c6_core::loaded_state::LoadedState;
 pub trait Services<'a, P> {
     type Error: std::fmt::Debug;
+    #[allow(clippy::too_many_arguments)]
     fn event(
         &mut self,
         state: &mut LoadedState,
         backend: &mut stock_notifications::Runtime<'a, P>,
+        research: &mut crate::research::Runtime,
         owner: i32,
         event: action::Event,
         defs: &action::Definitions,
@@ -16,6 +18,7 @@ pub trait Services<'a, P> {
 struct Effects<'s, 'a, P, S> {
     backend: &'s mut stock_notifications::Runtime<'a, P>,
     services: &'s mut S,
+    research: &'s mut crate::research::Runtime,
 }
 impl<'a, P, S: Services<'a, P>> action::Effects for Effects<'_, 'a, P, S> {
     type Error = S::Error;
@@ -26,7 +29,8 @@ impl<'a, P, S: Services<'a, P>> action::Effects for Effects<'_, 'a, P, S> {
         event: action::Event,
         defs: &action::Definitions,
     ) -> Result<(), Self::Error> {
-        self.services.event(state, self.backend, owner, event, defs)
+        self.services
+            .event(state, self.backend, self.research, owner, event, defs)
     }
 }
 impl<'a, P> Session<'_, 'a, P> {
@@ -54,6 +58,7 @@ impl<'a, P> Session<'_, 'a, P> {
         let mut effects = Effects {
             backend: &mut self.context.notifications.backend,
             services,
+            research: &mut self.research,
         };
         let result = action::found(
             self.context.notifications.state,

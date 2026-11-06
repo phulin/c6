@@ -13,6 +13,7 @@ pub struct Recipe {
     pub id: Vec<u8>,
     pub child: Vec<u8>,
     pub requirement: Vec<u8>,
+    pub requirement_set: Vec<u8>,
     pub effect: Effect,
     pub amount: i32,
 }
@@ -155,6 +156,7 @@ impl Definitions {
                 id,
                 child,
                 requirement,
+                requirement_set: set.to_vec(),
                 effect,
                 amount,
             });

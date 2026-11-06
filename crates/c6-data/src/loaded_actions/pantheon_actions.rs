@@ -1,6 +1,8 @@
 //! Explicit Linux XP2 pantheon founding. Policies supply the belief; callbacks
 //! remain synchronous and source ordered. Only Initiation Rites effects are
 //! implemented; other legal beliefs are reported with unsupported effects.
+pub mod boosts;
+pub mod current;
 pub mod history;
 pub mod modifiers;
 pub mod stock;
@@ -175,6 +177,7 @@ pub fn available<E>(
 pub enum Event {
     BeliefChosen { belief: i32 },
     FaithChanged { balance_q8: i32 },
+    ReportFaithChanged { balance_q8: i32 },
     CityPantheonChanged { city: u32, old: u32, new: u32 },
     ReportFounded { belief: i32 },
     PantheonFounded { belief: i32 },
@@ -236,6 +239,14 @@ pub fn found<E: Effects>(
             .faith_balance_q8 = new;
         effects
             .event(state, owner, Event::FaithChanged { balance_q8: new }, defs)
+            .map_err(Error::Effects)?;
+        effects
+            .event(
+                state,
+                owner,
+                Event::ReportFaithChanged { balance_q8: new },
+                defs,
+            )
             .map_err(Error::Effects)?;
     }
     let cities = player::<E::Error>(state, owner)?

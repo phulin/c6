@@ -11,19 +11,23 @@ pub enum Listener {
 }
 pub trait Continuations<'a, P> {
     type Error: std::fmt::Debug;
+    #[allow(clippy::too_many_arguments)]
     fn callback(
         &mut self,
         state: &mut LoadedState,
         backend: &mut stock_notifications::Runtime<'a, P>,
+        research: &mut crate::research::Runtime,
         owner: i32,
         event: Event,
         receiver: u64,
         defs: &Definitions,
     ) -> Result<(), Self::Error>;
+    #[allow(clippy::too_many_arguments)]
     fn report(
         &mut self,
         state: &mut LoadedState,
         backend: &mut stock_notifications::Runtime<'a, P>,
+        research: &mut crate::research::Runtime,
         owner: i32,
         event: Event,
         defs: &Definitions,
@@ -49,6 +53,7 @@ impl<'a, P, C: Continuations<'a, P>> session::pantheon::Services<'a, P> for Stoc
         &mut self,
         state: &mut LoadedState,
         backend: &mut stock_notifications::Runtime<'a, P>,
+        research: &mut crate::research::Runtime,
         owner: i32,
         event: Event,
         defs: &Definitions,
@@ -58,10 +63,12 @@ impl<'a, P, C: Continuations<'a, P>> session::pantheon::Services<'a, P> for Stoc
             Event::FaithChanged { .. } => self.faith_changed,
             Event::CityPantheonChanged { .. } => self.city_changed,
             Event::PantheonFounded { .. } => self.founded,
-            Event::ReportFounded { .. } | Event::ReportCity { .. } => {
+            Event::ReportFounded { .. }
+            | Event::ReportCity { .. }
+            | Event::ReportFaithChanged { .. } => {
                 return self
                     .continuations
-                    .report(state, backend, owner, event, defs)
+                    .report(state, backend, research, owner, event, defs)
                     .map_err(Error::Continuation)
             }
         };
@@ -88,6 +95,7 @@ impl<'a, P, C: Continuations<'a, P>> session::pantheon::Services<'a, P> for Stoc
                                 state,
                                 owner,
                                 belief,
+                                &mut owners.requirements,
                                 defs,
                                 &self.current,
                             )
@@ -97,7 +105,7 @@ impl<'a, P, C: Continuations<'a, P>> session::pantheon::Services<'a, P> for Stoc
                 }
                 Listener::Continuation(receiver) => self
                     .continuations
-                    .callback(state, backend, owner, event, receiver, defs)
+                    .callback(state, backend, research, owner, event, receiver, defs)
                     .map_err(Error::Continuation)?,
             }
         }
@@ -106,7 +114,12 @@ impl<'a, P, C: Continuations<'a, P>> session::pantheon::Services<'a, P> for Stoc
             // BeliefChosen. Those listeners follow the captured initial ring.
             backend
                 .with_modifier_owners(|_, owners| {
-                    owners.effects.pantheon_city_changed(state, owner, city)
+                    owners.effects.pantheon_city_changed(
+                        state,
+                        &mut owners.requirements,
+                        owner,
+                        city,
+                    )
                 })
                 .map_err(|_| Error::Missing("canonical pantheon requirement owner"))?
                 .map_err(Error::Modifiers)?;

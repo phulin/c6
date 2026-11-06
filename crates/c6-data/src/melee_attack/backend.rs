@@ -264,6 +264,7 @@ pub struct EffectRuntime {
     city_creation: Option<city_creation::Creation>,
     allocations: allocation::State,
     pantheons: Vec<pantheon::Attachment>,
+    pantheon_requirements: Vec<pantheon::Requirement>,
 }
 #[derive(Debug)]
 pub enum QueryError {
@@ -317,6 +318,7 @@ impl EffectRuntime {
             city_creation: None,
             allocations: allocation::State::from_initial(state),
             pantheons: Vec::new(),
+            pantheon_requirements: Vec::new(),
         })
     }
     fn current_owner(&self, state: &LoadedState) -> Result<(), QueryError> {
