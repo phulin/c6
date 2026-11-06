@@ -12,6 +12,22 @@ pub enum Report {
     IdentityChange { loyalty_level_hash: u32 },
 }
 pub trait Effects {
+    /// Current Player.Districts.GetBuildDistrict2ae2660 authority. Native -1
+    /// returns -1 before array access; all other cells need the current map.
+    fn city_build_district(
+        &mut self,
+        _state: &LoadedState,
+        _owner: i32,
+        district: Option<u32>,
+    ) -> Result<Option<u32>, Error> {
+        match district {
+            None => Ok(None),
+            Some(_) => Err(Error::Unsupported(
+                "current City effect district replacement map",
+            )),
+        }
+    }
+
     fn report(
         &mut self,
         state: &mut LoadedState,

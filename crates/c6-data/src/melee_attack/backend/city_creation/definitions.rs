@@ -194,32 +194,7 @@ fn compile_building(db: &Database, building: &[u8]) -> Result<Compiled> {
             b"COLLECTION_PLAYER_CITIES" => Collection::PlayerCities,
             _ => return Err("unsupported Building City collection".into()),
         };
-        let effect = match required(dynamic, "EffectType")? {
-            b"EFFECT_ADJUST_CITY_INNER_DEFENSE" => CityEffect::InnerDefense {
-                amount: whole_amount(argument(db, &id, b"Amount")?)?,
-            },
-            b"EFFECT_ADJUST_CITY_IDENTITY_PER_TURN" => CityEffect::IdentityPerTurn {
-                amount: whole_amount(argument(db, &id, b"Amount")?)?,
-            },
-            b"EFFECT_ADJUST_CITY_YIELD_CHANGE" => {
-                let yields = match argument(db, &id, b"YieldType")? {
-                    None => vec![],
-                    Some(name) => {
-                        if find(db, "Yields", "YieldType", name)?.is_none() {
-                            return Err("current City effect YieldType".into());
-                        }
-                        vec![linux_type_hash(name)]
-                    }
-                };
-                let amounts = argument(db, &id, b"Amount")?
-                    .map(|value| whole_amount(Some(value)))
-                    .transpose()?
-                    .into_iter()
-                    .collect();
-                CityEffect::YieldChanges { yields, amounts }
-            }
-            _ => return Err("unsupported Building City effect".into()),
-        };
+        let effect = compile_effect(db, &id, required(dynamic, "EffectType")?)?;
         let owner = text(row, "OwnerRequirementSetId")?.map(Vec::from);
         let subject = text(row, "SubjectRequirementSetId")?.map(Vec::from);
         for set_id in owner.iter().chain(subject.iter()) {
@@ -322,6 +297,35 @@ mod tests {
         db
     }
     #[test]
+    fn observed_capture_effects_compile_definition_parameters_and_native_defaults() {
+        let db = database("CREATE TABLE Districts(DistrictType TEXT); INSERT INTO Districts VALUES('D'); CREATE TABLE Features(FeatureType TEXT); INSERT INTO Features(rowid,FeatureType) VALUES(2,'F_SECOND'),(1,'F_FIRST'); INSERT INTO ModifierArguments VALUES('M','DistrictType','ARGTYPE_IDENTITY','D'),('M','YieldType','ARGTYPE_IDENTITY','YIELD_CULTURE'),('M','Amount','ARGTYPE_IDENTITY','50'),('M','FeatureType','ARGTYPE_IDENTITY','F_SECOND');");
+        assert!(
+            matches!(compile_effect(&db, b"M", b"EFFECT_ADJUST_DISTRICT_PRODUCTION").unwrap(), CityEffect::DistrictProduction { district: Some(hash), percent: 50 } if hash == linux_type_hash(b"D"))
+        );
+        assert!(matches!(
+            compile_effect(&db, b"M", b"EFFECT_DISTRICT_ADJACENCY").unwrap(),
+            CityEffect::DistrictAdjacency {
+                tiles_required: 1,
+                amount: 50,
+                ..
+            }
+        ));
+        for (name, target) in [
+            (
+                b"EFFECT_ADJUST_DISTRICT_ADJACENT_NATURAL_WONDER_PRODUCTION".as_slice(),
+                c6_core::found_city::feature_production::Target::District,
+            ),
+            (
+                b"EFFECT_ADJUST_WONDER_ADJACENT_NATURAL_WONDER_PRODUCTION".as_slice(),
+                c6_core::found_city::feature_production::Target::Wonder,
+            ),
+        ] {
+            assert!(
+                matches!(compile_effect(&db,b"M",name).unwrap(), CityEffect::FeatureProduction(effect) if effect.native_feature == 1 && effect.percent == 50 && effect.target == target)
+            );
+        }
+    }
+    #[test]
     fn original_modifier_id_sort_and_flags_are_independent_of_sql_row_order() {
         let db = database("");
         let (rows, sets, requirements) = compile_building(&db, b"B").unwrap();
@@ -391,4 +395,92 @@ mod tests {
         assert_eq!(sets.len(), 1);
         assert!(sets[0].1.is_none());
     }
+}
+
+/// Compile the same typed parameters for an observed current modifier and for
+/// fresh attachments. Runtime application still requires the shared tracker.
+pub fn compile_effect(db: &Database, id: &[u8], effect_type: &[u8]) -> Result<CityEffect> {
+    Ok(match effect_type {
+        b"EFFECT_ADJUST_CITY_INNER_DEFENSE" => CityEffect::InnerDefense {
+            amount: whole_amount(argument(db, id, b"Amount")?)?,
+        },
+        b"EFFECT_ADJUST_CITY_IDENTITY_PER_TURN" => CityEffect::IdentityPerTurn {
+            amount: whole_amount(argument(db, id, b"Amount")?)?,
+        },
+        b"EFFECT_ADJUST_CITY_YIELD_CHANGE" => {
+            let yields = match argument(db, id, b"YieldType")? {
+                None => vec![],
+                Some(name) => {
+                    if find(db, "Yields", "YieldType", name)?.is_none() {
+                        return Err("current City effect YieldType".into());
+                    }
+                    vec![linux_type_hash(name)]
+                }
+            };
+            let amounts = argument(db, id, b"Amount")?
+                .map(|value| whole_amount(Some(value)))
+                .transpose()?
+                .into_iter()
+                .collect();
+            CityEffect::YieldChanges { yields, amounts }
+        }
+        b"EFFECT_ADJUST_DISTRICT_PRODUCTION" => CityEffect::DistrictProduction {
+            district: definition_argument(db, id, b"DistrictType", "Districts", "DistrictType")?,
+            percent: whole_amount(argument(db, id, b"Amount")?)?,
+        },
+        b"EFFECT_DISTRICT_ADJACENCY" => CityEffect::DistrictAdjacency {
+            district: definition_argument(db, id, b"DistrictType", "Districts", "DistrictType")?
+                .unwrap_or(u32::MAX),
+            yield_hash: definition_argument(db, id, b"YieldType", "Yields", "YieldType")?
+                .unwrap_or(u32::MAX),
+            amount: whole_amount(argument(db, id, b"Amount")?)?,
+            tiles_required: argument(db, id, b"TilesRequired")?
+                .map(|v| whole_amount(Some(v)))
+                .transpose()?
+                .unwrap_or(1),
+            description: argument(db, id, b"Description")?
+                .unwrap_or_default()
+                .to_vec(),
+        },
+        b"EFFECT_ADJUST_DISTRICT_ADJACENT_NATURAL_WONDER_PRODUCTION"
+        | b"EFFECT_ADJUST_WONDER_ADJACENT_NATURAL_WONDER_PRODUCTION" => {
+            let feature = argument(db, id, b"FeatureType")?;
+            let native_feature = match feature {
+                None => -1,
+                Some(name) => {
+                    let mut rows = table(db, "Features")?.rows().collect::<Vec<_>>();
+                    rows.sort_by_key(|row| row.row_id());
+                    rows.iter()
+                        .position(|row| text(*row, "FeatureType").ok().flatten() == Some(name))
+                        .map(|i| i as i32)
+                        .unwrap_or(-1)
+                }
+            };
+            CityEffect::FeatureProduction(c6_core::found_city::feature_production::Effect {
+                target: if effect_type
+                    == b"EFFECT_ADJUST_DISTRICT_ADJACENT_NATURAL_WONDER_PRODUCTION"
+                {
+                    c6_core::found_city::feature_production::Target::District
+                } else {
+                    c6_core::found_city::feature_production::Target::Wonder
+                },
+                native_feature,
+                percent: whole_amount(argument(db, id, b"Amount")?)?,
+            })
+        }
+        _ => return Err("unsupported Building City effect".into()),
+    })
+}
+
+fn definition_argument(
+    db: &Database,
+    id: &[u8],
+    argument_name: &[u8],
+    table_name: &str,
+    type_column: &str,
+) -> Result<Option<u32>> {
+    let Some(name) = argument(db, id, argument_name)? else {
+        return Ok(None);
+    };
+    Ok(find(db, table_name, type_column, name)?.map(|_| linux_type_hash(name)))
 }

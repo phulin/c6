@@ -91,6 +91,17 @@ pub enum CityEffect {
         native_type: u64,
     },
     FeatureProduction(c6_core::found_city::feature_production::Effect),
+    DistrictProduction {
+        district: Option<u32>,
+        percent: i32,
+    },
+    DistrictAdjacency {
+        district: u32,
+        yield_hash: u32,
+        amount: i32,
+        tiles_required: i32,
+        description: Vec<u8>,
+    },
     IdentityPerTurn {
         amount: i32,
     },
@@ -136,6 +147,33 @@ impl CityEffect {
                 state, city, features, *effect, remove,
             )
             .map_err(CityEffectError::FeatureProduction),
+            Self::DistrictProduction { district, percent } => {
+                crate::city_destroy::effects::district_production(
+                    state, city, *district, *percent, remove,
+                )
+                .map_err(CityEffectError::Production)?;
+                Ok(true)
+            }
+            Self::DistrictAdjacency {
+                district,
+                yield_hash,
+                amount,
+                tiles_required,
+                description,
+            } => {
+                crate::city_destroy::effects::district_adjacency(
+                    state,
+                    city,
+                    *district,
+                    *yield_hash,
+                    *amount,
+                    *tiles_required,
+                    description,
+                    remove,
+                )
+                .map_err(CityEffectError::Production)?;
+                Ok(true)
+            }
             Self::InnerDefense { amount } => {
                 let combat = &mut state
                     .city_mut(i32::from(city.owner), city.id)
@@ -452,6 +490,35 @@ impl EffectRuntime {
         self.effects
             .push((identity, EffectState::City { context, effect }));
         Ok(())
+    }
+    /// Resolve the current subject owner's replacement and persist the native
+    /// effect parameter write before executing its production leaf.
+    pub fn prepare_city_effect(
+        &mut self,
+        state: &LoadedState,
+        identity: u64,
+        city: ComponentId,
+        effects: &mut impl crate::city_production_turn::modifier_effects::Effects,
+    ) -> Result<(u64, CityEffect), CityEffectError> {
+        let (_, effect) = self.city_effect(identity).map_err(CityEffectError::Query)?;
+        if let CityEffect::DistrictProduction { district, .. } = effect {
+            let mapped = effects
+                .city_build_district(state, i32::from(city.owner), district)
+                .map_err(CityEffectError::Production)?;
+            let row = self
+                .effects
+                .iter_mut()
+                .find(|row| row.0 == identity)
+                .ok_or(CityEffectError::Query(QueryError::MissingEffect(identity)))?;
+            if let EffectState::City {
+                effect: CityEffect::DistrictProduction { district, .. },
+                ..
+            } = &mut row.1
+            {
+                *district = mapped;
+            }
+        }
+        self.city_effect(identity).map_err(CityEffectError::Query)
     }
     pub fn city_effect(&self, identity: u64) -> Result<(u64, CityEffect), QueryError> {
         match self.effect(identity)? {
