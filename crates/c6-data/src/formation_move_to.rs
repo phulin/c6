@@ -190,6 +190,7 @@ pub enum Error<E, P> {
         c6_core::movement_execution::FormationMovementError<crate::loaded_upkeep::Error<E>>,
     ),
     Unsupported(&'static str),
+    Capture(String),
 }
 
 fn preflight_children(state: &LoadedState, identity: (i32, u32)) -> Result<(), path::Error> {
@@ -234,28 +235,35 @@ fn preflight_children(state: &LoadedState, identity: (i32, u32)) -> Result<(), p
 
 /// Native post-Placement capture scan over the selected Plot and current
 /// Formation layer (2947add..2947e1d). The empty-candidate continuation includes
-/// the moving combat Unit itself. Noncombat candidates retain their explicit
-/// unsupported definition/diplomacy/capture continuation.
-fn capture_scan<E, P>(
-    state: &LoadedState,
+/// the moving combat Unit itself. Noncombat candidates use the supplied current
+/// capture services; unavailable or unsupported continuations remain errors.
+fn capture_scan<E, T, P, C: crate::civilian_capture::Capture<E>>(
+    state: &mut LoadedState,
     definitions: &path::Definitions<'_, '_>,
     identity: (i32, u32),
     target: PlotCoord,
-) -> Result<(), Error<E, P>> {
+    handler: &mut C,
+    mut continuation: Option<(&mut crate::unit_sight_state::Runtime, &mut E)>,
+) -> Result<(), Error<T, P>> {
     let record = formation(state, identity).map_err(Error::Query)?;
     if !record.can_capture {
         return Ok(());
     }
-    let world = state.world();
-    let layer = unit_placement::formation_layer(world, record)
+    let layer = unit_placement::formation_layer(state.world(), record)
         .map_err(|e| Error::Query(path::Error::PlacementQuery(e)))?
         .ok_or(Error::Unsupported(
             "MoveTo capture scan missing current layer",
         ))?;
-    let units = unit_placement::units_at(world, Some(layer), target)
-        .map_err(|e| Error::Query(path::Error::PlacementQuery(e)))?;
-    for &reference in units.iter().rev() {
-        let Some(unit) = world
+    let count = unit_placement::units_at(state.world(), Some(layer), target)
+        .map_err(|e| Error::Query(path::Error::PlacementQuery(e)))?
+        .len();
+    for index in (0..count).rev() {
+        let reference = *unit_placement::units_at(state.world(), Some(layer), target)
+            .map_err(|e| Error::Query(path::Error::PlacementQuery(e)))?
+            .get(index)
+            .ok_or(Error::Unsupported("capture plot-unit cursor invalidated"))?;
+        let Some(unit) = state
+            .world()
             .unit(reference)
             .map_err(|e| Error::Query(path::Error::World(e)))?
         else {
@@ -285,7 +293,16 @@ fn capture_scan<E, P>(
         {
             continue;
         }
-        return Err(Error::Unsupported("MoveTo noncombat capture candidate"));
+        let victim = (unit.e_owner, unit.id);
+        if let Some((visibility, effects)) = continuation.as_mut() {
+            handler
+                .capture(state, visibility, effects, identity, victim)
+                .map_err(Error::Capture)?;
+        } else {
+            handler
+                .preflight(state, identity, victim)
+                .map_err(Error::Capture)?;
+        }
     }
     Ok(())
 }
@@ -298,7 +315,7 @@ fn placement_flags(flags: u32) -> u32 {
 // Its closure permits the Formation member loop to retain the same live E/state
 // borrows while the existing Unit adapter executes each member in native order.
 #[allow(clippy::too_many_arguments)]
-fn execute<'a, 'r, E, P>(
+fn execute<'a, 'r, E, P, C: crate::civilian_capture::Capture<E>>(
     state: &mut LoadedState,
     definitions: &'a path::Definitions<'a, 'r>,
     configuration: &Configuration<'_>,
@@ -308,6 +325,7 @@ fn execute<'a, 'r, E, P>(
     destination: PlotCoord,
     flags: u32,
     effects: &mut E,
+    capture: &mut C,
     mut place: impl FnMut(
         &mut LoadedState,
         &mut crate::unit_sight_state::Runtime,
@@ -337,7 +355,7 @@ where
     // Reject the current known noncombat-candidate branch before mutation.
     // Placement callbacks can change membership; the native scan is repeated
     // below in its actual post-Placement position over the selected step.
-    capture_scan(state, definitions, identity, destination)?;
+    capture_scan(state, definitions, identity, destination, capture, None)?;
     preflight_children(state, identity).map_err(Error::Query)?;
     upkeep::preflight_formation_movement(
         state,
@@ -494,7 +512,14 @@ where
     let result =
         place(state, visibility, effects, identity, to, validate).map_err(Error::Placement)?;
     if result == 1 {
-        capture_scan(state, definitions, identity, to)?;
+        capture_scan(
+            state,
+            definitions,
+            identity,
+            to,
+            capture,
+            Some((visibility, effects)),
+        )?;
         upkeep::change_formation_moves(
             state,
             identity.0,
@@ -613,6 +638,49 @@ where
             Error = crate::unit_placement_state::EffectsError<E>,
         >,
 {
+    move_to_with_capture(
+        state,
+        definitions,
+        placement_definitions,
+        queries,
+        visibility,
+        search,
+        identity,
+        destination,
+        flags,
+        execution,
+        effects,
+        &mut crate::civilian_capture::Unavailable,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn move_to_with_capture<'a, 'r, E, C: crate::civilian_capture::Capture<E>>(
+    state: &mut LoadedState,
+    definitions: &'a path::Definitions<'a, 'r>,
+    placement_definitions: &crate::unit_placement_state::Definitions<'_, '_>,
+    queries: &crate::unit_placement_state::Queries<'_>,
+    visibility: &mut crate::unit_sight_state::Runtime,
+    search: &mut TwoLayer,
+    identity: (i32, u32),
+    destination: PlotCoord,
+    flags: u32,
+    execution: path::ExecutionContext,
+    effects: &mut E,
+    capture: &mut C,
+) -> Result<
+    i32,
+    Error<
+        crate::unit_placement_state::EffectsError<E>,
+        PlacementError<crate::unit_placement_state::EffectsError<E>>,
+    >,
+>
+where
+    E: crate::unit_placement_state::Effects
+        + crate::loaded_upkeep::FormationRestoreEffects<
+            Error = crate::unit_placement_state::EffectsError<E>,
+        >,
+{
     placement_definitions
         .validate_binding(state)
         .map_err(|e| Error::Query(path::Error::Rules(e)))?;
@@ -672,6 +740,7 @@ where
         destination,
         flags,
         effects,
+        capture,
         |state, visibility, effects, identity, destination, validation_flags| {
             let record = state
                 .world()
