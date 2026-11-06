@@ -845,6 +845,16 @@ pub(crate) fn bombard_attack_modifier<'a>(
     definitions
         .check(state)
         .map_err(|e| kernel::AttackError::Opening(kernel::Error::Query(e)))?;
+    // The native null/delayed-death opening returns before domain or penalty
+    // queries. Both canonical references are present in this Unit/Unit path.
+    for reference in [defender, attacker] {
+        if super::actor(state, reference)
+            .map_err(|e| kernel::AttackError::Opening(kernel::Error::Query(Error::Actor(e))))?
+            .b_delayed_death
+        {
+            return Ok(0);
+        }
+    }
     let total = kernel::ordinary_attack_modifier(&mut CurrentAttack {
         state,
         definitions,
