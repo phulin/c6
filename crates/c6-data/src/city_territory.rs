@@ -1,5 +1,6 @@
 //! Live city territory transitions over canonical Map and City records.
 //! Unsaved plot attributes and PlotYields objects remain explicit current state.
+pub mod buyable;
 pub mod lifecycle;
 use crate::{
     loaded_actions::city_range_attack, registry::linux_type_hash, unit_sight_state, Rules,
@@ -229,8 +230,16 @@ pub trait Effects: unit_sight_state::Effects {
         old_city: CityId,
     ) -> Result<(), Self::Error>;
     /// Exact ordered GetBuyablePlotList, before this adapter's one sync draw.
-    fn buyable_plots(&mut self, state: &LoadedState, city: CityId)
-        -> Result<Vec<u32>, Self::Error>;
+    fn buyable_plots(
+        &mut self,
+        state: &LoadedState,
+        territory: &Runtime,
+        city: CityId,
+    ) -> Result<Vec<u32>, Self::Error>;
+    /// Observe an already consumed canonical draw for output/comparison. This
+    /// is not a native gameplay subscriber; omitting observation never omits
+    /// the GameSync call, including a deterministic bound-one draw.
+    fn plot_acquisition_draw(&mut self, _draw: crate::melee_attack::damage::RandomDraw) {}
 }
 pub struct Context<'a, E> {
     pub state: &'a mut LoadedState,
@@ -707,15 +716,22 @@ impl<E: Effects> kernel::AcquireContext for Context<'_, E> {
     fn next_buyable_plot(&mut self) -> Result<Option<u32>, Self::Error> {
         let plots = self
             .effects
-            .buyable_plots(self.state, self.city)
+            .buyable_plots(self.state, self.runtime, self.city)
             .map_err(Error::Effect)?;
         if plots.is_empty() {
             return Ok(None);
         }
-        let at = self
-            .state
-            .game_sync_rand(plots.len() as u16)
-            .map_err(Error::Random)?;
+        let bound = plots.len() as u16;
+        let before = *self.state.game_sync().map_err(Error::Random)?.record;
+        let at = self.state.game_sync_rand(bound).map_err(Error::Random)?;
+        let after = *self.state.game_sync().map_err(Error::Random)?.record;
+        self.effects
+            .plot_acquisition_draw(crate::melee_attack::damage::RandomDraw {
+                bound,
+                value: at,
+                before,
+                after,
+            });
         let plot = *plots
             .get(at as usize)
             .ok_or(Error::Missing("buyable plot draw index"))?;
