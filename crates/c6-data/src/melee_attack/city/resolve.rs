@@ -136,9 +136,17 @@ where
     {
         return Err(error("attacker damage", "Unit death continuation"));
     }
-    // No-wall Resolve skips its generated outer damage application entirely.
-    if members.outer_maximum_damage > 0 {
-        return Err(error("District damage", "outer defense continuation"));
+    // ResolveMeleeUnitVsDistrictCombat applies positive outer damage before
+    // garrison damage, using the precombat proposal even when this exhausts walls.
+    if members.outer_damage > 0 && members.outer_maximum_damage > 0 {
+        change_district_damage(
+            state,
+            effects,
+            members.defender,
+            members.outer_damage,
+            members.outer_maximum_damage,
+            true,
+        )?;
     }
     change_district_damage(
         state,

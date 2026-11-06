@@ -265,20 +265,20 @@ where
     };
     let outer_max = district::maximum_damage(state, d, &definitions.district, rules.levels, true)
         .map_err(|e| error("maximum", e))?;
-    if outer_max != 0 {
-        return Err(error("scope", "outer defenses continuation"));
-    }
     let defender_max =
         district::maximum_damage(state, d, &definitions.district, rules.levels, false)
             .map_err(|e| error("maximum", e))?;
     let initial_defender_damage = d.garrison_damage;
     let initial_outer_damage = d.outer_defenses_damage;
-    if initial_outer_damage != 0 {
+    if outer_max == 0 && initial_outer_damage != 0 {
         return Err(error("scope", "nonzero absent outer defenses damage"));
     }
     let owning = district::district_city(state, d).map_err(|e| error("defender", e))?;
     let prevent_bypass = owning.header.prevent_bypass_outer_defenses > 0;
     let prevent_outer = owning.header.prevent_melee_attack_outer_defenses > 0;
+    if outer_max > 0 && (prevent_bypass || prevent_outer) {
+        return Err(error("scope", "special wall prevention modifiers"));
+    }
     let attacker_strength = rules
         .formation
         .combat(state, unit)
@@ -471,7 +471,11 @@ where
         defender_strength_q8: defender_strength,
         attacker_modifier_q8: attack_modifier,
         defender_modifier_q8: defense_modifier,
-        defense_type: 0x5e97d629,
+        defense_type: if initial_outer_damage == outer_max || bypass {
+            0x5e97d629
+        } else {
+            0x6da56a3d
+        },
         attacker_damage,
         defender_damage,
         outer_damage,
