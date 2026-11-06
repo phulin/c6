@@ -643,14 +643,35 @@ impl Manager {
         {
             return Err(fail("first meeting history inventory"));
         }
-        if choice == Choice::Positive {
-            if handles
+        if info_exchange {
+            for (index, from, to, response) in [
+                (0, context.ai.owner, context.human.owner, INITIAL_RESPONSE),
+                (1, context.human.owner, context.ai.owner, POSITIVE_RESPONSE),
+            ] {
+                let previous = inventory
+                    .iter()
+                    .find(|s| s.handle == metadata.history[index])
+                    .ok_or(fail("first meeting prior history"))?;
+                if previous.from != from
+                    || previous.to != to
+                    || previous.session_id != decision.session.id
+                    || !matches!(previous.kind, StatementKind::FirstMeeting {
+                        type_hash: crate::diplomacy_meeting::NEUTRAL_MEETING,
+                        initiator, response_type, hospitality_city,
+                    } if initiator == context.ai.owner && response_type == response
+                        && hospitality_city.x == -9999 && hospitality_city.y == -9999)
+                {
+                    return Err(fail("first meeting prior history payload"));
+                }
+            }
+        }
+        if choice == Choice::Positive
+            && handles
                 .iter()
                 .enumerate()
                 .any(|(i, h)| handles[..i].contains(h) || inventory.iter().any(|s| s.handle == *h))
-            {
-                return Err(fail("fresh first meeting response identities"));
-            }
+        {
+            return Err(fail("fresh first meeting response identities"));
         }
         Ok(ChoicePlan {
             owner: self.drain_owner,
