@@ -9,6 +9,9 @@ pub enum Stage {
     Tactical,
     Homeland,
     CityBuild,
+    CityBuildDeactivation,
+    CityPurchaseDeactivation,
+    ReligiousDeactivation,
     CultureGovernmentPolicies,
     Governors,
     Economic,
@@ -25,7 +28,7 @@ pub struct Context {
     city_ai_id: Option<u32>,
 }
 impl Context {
-    /// Current CityBuild identity at the per-city activation boundary.
+    /// Current CityBuild identity at a per-city policy boundary.
     pub fn city_ai_id(&self) -> Option<u32> {
         self.city_ai_id
     }
@@ -53,6 +56,16 @@ pub trait Provider<P> {
         backend: &mut Runtime<'_, P>,
         context: &Context,
     ) -> Result<(), String>;
+    /// Deactivation sites require an explicit response, including an explicit
+    /// defer. Existing activation/unit providers do not silently choose for them.
+    fn provide_deactivation(
+        &mut self,
+        _state: &mut LoadedState,
+        _backend: &mut Runtime<'_, P>,
+        _context: &Context,
+    ) -> Result<(), String> {
+        Err("external deactivation policy response is not bound".into())
+    }
     /// New activation sites require an explicit implementation. A provider for
     /// existing unit stages cannot accidentally defer unrelated decisions.
     fn provide_activation(
@@ -104,6 +117,36 @@ impl<'a, P> Runtime<'a, P> {
         let priority =
             c6_core::loaded_state::game_update::human_activation::current_priority(state, owner)?;
         self.policy_decisions(state, owner, stage, priority, city_ai_id, true)
+    }
+
+    pub(super) fn deactivation_policy_decisions(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        stage: Stage,
+        priority: i32,
+        city_ai_id: Option<u32>,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Unsupported("NPC deactivation policy runtime"))?;
+        let Some(mut provider) = self.npc_unit_decisions.take() else {
+            return Err(Error::ExternalDecisionRequired(
+                "NPC deactivation requires explicit external policy response",
+            ));
+        };
+        let context = Context {
+            owner,
+            stage,
+            priority,
+            turn: state.retained().core.current_turn,
+            city_ai_id,
+        };
+        let result = provider.provide_deactivation(state, self, &context);
+        self.npc_unit_decisions = Some(provider);
+        result.map_err(|cause| {
+            self.last_error = Some(format!("external NPC deactivation decision: {cause}"));
+            Error::Unsupported("external NPC deactivation decision provider")
+        })
     }
 
     fn policy_decisions(

@@ -25,6 +25,8 @@ pub struct Inputs {
     pub configured: Vec<(Kind, i32)>,
     pub civilization_level: u32,
     pub planning_instance_count: Option<usize>,
+    city_priorities: Option<Vec<(u32, i32)>>,
+    city_purchase_priorities: Option<Vec<(u32, i32)>>,
 }
 impl Inputs {
     #[allow(clippy::too_many_arguments)]
@@ -53,7 +55,35 @@ impl Inputs {
             configured,
             civilization_level,
             planning_instance_count,
+            city_priorities: None,
+            city_purchase_priorities: None,
         })
+    }
+    /// Current unsaved CityBuild+1a0 fields, keyed by recycled City AI ID.
+    /// A missing priority is rejected only when its current city is reached.
+    pub fn with_city_priorities(mut self, priorities: Vec<(u32, i32)>) -> Result<Self, Error> {
+        for (index, &(id, _)) in priorities.iter().enumerate() {
+            if priorities[..index].iter().any(|v| v.0 == id) {
+                return Err(Error::Unsupported(
+                    "duplicate NPC deactivation CityBuild identity",
+                ));
+            }
+        }
+        self.city_priorities = Some(priorities);
+        Ok(self)
+    }
+    /// Current unsaved CityBuild+e0 values. The native DoTurn tests MAX
+    /// before GetBestUnitToBuild/TryPurchaseUnit; these are not readiness answers.
+    pub fn with_city_purchase_priorities(mut self, values: Vec<(u32, i32)>) -> Result<Self, Error> {
+        for (index, &(id, _)) in values.iter().enumerate() {
+            if values[..index].iter().any(|v| v.0 == id) {
+                return Err(Error::Unsupported(
+                    "duplicate NPC city purchase priority identity",
+                ));
+            }
+        }
+        self.city_purchase_priorities = Some(values);
+        Ok(self)
     }
     fn configured(&self, kind: Kind) -> Result<i32, Error> {
         self.configured
@@ -121,23 +151,6 @@ fn tactical_end(state: &LoadedState, owner: i32) -> Result<(), Error> {
     }
     Ok(())
 }
-fn no_cities(state: &LoadedState, owner: i32) -> Result<(), Error> {
-    let p = player(state, owner)?;
-    if p.cities.records.entries.is_empty()
-        && p.ai_city_manager
-            .as_ref()
-            .ok_or(Error::Unsupported("current NPC CityManager"))?
-            .city_ais
-            .entries
-            .is_empty()
-    {
-        Ok(())
-    } else {
-        Err(Error::Unsupported(
-            "NPC CityBuild deactivation continuation",
-        ))
-    }
-}
 fn no_trees(state: &LoadedState, owner: i32) -> Result<(), Error> {
     if player(state, owner)?
         .ai_behavior_tree
@@ -182,15 +195,102 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                     return Err(Error::Unsupported("NPC new war operation continuation"));
                 }
             }
-            Kind::City => no_cities(state, owner)?,
+            Kind::City => {
+                let manager = player(state, owner)?
+                    .ai_city_manager
+                    .as_ref()
+                    .ok_or(Error::Unsupported("current NPC CityManager"))?;
+                // CityManager1fcfa90 visits every current CityBuild in roster
+                // order. Each checks its own priority before production policy.
+                let mut reached = Vec::new();
+                for entry in &manager.city_ais.entries {
+                    let id = entry.city_build.city_ai_id;
+                    let configured = self
+                        .inputs
+                        .city_priorities
+                        .as_ref()
+                        .and_then(|v| v.iter().find(|v| v.0 == id))
+                        .ok_or(Error::Unsupported(
+                            "current NPC deactivation CityBuild priority",
+                        ))?
+                        .1;
+                    if current == configured {
+                        reached.push((id, entry.city_build.city_id));
+                    }
+                }
+                for (id, city_id) in reached {
+                    // Front1fde517 precedes QueueNextBuild. A populated queue
+                    // must not invent a production choice on the inert branch.
+                    if state
+                        .city(owner, city_id)
+                        .map_err(|_| Error::Unsupported("NPC current production city"))?
+                        .build_queue
+                        .entries
+                        .is_empty()
+                    {
+                        self.backend.deactivation_policy_decisions(
+                            state,
+                            owner,
+                            super::npc_unit_decisions::Stage::CityBuildDeactivation,
+                            current,
+                            Some(id),
+                        )?;
+                    }
+                    let purchase = self
+                        .inputs
+                        .city_purchase_priorities
+                        .as_ref()
+                        .and_then(|v| v.iter().find(|v| v.0 == id))
+                        .ok_or(Error::Unsupported(
+                            "current NPC CityBuild purchase priority",
+                        ))?
+                        .1;
+                    if purchase != -1 {
+                        // 1fde53d..1fde59a selects/purchases units until the
+                        // policy stops. Preserve explicit actions and their RNG
+                        // through the ordinary operation owner, never native AI.
+                        self.backend.deactivation_policy_decisions(
+                            state,
+                            owner,
+                            super::npc_unit_decisions::Stage::CityPurchaseDeactivation,
+                            current,
+                            Some(id),
+                        )?;
+                    }
+                }
+            }
             Kind::BehaviorTree => no_trees(state, owner)?,
             Kind::Religious => {
                 if current == self.inputs.configured(kind)?
                     && self.inputs.civilization_level == 0x253718b0
                 {
-                    return Err(Error::Unsupported(
-                        "major NPC Religious deactivation continuation",
-                    ));
+                    let body = state
+                        .retained()
+                        .global_ai
+                        .religious
+                        .entries
+                        .iter()
+                        .filter_map(|r| r.body.as_ref())
+                        .find(|r| r.player_ordinal == owner)
+                        .ok_or(Error::Unsupported(
+                            "current NPC Religious deactivation owner",
+                        ))?;
+                    if body.handle.player_ordinal >= 0 && body.handle.id != u32::MAX {
+                        // 2173f70..2173f93 cancels/releases a real contract.
+                        return Err(Error::Unsupported(
+                            "NPC Religious existing contract cancellation",
+                        ));
+                    }
+                    // 2173f01..2173f22 clears a native desire score. The
+                    // remaining no-handle suffix ranks units/cities and creates
+                    // purchase requests; all of those choices are external.
+                    self.backend.deactivation_policy_decisions(
+                        state,
+                        owner,
+                        super::npc_unit_decisions::Stage::ReligiousDeactivation,
+                        current,
+                        None,
+                    )?;
                 }
                 // Nonmajor returns before contracts, purchase or selection.
                 // Its cleared desire entry is an omitted native policy score.
@@ -287,7 +387,9 @@ impl<P> loaded::npc_deactivation::Effects for Effects<'_, '_, '_, P> {
                 // contract as npc_leaves::Planning), not gameplay owners.
                 Ok(())
             }
-            Kind::City => no_cities(state, owner),
+            // CityManager1fcfb20 iterates CityBuild.DoTurnDeactivate1fde5b0,
+            // whose entire original body is RET; no state, callback or RNG.
+            Kind::City => Ok(()),
             Kind::Research => {
                 let techs = &player(state, owner)?.techs;
                 if techs
