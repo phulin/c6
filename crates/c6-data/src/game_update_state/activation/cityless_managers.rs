@@ -733,17 +733,42 @@ pub fn after_units(state: &mut LoadedState, defs: &Definitions, owner: i32) -> R
             continue;
         }
         let index = usize::try_from(index).map_err(|_| missing("trade definition index"))?;
+        let hash = c6_core::movement_world::DefinitionLookup::type_hash(&defs.units, index)
+            .ok_or(missing("trade definition identity"))?;
+        if u.e_type_index != hash && u.e_type_index != index as u32 {
+            return Err(missing("trade saved/native unit identity"));
+        }
         if *defs
             .traders
             .get(index)
             .ok_or(missing("trade unit definition"))?
         {
+            // Unit.Trade.IsOnActiveRoute2c48670 tests both current city
+            // components then the directed active edge/full Trader identity.
+            // ComponentID.IsInvalid21a37d0 ignores component_type.
+            let invalid = |c: c6_core::unit::ComponentId| c.owner == -1 && c.id == u32::MAX;
+            let from = u.k_trade.k_origin_trade_city;
+            let to = u.k_trade.k_destination_trade_city;
+            let city = |c: c6_core::unit::ComponentId| c6_core::trade::ComponentId {
+                owner: c.owner,
+                component_type: c.component_type,
+                id: c.id,
+            };
+            let trader = c6_core::trade::ComponentId {
+                owner: u.e_owner as i16,
+                component_type: 1,
+                id: u.id,
+            };
+            if !invalid(from)
+                && !invalid(to)
+                && state
+                    .trade_graph()
+                    .map_err(|_| missing("trade current graph"))?
+                    .has_outgoing_route(city(from), city(to), trader)
+            {
+                continue;
+            }
             return Err(missing("idle-trader path update"));
-        }
-        let hash = c6_core::movement_world::DefinitionLookup::type_hash(&defs.units, index)
-            .ok_or(missing("trade definition identity"))?;
-        if u.e_type_index != hash && u.e_type_index != index as u32 {
-            return Err(missing("trade saved/native unit identity"));
         }
     }
     Ok(())
