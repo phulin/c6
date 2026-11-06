@@ -2,10 +2,12 @@
 pub mod cityless_managers;
 pub mod forced_rebase;
 pub mod maintenance;
+pub mod opinion_subject_graph;
 pub mod relationship_requirements;
 pub mod requirement_changes;
 pub mod round;
 pub mod social;
+pub mod trade_relations_opinion;
 pub mod treasury_deals;
 pub mod turn_started;
 pub mod upkeep;

@@ -65,6 +65,7 @@ pub struct Modifiers {
     activations: Vec<Activation>,
     modifiers: Vec<Modifier>,
     objects: Vec<Object>,
+    opinion_graph: Option<crate::game_update_state::activation::opinion_subject_graph::Runtime>,
 }
 impl Modifiers {
     pub fn from_current(
@@ -92,6 +93,7 @@ impl Modifiers {
             activations: Vec::new(),
             modifiers,
             objects,
+            opinion_graph: None,
         };
         for m in &result.modifiers {
             for s in &m.tracked {
@@ -187,6 +189,19 @@ impl Modifiers {
         let sets::SetListener::Subject(label) = listener else {
             return Err(Error::Missing("diplomacy non-subject modifier listener"));
         };
+        if self
+            .opinion_graph
+            .as_ref()
+            .is_some_and(|g| g.contains(label))
+        {
+            return self
+                .with_opinion_graph(|graph, canonical| {
+                    graph
+                        .subject_changed(state, requirements, canonical, label, set)
+                        .map(|_| ())
+                })
+                .map_err(Error::Missing);
+        }
         let modifier = self
             .modifiers
             .iter()
@@ -205,6 +220,87 @@ impl Modifiers {
             subject,
         })
         .map(|_| ())
+    }
+    pub fn bind_opinion_graph(
+        &mut self,
+        graph: crate::game_update_state::activation::opinion_subject_graph::Runtime,
+    ) -> Result<(), Error> {
+        if self.opinion_graph.is_some()
+            || graph
+                .rows()
+                .iter()
+                .any(|r| !self.modifiers.iter().any(|m| m.label == r.label))
+        {
+            return Err(Error::Missing("canonical opinion graph binding"));
+        }
+        self.opinion_graph = Some(graph);
+        Ok(())
+    }
+    pub fn opinion_graph(
+        &self,
+    ) -> Option<&crate::game_update_state::activation::opinion_subject_graph::Runtime> {
+        self.opinion_graph.as_ref()
+    }
+    /// Loan metadata while retaining the sole mutable physical graph owner.
+    /// Restore it on ordinary errors so unsupported transitions stay inspectable.
+    pub fn with_opinion_graph<T>(
+        &mut self,
+        f: impl FnOnce(
+            &mut crate::game_update_state::activation::opinion_subject_graph::Runtime,
+            &mut Self,
+        ) -> Result<T, &'static str>,
+    ) -> Result<T, &'static str> {
+        let mut graph = self
+            .opinion_graph
+            .take()
+            .ok_or("canonical opinion graph absent")?;
+        let result = f(&mut graph, self);
+        self.opinion_graph = Some(graph);
+        result
+    }
+    /// Merge additional current receivers into this same physical-object owner.
+    /// Shared Player wrappers must describe the identical current affected list.
+    pub fn merge_current(
+        &mut self,
+        state: &LoadedState,
+        modifiers: Vec<Modifier>,
+        objects: Vec<Object>,
+    ) -> Result<(), Error> {
+        if !self.stamp.same_instance(state.action_stamp()) || !state.is_pristine() {
+            return Err(Error::Missing("modifier import after mutation"));
+        }
+        let incoming = Self::from_current(state, modifiers, objects)?;
+        for object in &incoming.objects {
+            if let Some(old) = self.objects.iter().find(|o| o.label == object.label) {
+                if (old.owner, old.first, old.second, &old.affected)
+                    != (object.owner, object.first, object.second, &object.affected)
+                {
+                    return Err(Error::Missing("aliased Player modifier object differs"));
+                }
+            }
+        }
+        if incoming
+            .modifiers
+            .iter()
+            .any(|m| self.modifiers.iter().any(|old| old.label == m.label))
+        {
+            return Err(Error::Missing("duplicate canonical modifier receiver"));
+        }
+        for object in incoming.objects {
+            if !self.objects.iter().any(|o| o.label == object.label) {
+                self.objects.push(object);
+            }
+        }
+        self.modifiers.extend(incoming.modifiers);
+        Ok(())
+    }
+    /// Borrow live controls for an additional source-qualified modifier family.
+    pub fn modifier_mut(&mut self, label: u64) -> Option<&mut Modifier> {
+        self.modifiers.iter_mut().find(|m| m.label == label)
+    }
+    /// Borrow the sole affected-instance list for this physical Player wrapper.
+    pub fn object_mut(&mut self, label: u64) -> Option<&mut Object> {
+        self.objects.iter_mut().find(|o| o.label == label)
     }
     pub fn activations(&self) -> &[Activation] {
         &self.activations
