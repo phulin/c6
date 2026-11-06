@@ -1,6 +1,7 @@
 //! Linux XP2 ordinary noncombat capture, joined to the existing Unit factory,
 //! delayed death, placement and movement owners. The first supported profile is
 //! an unembarked, undamaged Settler; other reached branches remain explicit.
+pub mod generation;
 mod query;
 pub mod stock;
 
@@ -16,12 +17,27 @@ use c6_core::{
     unit::{ComponentId, PlotCoord, Unit},
 };
 
-/// Called by Formation.MoveTo in the actual post-Placement scan. Admission is
-/// read-only; effects execute on the same state and callback owners as movement.
+/// Shared noncombat services for Formation.MoveTo's post-Placement scan and
+/// AttackInto's pre-placement capture. All transitions borrow the same World,
+/// callback and RNG owners as the persistent movement request.
 pub trait Capture<E> {
     fn test_attack_into(
         &self,
         _state: &LoadedState,
+        _visibility: &sight::Runtime,
+        _effects: &E,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+    ) -> Result<Option<bool>, String> {
+        Ok(None)
+    }
+    /// Native noncombat AttackInto through successful TryCapture. True asks
+    /// the containing movement owner to execute the native post-capture advance.
+    fn capture_attack(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &mut sight::Runtime,
+        _effects: &mut E,
         _actor: (i32, u32),
         _destination: PlotCoord,
     ) -> Result<Option<bool>, String> {
@@ -235,6 +251,18 @@ fn unit(state: &LoadedState, id: (i32, u32)) -> Result<&Unit, String> {
 /// UnitCaptured, AI analysis, reporting and notification consumers. No default
 /// success exists for any of these reached branches.
 pub trait Events<E> {
+    /// Concrete existing GenerateCombatResults prefix, including defender Clear,
+    /// temporary proposals, modifiers, member fields and every reached RNG draw.
+    fn generate(
+        &mut self,
+        _state: &mut LoadedState,
+        _effects: &mut E,
+        _actor: c6_core::map::UnitReference,
+        _defender: c6_core::map::UnitReference,
+        _at: PlotCoord,
+    ) -> Result<(), String> {
+        Err("capture current combat generation owner unavailable".into())
+    }
     fn preflight(
         &self,
         state: &LoadedState,
@@ -278,6 +306,7 @@ pub struct Services<'a, 'd, 'r, C, V> {
     pub resources: &'a crate::resource_binding::ResourceAuthority<'r>,
     pub movement: &'a crate::unit_movement_state::Inputs<'d>,
     pub combat: &'a formation_rules::Definitions,
+    pub targets: &'a crate::melee_attack::target_selection::Definitions,
     pub runtime: &'a creation::Runtime,
     pub tags: &'a crate::loaded_actions::reporting::hold_cycling::commands::Tags,
     pub placement: &'a placement::Definitions<'d, 'r>,
@@ -299,6 +328,8 @@ where
     fn test_attack_into(
         &self,
         state: &LoadedState,
+        visibility: &sight::Runtime,
+        effects: &E,
         actor: (i32, u32),
         destination: PlotCoord,
     ) -> Result<Option<bool>, String> {
@@ -306,20 +337,107 @@ where
             .queries
             .placement_context(state, self.placement.placement)
             .map_err(debug)?
-            .with_combat_definitions(self.combat);
-        match crate::melee_attack::test_attack_into_prefix_with_placement(
-            self.combat,
+            .with_combat_definitions(self.combat)
+            .with_district_definitions(self.placement.movement);
+        let inputs = crate::melee_attack::target_selection::Inputs {
+            combat: self.combat,
+            movement: self.movement.definitions,
+            sight: visibility,
+            services: crate::unit_placement_services::Services::placement_service_runtime(effects)
+                .map_err(debug)?,
+            districts: Some(self.placement.movement),
+        };
+        crate::melee_attack::target_selection::test_attack_into_with_placement(
+            self.targets,
+            &inputs,
             &placement,
             c6_core::map::UnitReference::from_component_id(identity(unit(state, actor)?)),
             destination,
         )
+        .map(|result| {
+            Some(matches!(
+                result,
+                crate::melee_attack::target_selection::Outcome::RequiresAttackInto(_)
+            ))
+        })
+        .map_err(debug)
+    }
+    fn capture_attack(
+        &mut self,
+        state: &mut LoadedState,
+        visibility: &mut sight::Runtime,
+        effects: &mut E,
+        actor: (i32, u32),
+        destination: PlotCoord,
+    ) -> Result<Option<bool>, String> {
+        let reference =
+            c6_core::map::UnitReference::from_component_id(identity(unit(state, actor)?));
+        let inputs = crate::melee_attack::target_selection::Inputs {
+            combat: self.combat,
+            movement: self.movement.definitions,
+            sight: visibility,
+            services: crate::unit_placement_services::Services::placement_service_runtime(effects)
+                .map_err(debug)?,
+            districts: Some(self.placement.movement),
+        };
+        // AttackInto repeats current target selection; the Test result is not an input.
+        let Some(selected) = crate::melee_attack::target_selection::select_execution_target(
+            state,
+            &inputs,
+            reference,
+            destination,
+        )
+        .map_err(debug)?
+        else {
+            return Ok(Some(false));
+        };
+        let crate::melee_attack::target_selection::Defender::Unit(defender) = selected else {
+            return Err("civilian AttackInto selected District".into());
+        };
+        if crate::combat_defender::is_combat(
+            state,
+            self.combat,
+            crate::melee_attack::actor(state, defender).map_err(debug)?,
+        )
         .map_err(debug)?
         {
-            crate::melee_attack::Prefix::Rejected(_) => Ok(Some(false)),
-            crate::melee_attack::Prefix::RequiresTargetSelection(_) => {
-                Err("capture reached combat target selection".into())
-            }
+            return Err("civilian AttackInto selected combat defender".into());
         }
+        // Existing generation owns defender Clear and all synchronous proposal lifetimes.
+        self.events
+            .generate(state, effects, reference, defender, destination)?;
+        if crate::combat_defender::is_combat(
+            state,
+            self.combat,
+            crate::melee_attack::actor(state, defender).map_err(debug)?,
+        )
+        .map_err(debug)?
+        {
+            return Err("civilian AttackInto defender became combat after generation".into());
+        }
+        state
+            .unit_mut(actor.0, actor.1)
+            .map_err(debug)?
+            .i_fortify_turns = 0;
+        loaded_upkeep::clear_unit_operations(state, actor.0, actor.1, effects).map_err(debug)?;
+        let formation = state
+            .unit_runtime(actor.0, actor.1)
+            .map_err(debug)?
+            .formation
+            .ok_or("civilian AttackInto current Formation")?;
+        let formation = (formation.owner, formation.requested_id);
+        let victim = (defender.player(), defender.id);
+        if self
+            .definitions
+            .candidate(state, formation, victim, self.combat)?
+            .is_none()
+        {
+            return Err(
+                "civilian AttackInto failed capture destruction/religious continuation".into(),
+            );
+        }
+        self.capture(state, visibility, effects, formation, victim)?;
+        Ok(Some(true))
     }
     fn enemy_at(
         &self,
@@ -527,6 +645,12 @@ where
     }
 }
 
+fn capture_error<E>(detail: String) -> crate::loaded_actions::move_to::ComputedError<E> {
+    crate::loaded_actions::move_to::ComputedError::Step(crate::formation_move_to::Error::Capture(
+        detail,
+    ))
+}
+
 /// The normal persistent operation handler can use this composition directly;
 /// pathfinding, legal queries, transport and queue lifecycle remain unchanged.
 pub struct Movement<'a, 'r, C> {
@@ -543,18 +667,90 @@ where
     fn test_attack_into(
         &mut self,
         state: &mut LoadedState,
-        _: &sight::Runtime,
+        visibility: &sight::Runtime,
         actor: (i32, u32),
         at: PlotCoord,
-        _: &E,
+        effects: &E,
     ) -> Result<Option<bool>, Self::Error> {
         self.capture
-            .test_attack_into(state, actor, at)
-            .map_err(|e| {
-                crate::loaded_actions::move_to::ComputedError::Step(
-                    crate::formation_move_to::Error::Capture(e),
+            .test_attack_into(state, visibility, effects, actor, at)
+            .map_err(capture_error)
+    }
+    fn attack_into(
+        &mut self,
+        state: &mut LoadedState,
+        visibility: &mut sight::Runtime,
+        actor: (i32, u32),
+        at: PlotCoord,
+        effects: &mut E,
+    ) -> Result<Option<bool>, Self::Error> {
+        let Some(advance) = self
+            .capture
+            .capture_attack(state, visibility, effects, actor, at)
+            .map_err(capture_error)?
+        else {
+            return Ok(None);
+        };
+        if advance {
+            let formation = state
+                .unit_runtime(actor.0, actor.1)
+                .map_err(|e| capture_error(debug(e)))?
+                .formation
+                .ok_or_else(|| capture_error("capture advance Formation".into()))?;
+            let movement = &mut self.movement;
+            // Native explicitly queries flags1 but discards the scalar result.
+            movement
+                .queries
+                .placement_context(state, movement.placement.placement)
+                .map_err(|e| capture_error(debug(e)))?
+                .with_combat_definitions(&movement.path.formation)
+                .formation_placement(
+                    formation.owner,
+                    formation.requested_id,
+                    at,
+                    PlacementRequest::from_validate_options(1),
                 )
-            })
+                .map_err(|e| capture_error(debug(e)))?;
+            let record = state
+                .world()
+                .player(formation.owner)
+                .map_err(|e| capture_error(debug(e)))?
+                .formation(formation.requested_id)
+                .map_err(|e| capture_error(debug(e)))?
+                .ok_or_else(|| capture_error("capture advance current Formation".into()))?
+                .record;
+            let layer = c6_core::skip_turn::placement::formation_layer(state.world(), record)
+                .map_err(|e| capture_error(debug(e)))?
+                .ok_or_else(|| capture_error("capture advance layer".into()))?;
+            let (enemy, _) = crate::formation_path_state::has_visible_enemy_unit(
+                state,
+                &movement.path.formation,
+                visibility,
+                record,
+                layer,
+                at,
+            )
+            .map_err(|e| capture_error(debug(e)))?;
+            if !enemy {
+                crate::formation_move_to::move_to_with_capture(
+                    state,
+                    movement.path,
+                    movement.placement,
+                    movement.queries,
+                    visibility,
+                    movement.search,
+                    (formation.owner, formation.requested_id),
+                    at,
+                    0,
+                    movement.execution,
+                    effects,
+                    &mut self.capture,
+                )
+                .map_err(crate::loaded_actions::move_to::ComputedError::Step)?;
+            }
+        }
+        // Noncombat capture never sets AttackInto's combat-effects output flag.
+        Ok(Some(false))
     }
     fn enemy_at(
         &self,

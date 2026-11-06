@@ -113,13 +113,14 @@ pub enum AnalysisConsumer {
 }
 /// Current source-qualified stock routes. Gameplay state, human configuration
 /// and city membership are reread from the Session on every callback.
-pub struct Events {
+pub struct Events<'a> {
+    pub generation: super::generation::Inputs<'a>,
     pub binding: WireBinding,
     pub initialized_script_only: bool,
     pub analysis: Vec<AnalysisConsumer>,
     pub notice_scope: Option<stock::Scope>,
 }
-impl Events {
+impl Events<'_> {
     fn check(&self, state: &LoadedState, owner: i32) -> Result<(), String> {
         if state.binding() != &self.binding {
             return Err("capture callback binding".into());
@@ -145,7 +146,18 @@ impl Events {
         Ok(())
     }
 }
-impl<P> super::Events<stock::Runtime<'_, P>> for Events {
+impl<P> super::Events<stock::Runtime<'_, P>> for Events<'_> {
+    fn generate(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut stock::Runtime<'_, P>,
+        actor: UnitReference,
+        defender: UnitReference,
+        at: PlotCoord,
+    ) -> Result<(), String> {
+        self.generation
+            .generate(state, backend, actor, defender, at)
+    }
     fn preflight(
         &self,
         state: &LoadedState,
