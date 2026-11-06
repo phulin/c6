@@ -2,6 +2,7 @@
 //! The same loaded state, sight, territory and stock creation owners survive
 //! every phase. Mandatory continuations have no successful default.
 pub mod callbacks;
+pub mod cultural_identity;
 pub mod emergency;
 pub mod retired_district;
 use crate::loaded_actions::stock_notifications::founding;
@@ -92,6 +93,7 @@ pub trait Effects<'a>: founding::Effects<'a> + crate::melee_attack::city::resolv
     fn cultural_identity_transferred(
         &mut self,
         state: &mut LoadedState,
+        territory: &crate::city_territory::Runtime,
         city: ComponentId,
         old_owner: i32,
     ) -> Result<(), String>;
@@ -580,8 +582,12 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
         );
         step!(
             Culture,
-            self.effects
-                .cultural_identity_transferred(self.state, fresh, old_owner)
+            self.effects.cultural_identity_transferred(
+                self.state,
+                self.territory,
+                fresh,
+                old_owner
+            )
         );
         let previous_majority = snapshot.religion.majority_religion_hash;
         step!(Religion, self.state.city_mut(new_owner, fresh.id)).religion = snapshot.religion;

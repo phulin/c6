@@ -114,7 +114,8 @@ pub trait Context {
     ) -> Result<bool, Error> {
         Err(Error::Unsupported("occupied city district garrison query"))
     }
-    /// Native AI city-event fanout, before conversion trends.
+    /// Other alive-major players' Diplomacy.ExpelFromTile(reason5), before
+    /// conversion trends. Even a surviving major previous owner reaches this.
     fn combat_transfer_events(
         &mut self,
         _state: &mut LoadedState,
@@ -123,7 +124,7 @@ pub trait Context {
     ) -> Result<(), Error> {
         Err(Error::Unsupported("combat city transfer event subscribers"))
     }
-    /// Qualified SetLogIdentity output, after conversion trends.
+    /// Qualified HandleLogging file output, after conversion trends.
     fn combat_transfer_output(
         &mut self,
         _state: &mut LoadedState,
