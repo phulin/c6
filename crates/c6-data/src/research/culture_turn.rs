@@ -1,5 +1,5 @@
 //! Culture.DoCulture in native root order. Current positive city tourism,
-//! contacted-opponent tourism and anarchy-government replacement remain
+//! positive contacted-opponent tourism and anarchy-government replacement remain
 //! explicit continuations; missing inputs are queried lazily.
 use super::*;
 impl<E: Effects> Context<'_, E> {
@@ -99,12 +99,200 @@ impl<E: Effects> Context<'_, E> {
                     .has_met(owner, other)
                     .map_err(Error::Relations)?
             {
-                return Err(Error::Missing(
-                    "current contacted-player tourism application",
-                ));
+                // ApplyTourism refreshes this cache for EACH met major, even
+                // when the City's contribution is zero. A cultural alliance
+                // with a nonzero tourism coefficient needs its ally City getter.
+                let ids = self
+                    .effects
+                    .runtime()
+                    .alive_major_ids
+                    .as_ref()
+                    .ok_or(Error::Missing("current GetAliveMajorIDs order"))?;
+                let mut ally = None;
+                for &candidate in ids {
+                    if candidate != owner
+                        && self
+                            .state
+                            .game_relations()
+                            .map_err(Error::State)?
+                            .alliance_type(owner, candidate)
+                            .map_err(Error::Relations)?
+                            == self.definitions.culture_alliance
+                    {
+                        ally = Some(candidate);
+                        break;
+                    }
+                }
+                if ally.is_some() {
+                    let coefficient = self
+                        .state
+                        .retained()
+                        .players
+                        .iter()
+                        .find(|p| p.header.owner == owner)
+                        .ok_or(Error::Missing("current tourism player"))?
+                        .diplomacy
+                        .alliance_and_favor_modifiers[1];
+                    if coefficient != 0 {
+                        return Err(Error::Missing("current alliance tourism City sum"));
+                    }
+                }
+                self.culture_turn_culture_mut(owner)?
+                    .cached_alliance_tourism_bonus_bits = 0;
+                // RecordTourism above already checked every reached City source.
+                // GetNonreligiousTourism additionally reads green energy.
+                if self
+                    .state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Missing("current tourism player"))?
+                    .cities
+                    .records
+                    .entries
+                    .iter()
+                    .any(|c| c.value.culture.tourism_from_green_energy_modifier > 0)
+                {
+                    return Err(Error::Missing("current green-energy tourism"));
+                }
+                let player = self
+                    .state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Missing("current tourism player"))?;
+                for city in &player.cities.records.entries {
+                    for id in &city.value.districts.district_ids {
+                        if let Some(district) = player
+                            .districts
+                            .records
+                            .entries
+                            .iter()
+                            .find(|d| d.value.id == *id)
+                            .map(|d| &d.value)
+                        {
+                            if district.tourism_change != 0
+                                || district
+                                    .tourism_adjacency_yield_modifier
+                                    .iter()
+                                    .any(|p| p.value != 0)
+                            {
+                                return Err(Error::Missing(
+                                    "current district tourism getter contribution",
+                                ));
+                            }
+                        }
+                    }
+                }
+                if self
+                    .state
+                    .retained()
+                    .religion
+                    .records
+                    .iter()
+                    .any(|r| r.founder == owner)
+                {
+                    return Err(Error::Missing("current holy-city religious tourism"));
+                }
+                // ComputeTourismOn's positive city-sum guard excludes trade,
+                // open borders, government and monopoly modifiers here. Its
+                // final add is the distinct cached CULTURE alliance bonus.
+                let amount = self
+                    .culture_turn_culture(owner)?
+                    .cached_alliance_culture_bonus_bits;
+                if (other as u32) < 22 {
+                    let cell = self
+                        .culture_turn_culture_mut(owner)?
+                        .tourism_on_bits
+                        .get_mut(other as usize)
+                        .ok_or(Error::Missing("current TourismOn cell"))?;
+                    *cell = cell.wrapping_add(amount);
+                }
+                let previous = self.current_tourists_from(owner, other)?;
+                let tourists = self.contact_tourists_from(owner, other)?;
+                *self
+                    .culture_turn_culture_mut(owner)?
+                    .tourists_from
+                    .get_mut(other as usize)
+                    .ok_or(Error::Missing("current tourists-from cell"))? = tourists;
+                let culture = self.culture_turn_culture_mut(other)?;
+                culture.staycationers = culture
+                    .staycationers
+                    .wrapping_add(previous.wrapping_sub(tourists));
             }
         }
         Ok(())
+    }
+    fn contact_tourists_from(&mut self, owner: i32, other: i32) -> Result<i32, Error<E::Error>> {
+        let per = self
+            .definitions
+            .tourism_per_citizen
+            .ok_or(Error::Missing("TOURISM_CULTURE_PER_CITIZEN"))?;
+        if per <= 0 {
+            return Ok(0);
+        }
+        let movement = self
+            .definitions
+            .tourism_to_move
+            .ok_or(Error::Missing("TOURISM_TOURISM_TO_MOVE_CITIZEN"))?;
+        if movement <= 0 {
+            return Ok(0);
+        }
+        if self.query(Query::EverAliveMajorsCount)? <= 0 {
+            return Ok(0);
+        }
+        let lifetime = self.culture_turn_culture(other)?.lifetime_culture_bits >> 8;
+        let theoretical_ever = self.query(Query::EverAliveMajorsCount)?;
+        let mut theoretical = 0_i32;
+        if theoretical_ever > 0 {
+            for candidate in self.turn_majors()? {
+                if candidate != other
+                    && self
+                        .state
+                        .game_relations()
+                        .map_err(Error::State)?
+                        .has_met(other, candidate)
+                        .map_err(Error::Relations)?
+                {
+                    let tourism = if (other as u32) < 22 {
+                        *self
+                            .culture_turn_culture(candidate)?
+                            .tourism_on_bits
+                            .get(other as usize)
+                            .ok_or(Error::Missing("current TourismOn cell"))?
+                    } else {
+                        0
+                    };
+                    theoretical =
+                        theoretical.wrapping_add((tourism >> 8) / movement / theoretical_ever);
+                }
+            }
+        }
+        let ever = self.query(Query::EverAliveMajorsCount)?;
+        if ever <= 0 {
+            return Err(Error::Missing(
+                "changed ever-alive-major count at native division",
+            ));
+        }
+        let tourism = if (other as u32) < 22 {
+            *self
+                .culture_turn_culture(owner)?
+                .tourism_on_bits
+                .get(other as usize)
+                .ok_or(Error::Missing("current TourismOn cell"))?
+        } else {
+            0
+        };
+        Ok(research_turn::tourists_from_amount(
+            lifetime,
+            per,
+            theoretical,
+            tourism >> 8,
+            movement,
+            ever,
+        ))
     }
     fn distribute_tourists(&mut self, owner: i32) -> Result<(), Error<E::Error>> {
         if !self
@@ -126,7 +314,7 @@ impl<E: Effects> Context<'_, E> {
         Ok(())
     }
     fn check_dominance(&mut self, owner: i32) -> Result<(), Error<E::Error>> {
-        let _tourists = self.current_tourists_to(owner)?;
+        let tourists = self.current_tourists_to(owner)?;
         let team = self.state.player_team(owner).map_err(Error::State)?;
         let mut warning_excluded = false;
         for other in self.turn_majors()? {
@@ -139,9 +327,32 @@ impl<E: Effects> Context<'_, E> {
                     .has_met(owner, other)
                     .map_err(Error::Relations)?
                 {
-                    return Err(Error::Missing(
-                        "current contacted-player cultural dominance",
-                    ));
+                    let domestic = self.culture_turn_culture(other)?.staycationers;
+                    // Native equality preserves BOTH previous cells.
+                    if tourists == domestic {
+                        if *self
+                            .culture_turn_culture(owner)?
+                            .turns_until_dominant
+                            .get(other as usize)
+                            .ok_or(Error::Missing("current turns-until-dominant cell"))?
+                            == -1
+                        {
+                            warning_excluded = true;
+                        }
+                        continue;
+                    }
+                    if tourists > domestic {
+                        return Err(Error::Missing(
+                            "current positive cultural dominance notifications",
+                        ));
+                    }
+                    if self.culture_turn_culture(owner)?.last_turn_tourists_to > 0 {
+                        return Err(Error::Missing(
+                            "current positive tourist dominance projection",
+                        ));
+                    }
+                    // ComputeTurnsUntilDominant returns -1 at its first guard
+                    // when last-turn incoming tourists are nonpositive.
                 }
                 // This mandatory -1 makes GetTurnsUntilVictory return -1,
                 // excluding its presentation warning under either victory gate.
