@@ -322,19 +322,7 @@ impl<P> Continuations<stock_notifications::Runtime<'_, P>> for Current<'_, '_, P
         owner: i32,
     ) -> Result<(), String> {
         self.check(state)?;
-        routes::complete(
-            state,
-            sight,
-            self.inputs.roads.definitions,
-            plot,
-            owner,
-            &mut Road {
-                backend,
-                inputs: &self.inputs.roads,
-            },
-        )
-        .map_err(|e| format!("Trade road: {e:?}"))?;
-        Ok(())
+        complete_road(state, backend, sight, &self.inputs.roads, plot, owner)
     }
 }
 struct Road<'s, 'r, 'a, P> {
@@ -424,4 +412,72 @@ impl<P> routes::Effects for Road<'_, '_, '_, P> {
         )
         .map_err(|e| format!("{e:?}"))
     }
+}
+
+/// Reached automatic movement continuations require only current lifetime and
+/// road effects. Starting a fresh route still requires the full action owner.
+pub struct Ongoing<'s, 'a> {
+    pub lifetime: &'s super::lifetime::Definitions,
+    pub roads: &'s RoadInputs<'a>,
+}
+impl<P> Continuations<stock_notifications::Runtime<'_, P>> for Ongoing<'_, '_> {
+    fn earliest_end_turn(
+        &self,
+        state: &LoadedState,
+        push_turn: i32,
+    ) -> Result<Option<i32>, String> {
+        self.lifetime
+            .earliest_end_turn(state, push_turn)
+            .map(Some)
+            .map_err(|e| format!("{e:?}"))
+    }
+    fn event(
+        &mut self,
+        _: &mut LoadedState,
+        _: &mut stock_notifications::Runtime<'_, P>,
+        event: Event,
+    ) -> Result<(), String> {
+        Err(format!(
+            "Trade automatic continuation cannot start a new route: {event:?}"
+        ))
+    }
+    fn resource_started(
+        &mut self,
+        _: &mut LoadedState,
+        _: &mut stock_notifications::Runtime<'_, P>,
+        _: &mut round_trade::Runtime,
+        _: ComponentId,
+        _: ComponentId,
+    ) -> Result<(), String> {
+        Err("Trade automatic continuation cannot start a resource trade".into())
+    }
+    fn road(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut stock_notifications::Runtime<'_, P>,
+        sight: &crate::unit_sight_state::Runtime,
+        plot: u32,
+        owner: i32,
+    ) -> Result<(), String> {
+        complete_road(state, backend, sight, self.roads, plot, owner)
+    }
+}
+fn complete_road<P>(
+    state: &mut LoadedState,
+    backend: &mut stock_notifications::Runtime<'_, P>,
+    sight: &crate::unit_sight_state::Runtime,
+    inputs: &RoadInputs<'_>,
+    plot: u32,
+    owner: i32,
+) -> Result<(), String> {
+    routes::complete(
+        state,
+        sight,
+        inputs.definitions,
+        plot,
+        owner,
+        &mut Road { backend, inputs },
+    )
+    .map(|_| ())
+    .map_err(|e| format!("Trade road: {e:?}"))
 }

@@ -181,6 +181,10 @@ pub trait Movement<E: OperationReports> {
     fn start_trade(&mut self, _state: &mut LoadedState,
         _actor: (i32, u32), _node: &OperationNode, _effects: &mut E)
         -> Result<Option<skip_turn::StartData>, Self::Error> { Ok(None) }
+    /// Current Manager.GetEarliestEndTurnForRoute; None leaves later origin
+    /// checks incomplete rather than inventing a fixed route duration.
+    fn trade_earliest_end_turn(&self, _state: &LoadedState, _push_turn: i32)
+        -> Result<Option<i32>, Self::Error> { Ok(None) }
     fn trade_move(&mut self, _state: &mut LoadedState,
         _visibility: &mut unit_sight_state::Runtime, _formation: (i32,u32),
         _destination: PlotCoord, _effects: &mut E) -> Result<Option<()>, Self::Error> { Ok(None) }

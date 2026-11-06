@@ -16,7 +16,10 @@ use c6_core::{
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
     TraderRouteChanged(ComponentId),
-    DiplomaticVisibilityChanged { owner: i32, other: i32 },
+    DiplomaticVisibilityChanged {
+        owner: i32,
+        other: i32,
+    },
     ResourceStarted {
         origin: ComponentId,
         destination: ComponentId,
@@ -39,6 +42,14 @@ pub enum Event {
     },
 }
 pub trait Continuations<E> {
+    fn earliest_end_turn(
+        &self,
+        _state: &LoadedState,
+        _push_turn: i32,
+    ) -> Result<Option<i32>, String> {
+        Ok(None)
+    }
+
     fn event(
         &mut self,
         state: &mut LoadedState,
@@ -295,6 +306,15 @@ where
             delete: false,
             action: true,
         }))
+    }
+    fn trade_earliest_end_turn(
+        &self,
+        state: &LoadedState,
+        push_turn: i32,
+    ) -> Result<Option<i32>, Self::Error> {
+        self.continuations
+            .earliest_end_turn(state, push_turn)
+            .map_err(|e| Failure::Trade(Error::Effect(e)))
     }
     fn trade_move(
         &mut self,

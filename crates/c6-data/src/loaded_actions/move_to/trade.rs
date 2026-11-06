@@ -1,7 +1,7 @@
 //! The stock MakeTradeRoute CheckComplete callback (Linux XP2 0x2da0c30).
 //! The same-turn origin check cannot expire a newly started route: native
 //! GetEarliestEndTurnForRoute floors its result at push_turn+1. Later expiry
-//! and trade movement continuations remain explicit.
+//! and route-end effects remain explicit when not composed.
 use super::*;
 
 pub(super) fn check_complete<E: Effects, M: Movement<E>>(
@@ -62,9 +62,16 @@ pub(super) fn check_complete<E: Effects, M: Movement<E>>(
     if node.push_turn == state.retained().core.current_turn && node.push_turn != i32::MAX {
         return Ok(());
     }
-    Err(Error::Unsupported(
-        "MakeTradeRoute later-turn earliest end turn and route expiry",
-    ))
+    let earliest = movement
+        .trade_earliest_end_turn(state, node.push_turn)
+        .map_err(Error::Movement)?
+        .ok_or(Error::Unsupported(
+            "MakeTradeRoute current earliest end turn",
+        ))?;
+    if state.retained().core.current_turn < earliest {
+        return Ok(());
+    }
+    Err(Error::Unsupported("MakeTradeRoute route expiry effects"))
 }
 
 /// MakeTradeRoute.Update2da0ae0. Native ignores ProcessingData: the movement

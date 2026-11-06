@@ -6,6 +6,7 @@
 //! an explicit incomplete result;
 //! neither a captured path nor a successful empty callback is supplied here.
 pub mod current;
+pub mod lifetime;
 pub mod path;
 pub mod stock;
 pub mod yields;
@@ -23,6 +24,7 @@ use c6_core::{
 pub enum Error<E = ()> {
     Binding,
     State(c6_core::loaded_state::Error),
+    GameEras(c6_core::loaded_state::game_eras::AccessError),
     World(c6_core::world::MissingInput),
     Rules(crate::Error),
     Manager(round_trade::Error),
