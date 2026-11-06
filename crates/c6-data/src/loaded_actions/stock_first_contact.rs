@@ -9,6 +9,8 @@ use crate::{loaded_upkeep::OperationReports, research};
 pub mod boosts;
 #[path = "stock_first_contact/diplomacy.rs"]
 pub mod diplomacy;
+#[path = "stock_first_contact/government_modifier.rs"]
+pub mod government_modifier;
 #[path = "stock_first_contact/history.rs"]
 pub mod history;
 #[path = "stock_first_contact/random_modifier.rs"]
