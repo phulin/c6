@@ -1331,7 +1331,12 @@ mod tests {
             .1
             .as_mut()
             .unwrap()
-            .requirements = vec![b"war".to_vec(), b"versus".to_vec(), b"religion".to_vec()];
+            .requirements = vec![
+            b"war".to_vec(),
+            b"versus".to_vec(),
+            b"religion".to_vec(),
+            b"fourth".to_vec(),
+        ];
         for definition in &mut f.runtime.requirement_definitions {
             definition.predicate = Predicate::AllianceReligion;
         }
@@ -1339,6 +1344,7 @@ mod tests {
             .unwrap()
             .unwrap();
         let ids = f.runtime.children(set).unwrap().to_vec();
+        assert_eq!(ids.len(), 4);
         for (index, &id) in ids.iter().enumerate() {
             let row = f
                 .runtime
