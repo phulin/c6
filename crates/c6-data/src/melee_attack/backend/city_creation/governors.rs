@@ -161,7 +161,7 @@ pub(in crate::melee_attack::backend) fn adjust_yield_modifier(
 }
 
 impl EffectRuntime {
-    /// Return allocated modifier instance IDs in ModifierId byte order.
+    /// Return allocated modifier instance IDs in the provided native definition order.
     /// Effects and subscriptions remain in this runtime until explicit removal.
     #[allow(clippy::too_many_arguments)]
     pub fn attach_governor_modifiers(
@@ -213,10 +213,10 @@ impl EffectRuntime {
         {
             return Err(Error::Missing("Governor modifiers already attached"));
         }
-        let mut ordered = recipes.iter().collect::<Vec<_>>();
-        ordered.sort_by(|a, b| a.id.cmp(&b.id));
-        let mut instances = Vec::with_capacity(ordered.len());
-        for recipe in ordered {
+        // Promotion ModifierReference order controls allocation and callback
+        // subscription order. AffectedModifiers separately sorts its entries.
+        let mut instances = Vec::with_capacity(recipes.len());
+        for recipe in recipes {
             instances.push(self.attach_city_owner(
                 state,
                 requirements,
