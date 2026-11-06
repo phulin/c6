@@ -26,8 +26,9 @@ impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
 /// This is the sole owner of imported child states and set subscription rings.
 /// It can also borrow an already-used shared owner through `from_current`.
 /// These fixed effect families only evaluate native diplomatic opinion. The
-/// human-owner path cannot send statements; no formal relation, visibility,
-/// favor, gameplay signal or RNG effect is supplied by this scope.
+/// human-owner path cannot send statements. Nonhuman owners additionally need
+/// a source-proven no-statement guard; reachable statements remain unsupported.
+/// No formal relation, visibility, favor or gameplay RNG effect is omitted.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum OpinionKind {
     SettledCities,
@@ -63,6 +64,8 @@ pub struct OwnerModifier {
     pub owner_requirement_set: Option<u64>,
     /// None remains unsupported, rather than assigning an opinion family.
     pub opinion: Option<(OpinionKind, OpinionRequirements)>,
+    /// Actual SimpleEffect promise/agenda statement enable flags (+0x4a/+0x64).
+    pub statement_flags: [bool; 2],
     pub current_update_instance: Option<i32>,
 }
 #[derive(Debug)]
@@ -119,6 +122,7 @@ impl Runtime {
             .player_slot_status(row.owner)
             .map_err(|_| "current opinion owner controls")?
             != 3
+            && !no_opinion_statement(state, row)?
         {
             return Err("nonhuman opinion statements require concrete effects");
         }
@@ -176,9 +180,14 @@ impl Runtime {
     ) -> Result<(), Error<S::Error>> {
         self.check(state)?;
         changes::invalidate(
-            &mut Context { state, backend, runtime: self },
+            &mut Context {
+                state,
+                backend,
+                runtime: self,
+            },
             receiver,
-        ).map_err(Error::Kernel)
+        )
+        .map_err(Error::Kernel)
     }
     /// Called by SimpleRequirement only AFTER its state store. The old/new pair
     /// is not a predicate answer and never replaces current child reads.
@@ -228,6 +237,75 @@ impl Runtime {
             notify,
         )
         .map_err(Error::Kernel)
+    }
+}
+/// Restrict the existing opinion-table policy omission to source branches that
+/// cannot construct a diplomatic statement. Positive branches remain required.
+fn no_opinion_statement(state: &LoadedState, row: &OwnerModifier) -> Result<bool, &'static str> {
+    // SimpleEffect.Apply235f5c0 requires either flag before constructing a
+    // statement. Its base opinion-table update is the existing policy omission.
+    if row.statement_flags == [false, false] {
+        return Ok(true);
+    }
+    let (kind, requirements) = row.opinion.ok_or("current opinion family")?;
+    match kind {
+        OpinionKind::SettledCities | OpinionKind::Archaeology => {
+            // HasNewIncursions2367a50/2365c90 calls GetIncursionsSince2aa89a0
+            // on the OWNER's retained diplomacy map. An empty correct-type
+            // vector cannot pass, regardless of contact/throttle/old opinion.
+            let promise = if kind == OpinionKind::SettledCities {
+                0xfadf5055u32 as i32
+            } else {
+                0x1347b09f
+            };
+            let owner = state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.header.owner == row.owner)
+                .ok_or("current opinion owner diplomacy")?;
+            Ok(owner.diplomacy.incursions_made.iter().all(|(_, types)| {
+                types
+                    .entries
+                    .iter()
+                    .all(|(kind, turns)| *kind != promise || turns.is_empty())
+            }))
+        }
+        OpinionKind::Bushido | OpinionKind::Exploitative => {
+            // Subject requirements gate Apply, before score/statement queries.
+            let turns = match requirements {
+                OpinionRequirements::KnownMajor10Turns => 10,
+                OpinionRequirements::KnownMajor30Turns => 30,
+                _ => return Ok(false),
+            };
+            let relations = state
+                .game_relations()
+                .map_err(|_| "current opinion relations")?;
+            for subject in state.world().players() {
+                let other = subject.owner();
+                if other == row.owner
+                    || !state
+                        .world()
+                        .player_is_valid(other)
+                        .map_err(|_| "current opinion subject validity")?
+                {
+                    continue;
+                }
+                if relations
+                    .has_met(row.owner, other)
+                    .map_err(|_| "current opinion contact")?
+                    && relations
+                        .met_turn(row.owner, other)
+                        .map_err(|_| "current opinion met turn")?
+                        .wrapping_add(turns)
+                        <= state.retained().core.current_turn
+                {
+                    return Ok(false);
+                }
+            }
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
 /// All real reached continuation effects are mandatory. In particular a
