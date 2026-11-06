@@ -171,6 +171,35 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
         plot: Option<Self::Plot>,
         source: ComponentId,
     ) -> Result<(), Self::Error> {
+        // Linux Manager::Meet2b51f50 returns before preflight/effects for
+        // NO_PLAYER, same/dead players, or an already-known valid opponent.
+        // In particular, seeing a known foreign city's territory does not
+        // complete the source unit's movement or dispatch first-contact RNG.
+        if first == -1 || second == -1 {
+            return Ok(());
+        }
+        self.state.world().player(first).map_err(Error::World)?;
+        self.state.world().player(second).map_err(Error::World)?;
+        if first == second
+            || !self.state.player_alive(first).map_err(Error::State)?
+            || !self.state.player_alive(second).map_err(Error::State)?
+        {
+            return Ok(());
+        }
+        if self
+            .state
+            .world()
+            .player_is_valid(second)
+            .map_err(Error::World)?
+            && self
+                .state
+                .game_relations()
+                .map_err(Error::State)?
+                .has_met(first, second)
+                .map_err(|_| Error::Missing("sight discovery meeting relationship"))?
+        {
+            return Ok(());
+        }
         Err(Error::Missing("sight discovery meet"))
     }
     fn view_unit_rules(
