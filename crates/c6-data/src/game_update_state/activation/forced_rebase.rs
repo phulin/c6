@@ -11,7 +11,7 @@ mod occupation;
 #[derive(Debug)]
 pub enum Error {
     Binding,
-    Combat(city_range_attack::Error),
+    Combat(crate::loaded_actions::Error),
     Definitions(unit_initialization_definitions::Error),
     Rules(crate::Error),
     Missing(&'static str),
