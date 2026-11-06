@@ -62,6 +62,7 @@ impl Effect {
         owner: i32,
         subject: i32,
         instance: i32,
+        alive_majors: Option<&[i32]>,
     ) -> Result<Preparation, &'static str> {
         let player = state
             .retained()
@@ -111,11 +112,11 @@ impl Effect {
                 } else {
                     // All eight calculations begin with an owner friendship/
                     // alliance or denouncement/war gate for each alive major.
-                    // Prove every slot fails, so no roster approximation is used.
+                    // Prove every actual alive-major slot fails.
                     let relations = state
                         .game_relations()
                         .map_err(|_| "opinion current relations")?;
-                    for other in 0..relations.player_count() {
+                    for &other in current_majors(state, alive_majors)? {
                         if other == owner {
                             continue;
                         }
@@ -151,11 +152,11 @@ impl Effect {
                 })
             }
             Self::ThirdPartyWarmonger { .. } => {
-                // Zero on every pair proves both native alive-major sums zero.
+                // Zero on every reached pair proves both alive-major sums zero.
                 let relations = state
                     .game_relations()
                     .map_err(|_| "opinion grievance relations")?;
-                for other in 0..relations.player_count() {
+                for &other in current_majors(state, alive_majors)? {
                     if other == owner || other == subject {
                         continue;
                     }
@@ -182,6 +183,21 @@ impl Effect {
             }
         })
     }
+}
+fn current_majors<'a>(
+    state: &LoadedState,
+    roster: Option<&'a [i32]>,
+) -> Result<&'a [i32], &'static str> {
+    let roster = roster.ok_or("opinion current alive-major roster")?;
+    for &owner in roster {
+        if !state
+            .player_alive(owner)
+            .map_err(|_| "opinion alive-major player")?
+        {
+            return Err("opinion alive-major roster changed");
+        }
+    }
+    Ok(roster)
 }
 fn settled_value(count: i32, penalty: i32) -> i32 {
     if count > 0 {

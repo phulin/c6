@@ -71,6 +71,7 @@ pub struct Modifiers {
         Vec<u64>,
         crate::loaded_actions::stock_notifications::first_contact::government_modifier::Definitions,
     )>,
+    opinion_alive_majors: Option<Vec<i32>>,
     opinion_effects: Vec<(
         u64,
         crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::Effect,
@@ -106,6 +107,7 @@ impl Modifiers {
             random_effects: Vec::new(),
             government_effects: None,
             opinion_effects: Vec::new(),
+            opinion_alive_majors: None,
             modifiers,
             objects,
             opinion_graph: None,
@@ -196,6 +198,20 @@ impl Modifiers {
             }
         }
         self.government_effects = Some((labels, definitions));
+        Ok(self)
+    }
+    /// Bind the actual current native Manager::GetAliveMajors vector, in order.
+    /// This bounded callback profile rejects a member which ceases to be alive.
+    pub fn with_opinion_alive_majors(mut self, owners: Vec<i32>) -> Result<Self, Error> {
+        if self.opinion_alive_majors.is_some()
+            || owners
+                .iter()
+                .enumerate()
+                .any(|(at, owner)| !(0..64).contains(owner) || owners[..at].contains(owner))
+        {
+            return Err(Error::Missing("opinion current alive-major roster"));
+        }
+        self.opinion_alive_majors = Some(owners);
         Ok(self)
     }
     /// Bind reached concrete opinion leaves to the same physical controls.
@@ -483,8 +499,12 @@ impl modifiers::Context for Apply<'_> {
         Ok(self.owner.modifiers[self.modifier].repeatable)
     }
     fn apply_effect(&mut self) -> Result<bool, Error> {
-        modifiers::apply_effect(self)
-            .map_err(|_| Error::Missing("diplomacy concrete activation"))?;
+        modifiers::apply_effect(self).map_err(|error| match error {
+            modifiers::EffectError::Context(error) => error,
+            modifiers::EffectError::DefinitionDisappeared => {
+                Error::Missing("diplomacy effect definition disappeared")
+            }
+        })?;
         Ok(true)
     }
     fn unsubscribe_subject_requirement(&mut self) -> Result<(), Error> {
@@ -684,7 +704,15 @@ impl modifiers::EffectContext for Apply<'_> {
             .opinion_effects
             .iter_mut()
             .find(|(label, _)| *label == m.label)
-            .map(|(_, effect)| effect.prepare(self.state, m.owner, subject, m.instance))
+            .map(|(_, effect)| {
+                effect.prepare(
+                    self.state,
+                    m.owner,
+                    subject,
+                    m.instance,
+                    self.owner.opinion_alive_majors.as_deref(),
+                )
+            })
             .transpose()
             .map_err(Error::Missing)?;
         use crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::Preparation;
