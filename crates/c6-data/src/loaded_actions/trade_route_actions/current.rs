@@ -311,7 +311,7 @@ where
         )
         .map_err(Failure::Trade)?;
         // XP2 Start queries the destination owner after StartRoute. This
-        // domestic major branch omits only the unreachable city-state bonus.
+        // major-player branch omits only the unreachable city-state bonus.
         let player = state
             .retained()
             .players

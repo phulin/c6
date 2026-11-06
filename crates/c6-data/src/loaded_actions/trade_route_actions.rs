@@ -493,7 +493,7 @@ pub trait Effects {
     ) -> Result<(), Self::Error>;
 }
 
-/// Manager StartRoute's supported existing-path domestic branch. Queue/start
+/// Manager StartRoute's bounded major-player branch. Queue/start
 /// and handler XP2 favor/report tails remain owned by the operation adapter.
 /// Any callback error retains ID allocation, Trader and Graph writes in order.
 #[allow(clippy::too_many_arguments)]
