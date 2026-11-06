@@ -218,7 +218,12 @@ where
         defender_strength_q8: defender_strength,
         attacker_modifier_q8: attack_modifier,
         defender_modifier_q8: defense_modifier,
-        defense_type: 0x5e97d629,
+        // GetDefenseType2be01e0 tests equality before the bypass query.
+        defense_type: if initial_outer == outer_max {
+            0x5e97d629
+        } else {
+            0x6da56a3d
+        },
         attacker_damage: 0,
         defender_damage: inner,
         outer_damage: outer,
