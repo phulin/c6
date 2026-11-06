@@ -358,8 +358,10 @@ impl Runtime {
         if index >= set.child_subscriptions.len() {
             return Err(Error::MissingSubscription);
         }
-        set.children.remove(index);
-        let token = set.child_subscriptions.remove(index);
+        // RemoveRequirement23375b0 moves the final child and its handle into
+        // this slot, rather than shifting the remaining source Test order.
+        set.children.swap_remove(index);
+        let token = set.child_subscriptions.swap_remove(index);
         self.requirements
             .iter_mut()
             .find(|row| row.label == child)
@@ -1196,6 +1198,183 @@ mod tests {
         assert_eq!(f.runtime.state(id), Some(2));
         assert!(f.runtime.children(id).unwrap().is_empty());
         assert_eq!(f.runtime.requirements[0].references, 0);
+    }
+    #[test]
+    fn initial_pruning_moves_last_child_and_preserves_lifetime_order() {
+        struct Pruning {
+            runtime: Runtime,
+            destroyed: Vec<u32>,
+        }
+        impl SubjectContext for Pruning {
+            type Error = ();
+            fn subject_sets(&self) -> Result<&Runtime, ()> {
+                Ok(&self.runtime)
+            }
+            fn subject_sets_mut(&mut self) -> Result<&mut Runtime, ()> {
+                Ok(&mut self.runtime)
+            }
+            fn initialize_requirement(
+                &mut self,
+                _: u64,
+                d: &RequirementDefinition,
+                _: i32,
+                _: Subject,
+            ) -> Result<InitializedRequirement, Error<()>> {
+                let state = match d.id.as_slice() {
+                    b"peace" | b"border" => 1,
+                    b"major" | b"met" => 2,
+                    b"open" => 0,
+                    _ => unreachable!(),
+                };
+                Ok(InitializedRequirement::Simple(
+                    crate::simple_requirement::Requirement {
+                        active: true,
+                        state,
+                        inverse: false,
+                        persistent: false,
+                        triggered: false,
+                    },
+                ))
+            }
+            fn destroy_initial_simple_requirement(&mut self, label: u64) -> Result<(), Error<()>> {
+                assert_eq!(self.runtime.requirement_reference_count(label), Some(0));
+                self.destroyed
+                    .push(self.runtime.native_requirement_id(label).unwrap());
+                Ok(())
+            }
+            fn log_missing_set(&mut self, _: &[u8]) -> Result<(), ()> {
+                Ok(())
+            }
+            fn log_created_requirement(&mut self, _: u32) -> Result<(), ()> {
+                Ok(())
+            }
+            fn log_created_set(&mut self, _: u32) -> Result<(), ()> {
+                Ok(())
+            }
+        }
+        let ids: Vec<Vec<u8>> = [b"peace".as_slice(), b"major", b"met", b"border", b"open"]
+            .into_iter()
+            .map(<[u8]>::to_vec)
+            .collect();
+        let definitions = ids
+            .iter()
+            .map(|id| RequirementDefinition {
+                id: id.clone(),
+                predicate: Predicate::Unsupported(0),
+                inverse: false,
+                persistent: false,
+            })
+            .collect();
+        let mut f = Pruning {
+            runtime: Runtime::from_initial(
+                100,
+                vec![(
+                    b"set".to_vec(),
+                    Some(SetDefinition {
+                        id: b"set".to_vec(),
+                        requirements: ids,
+                    }),
+                )],
+                definitions,
+            )
+            .unwrap(),
+            destroyed: Vec::new(),
+        };
+        let set = get_or_create_subject(&mut f, 7, 9, Subject::ModifierObject(11), b"set")
+            .unwrap()
+            .unwrap();
+        assert_eq!(f.runtime.state(set), Some(1));
+        assert_eq!(f.runtime.native_set_id(set), Some(105));
+        assert_eq!(f.runtime.next_native_id(), 106);
+        let children = f.runtime.children(set).unwrap();
+        assert_eq!(
+            children
+                .iter()
+                .map(|id| f.runtime.native_requirement_id(*id).unwrap())
+                .collect::<Vec<_>>(),
+            [100, 104, 103]
+        );
+        assert_eq!(f.destroyed, [101, 102]);
+        for &id in children {
+            assert!(f.runtime.simple_requirement(id).unwrap().active);
+            assert_eq!(f.runtime.requirement_reference_count(id), Some(1));
+        }
+        for id in f
+            .runtime
+            .requirements
+            .iter()
+            .filter(|r| r.references == 0)
+            .map(|r| r.label)
+        {
+            assert!(
+                !f.runtime
+                    .simple_requirement_for_destruction(id)
+                    .unwrap()
+                    .active
+            );
+        }
+    }
+    #[test]
+    fn moved_child_keeps_its_own_subscription_after_middle_removal() {
+        let mut f = fixture(&[], false);
+        f.runtime
+            .requirement_definitions
+            .push(RequirementDefinition {
+                id: b"fourth".to_vec(),
+                predicate: Predicate::AllianceReligion,
+                inverse: false,
+                persistent: false,
+            });
+        // Four distinct nonterminal children leave two successors after the
+        // removed slot, so stable handle removal would misalign the moved child.
+        f.runtime.set_definitions[0]
+            .1
+            .as_mut()
+            .unwrap()
+            .requirements = vec![b"war".to_vec(), b"versus".to_vec(), b"religion".to_vec()];
+        for definition in &mut f.runtime.requirement_definitions {
+            definition.predicate = Predicate::AllianceReligion;
+        }
+        let set = get_or_create(&mut f, 7, 9, subject(), b"set")
+            .unwrap()
+            .unwrap();
+        let ids = f.runtime.children(set).unwrap().to_vec();
+        for (index, &id) in ids.iter().enumerate() {
+            let row = f
+                .runtime
+                .requirements
+                .iter_mut()
+                .find(|r| r.label == id)
+                .unwrap();
+            // Heterogeneous preceding registrations make each set handle
+            // distinct; moving only the child would unsubscribe the wrong link.
+            row.changed = ListenerRing::from_ordered(&vec![999; index]).unwrap();
+            let token = row.changed.subscribe(set).unwrap();
+            f.runtime
+                .sets
+                .iter_mut()
+                .find(|s| s.label == set)
+                .unwrap()
+                .child_subscriptions[index] = token;
+        }
+        f.runtime.detach_child::<()>(set, ids[1]).unwrap();
+        assert_eq!(
+            f.runtime.children(set),
+            Some([ids[0], ids[3], ids[2]].as_slice())
+        );
+        f.runtime.detach_child::<()>(set, ids[3]).unwrap();
+        assert_eq!(f.runtime.children(set), Some([ids[0], ids[2]].as_slice()));
+        let moved = f
+            .runtime
+            .requirements
+            .iter()
+            .find(|r| r.label == ids[3])
+            .unwrap();
+        assert!(moved
+            .changed
+            .ordered_subscribers()
+            .all(|subscriber| subscriber != set));
+        assert_eq!(moved.changed.ordered_subscribers().count(), 3);
     }
     #[test]
     fn native_counter_wrap_does_not_reuse_logical_identity() {
