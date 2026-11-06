@@ -143,6 +143,15 @@ impl Definitions {
             self.routes.get(plot.route_type as u8 as usize),
         )
     }
+    /// Trade.OnPlayerEraChanged2b97b40..61 tests exact prerequisite era
+    /// identity before invoking UpgradePlayerRoutes. Jumping beyond a route's
+    /// prerequisite does not trigger this callback's road scan.
+    pub fn unlocks_route_in_era(&self, era: i32) -> bool {
+        self.routes
+            .iter()
+            .any(|r| r.era.is_some_and(|e| e.0 == era))
+    }
+
     pub fn best(
         &self,
         state: &LoadedState,
@@ -399,6 +408,41 @@ mod tests {
             unit_only: false,
             tech: None,
         }
+    }
+    #[test]
+    fn era_jump_does_not_retroactively_trigger_an_earlier_road_upgrade() {
+        use c6_core::core_player::initialization::{
+            DatabaseIdentity, InputIdentities, WireBinding, WireRole,
+        };
+        // Synthetic immutable rules fixture: route1 unlocks in era1; route2
+        // unlocks in era4. The observed failing transition jumps era0 -> era3.
+        let mut early = route(1, false);
+        early.era = Some((1, 10));
+        let mut later = route(2, false);
+        later.era = Some((4, 40));
+        let defs = Definitions {
+            binding: WireBinding {
+                role: WireRole::SavedOutputComponents,
+                core_sha256: [0; 32],
+                occurrence_id: b"synthetic-route-era".to_vec(),
+                output_id: None,
+                inputs: InputIdentities {
+                    configuration_sha256: [0; 32],
+                    rules_inputs_sha256: [0; 32],
+                    database: DatabaseIdentity::Snapshot([0; 32]),
+                    dlc_inputs_sha256: [0; 32],
+                    mods_inputs_sha256: [0; 32],
+                    content_inputs_sha256: [0; 32],
+                },
+            },
+            routes: vec![route(0, false), early, later],
+            eras: vec![],
+            first_era: 0,
+        };
+        assert!(!defs.unlocks_route_in_era(0));
+        assert!(defs.unlocks_route_in_era(1));
+        assert!(!defs.unlocks_route_in_era(3));
+        assert!(defs.unlocks_route_in_era(4));
     }
     #[test]
     fn cannot_put_positive_route_on_water_or_skip_required_existing_road() {

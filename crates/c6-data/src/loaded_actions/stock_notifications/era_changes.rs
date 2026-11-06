@@ -174,17 +174,14 @@ impl<'a, P> Runtime<'a, P> {
                         if p.culture.num_random_civic_boosts_on_new_era > 0 {
                             return Err("era random civic boosts");
                         }
-                        if state.world().map().plots.iter().any(|p| {
-                            p.route_type != -1
-                                && p.city_attributes
-                                    .as_ref()
-                                    .is_some_and(|a| i32::from(a.player) == owner)
-                        }) {
-                            let input = current
-                                .inputs
-                                .routes
-                                .as_ref()
-                                .ok_or("era route definitions and subscriptions")?;
+                        let input = current
+                            .inputs
+                            .routes
+                            .as_ref()
+                            .ok_or("era route definitions and subscriptions")?;
+                        // Trade.OnPlayerEraChanged2b97b40 scans immutable route
+                        // prerequisites before touching any owned map route.
+                        if input.definitions.unlocks_route_in_era(new) {
                             let sight = current
                                 .sight
                                 .try_borrow()
@@ -197,6 +194,15 @@ impl<'a, P> Runtime<'a, P> {
                                 };
                             crate::loaded_actions::trade_route_actions::stock::upgrade_player_roads(state, self, &sight, &roads, owner)
                                 .map_err(|e| { self.last_error = Some(e); "era owned-route upgrade continuation" })?;
+                            // 2b97bb0 checks capabilities AFTER UpgradePlayerRoutes.
+                            if self
+                                .social_capabilities
+                                .as_ref()
+                                .ok_or("era route-upgrade capabilities")?
+                                .has(0x1ea085e4)
+                            {
+                                return Err("era route-upgrade notification continuation");
+                            }
                         }
                         self.reached
                             .push("era player Techs Culture Trade callbacks complete");
