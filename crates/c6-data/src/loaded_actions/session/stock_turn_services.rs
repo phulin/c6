@@ -470,12 +470,12 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                         }
                         Ok(outcome)
                         };
-                        if kind == production_dispatch::Kind::Unit {
+                        if kind != production_dispatch::Kind::District {
                             backend.with_action_research(research_runtime, |backend| {
                                 activate_production(backend, None)
                             }).map_err(|error| {
-                                backend.last_error = Some(format!("Unit production research loan: {error:?}"));
-                                city_turn::Error::Unsupported("Unit production research owner")
+                                backend.last_error = Some(format!("City upkeep research loan: {error:?}"));
+                                city_turn::Error::Unsupported("City upkeep research owner")
                             })?
                         } else {
                             activate_production(backend, Some(research_runtime))

@@ -361,10 +361,11 @@ pub fn population_boost(
     else {
         return Ok(None);
     };
+    let current = state.city(owner, city)?.header.population;
     let amount = if population_of_player {
         population(state, owner)?
     } else {
-        state.city(owner, city)?.header.population
+        current
     };
     Ok((amount >= minimum).then_some(definition))
 }
