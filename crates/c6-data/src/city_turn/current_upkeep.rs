@@ -148,7 +148,8 @@ impl<E: production::Effects> Context<'_, E> {
         match (event, expected) {
             (0x0242e68c, [0x2717400])
             | (0x89de2474, [0x27173c0])
-            | (0x67001fe1, [0x2710a10, 0x27bcd80]) => Ok(()),
+            | (0x67001fe1, [0x2710a10, 0x27bcd80])
+            | (0x30ae2a3d, [0x2716f80, 0x27bcc60]) => Ok(()),
             _ => Err(CityError::Unsupported("unknown city upkeep report")),
         }
     }
@@ -490,6 +491,7 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
             return Ok(());
         }
         self.qualify_report(0x67001fe1, &[0x2710a10, 0x27bcd80])?;
+        self.calls.push("worker output report");
         let center = PlotCoord {
             x: city.header.location_x,
             y: city.header.location_y,
@@ -497,13 +499,31 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
         if let Some(p) = c6_core::city_citizen_assignment::plot_location(s.world().map(), center, i)
             .map_err(|_| CityError::Unsupported("worker report location"))?
         {
-            let (_, p) = c6_core::movement_world::plot_at(s.world().map(), p)
+            let (plot, p) = c6_core::movement_world::plot_at(s.world().map(), p)
                 .map_err(|_| CityError::Unsupported("worker report plot"))?;
-            if p.improvement_hash != u32::MAX {
-                return self.missing("worker improvement activation");
+            if p.improvement_hash != u32::MAX
+                && i32::from(p.improvement_owner) == o
+                && (current == 0 || old == 0)
+            {
+                self.qualify_report(0x30ae2a3d, &[0x2716f80, 0x27bcc60])?;
+                // The generic ImprovementChanged report's Map recipient performs
+                // real temporary contribution queries even for activity subtypes.
+                // Preserve their canonical IDs/callbacks before omitting DTOs.
+                let mut territory = self.current.territory.write()?;
+                crate::loaded_actions::pillage::reporting::improvement_changed_with_registry(
+                    s,
+                    &mut territory,
+                    self.workers.improvement_registry(),
+                    plot,
+                )
+                .map_err(CityError::Unsupported)?;
+                self.calls.push(if current != 0 {
+                    "worker improvement activated output"
+                } else {
+                    "worker improvement deactivated output"
+                });
             }
         }
-        self.calls.push("worker output report");
         Ok(())
     }
 }

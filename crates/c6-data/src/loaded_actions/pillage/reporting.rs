@@ -14,6 +14,16 @@ pub fn improvement_changed(
     definitions: &super::Definitions,
     plot: usize,
 ) -> Result<(), &'static str> {
+    improvement_changed_with_registry(state, territory, &definitions.improvements, plot)
+}
+/// Same source report effects, shared by ordinary worker activity changes.
+/// The complete current improvement registry replaces Pillage-only inputs.
+pub(crate) fn improvement_changed_with_registry(
+    state: &c6_core::loaded_state::LoadedState,
+    territory: &mut crate::city_territory::Runtime,
+    improvements: &crate::registry::LinuxDefinitionRegistry,
+    plot: usize,
+) -> Result<(), &'static str> {
     let map = state.world().map();
     let center = map.plots.get(plot).ok_or("reporting improvement plot")?;
     let width = map.header.width;
@@ -45,8 +55,7 @@ pub fn improvement_changed(
         let Some(attributes) = p.city_attributes.as_ref().filter(|a| a.player != -1) else {
             continue;
         };
-        let improvement = definitions
-            .improvements
+        let improvement = improvements
             .find_index(p.improvement_hash)
             .ok_or("reporting current improvement definition")? as i32;
         let city = if attributes.owning_city == u32::MAX {

@@ -16,6 +16,10 @@ pub struct Definitions {
     building_slots: Vec<i32>,
 }
 impl Definitions {
+    pub(crate) fn improvement_registry(&self) -> &crate::registry::LinuxDefinitionRegistry {
+        &self.improvements
+    }
+
     pub fn from_rules(rules: &crate::Rules) -> Result<Self, Error> {
         let improvements = crate::unit_initialization_definitions::collection(
             rules,
@@ -349,10 +353,15 @@ fn remove_all(
     effects: &mut impl Effects,
 ) -> Result<(), Error> {
     let c = state.city(owner, city)?;
-    let center = PlotCoord { x: c.header.location_x, y: c.header.location_y };
+    let center = PlotCoord {
+        x: c.header.location_x,
+        y: c.header.location_y,
+    };
     let mut unassigned = population;
     for &forced in &c.citizens.forced_working_plot {
-        if forced > 0 { unassigned = unassigned.wrapping_sub(forced); }
+        if forced > 0 {
+            unassigned = unassigned.wrapping_sub(forced);
+        }
     }
     let citizens = &mut state.city_mut(owner, city)?.citizens;
     citizens.num_unassigned_citizens = unassigned;
@@ -360,8 +369,14 @@ fn remove_all(
     let count = citizens.forced_working_plot.len();
     for index in 0..count {
         let forced = state.city(owner, city)?.citizens.forced_working_plot[index];
-        if forced <= 0 { continue; }
-        let Some(point) = workers::plot_location(state.world().map(), center, index as i32).map_err(worker_error)? else { continue; };
+        if forced <= 0 {
+            continue;
+        }
+        let Some(point) = workers::plot_location(state.world().map(), center, index as i32)
+            .map_err(worker_error)?
+        else {
+            continue;
+        };
         let capacity = effects.capacity(state, owner, city, point)?;
         if capacity < forced {
             // Native repeats the fresh capacity getter after reading the count.
@@ -381,14 +396,26 @@ fn remove_all(
                 c.forced_working_plot[index] = forced.wrapping_sub(removed);
                 c.num_unassigned_citizens = c.num_unassigned_citizens.wrapping_add(removed);
                 // Preserve the native signed branch, including its early exit.
-                if c.num_unassigned_citizens < 1 { break; }
+                if c.num_unassigned_citizens < 1 {
+                    break;
+                }
             }
         }
         let c = &mut state.city_mut(owner, city)?.citizens;
-        if c.num_unassigned_citizens != 0 { c.num_unassigned_citizens = 0; }
+        if c.num_unassigned_citizens != 0 {
+            c.num_unassigned_citizens = 0;
+        }
     }
-    for (index, value) in state.city_mut(owner, city)?.citizens.working_plot.iter_mut().enumerate() {
-        if *value > 0 || (index == 0 && *value != 1) { *value = i32::from(index == 0); }
+    for (index, value) in state
+        .city_mut(owner, city)?
+        .citizens
+        .working_plot
+        .iter_mut()
+        .enumerate()
+    {
+        if *value > 0 || (index == 0 && *value != 1) {
+            *value = i32::from(index == 0);
+        }
     }
     Ok(())
 }
