@@ -45,6 +45,7 @@ pub enum Error {
     ChangedRequirement { label: u64, old: i32, new: i32 },
     Unsupported(&'static str),
     RequirementContinuation(String),
+    BoostContinuation(String),
 }
 impl From<c6_core::loaded_state::Error> for Error {
     fn from(e: c6_core::loaded_state::Error) -> Self {
@@ -274,6 +275,8 @@ pub enum PopulationListener {
     Boost {
         population_of_player: bool,
         minimum: i32,
+        /// Current Boost definition collection ordinal, retained from registration.
+        definition: usize,
     },
     GrandStrategic {
         owner: i32,
@@ -289,6 +292,15 @@ pub enum PopulationListener {
     Achievements,
 }
 pub trait PopulationScript {
+    fn trigger_population_boost(
+        &mut self,
+        _: &mut LoadedState,
+        _: i32,
+        _: usize,
+    ) -> Result<(), Error> {
+        Err(Error::Unsupported("population boost continuation"))
+    }
+
     fn on_city_population_changed(
         &mut self,
         state: &mut LoadedState,
@@ -332,9 +344,34 @@ pub fn population_lead_test(context: i32, subject: i32, minimum: i32, percent: f
     };
     i32::from(!satisfied)
 }
+/// The signed threshold check in Linux Boost.Manager.OnCityPopulationChanged
+/// (28445a0). Delta is ignored; value29 substitutes current player population.
+/// The returned ordinal identifies the captured definition, not the target civic.
+pub fn population_boost(
+    state: &LoadedState,
+    owner: i32,
+    city: u32,
+    listener: &PopulationListener,
+) -> Result<Option<usize>, Error> {
+    let PopulationListener::Boost {
+        population_of_player,
+        minimum,
+        definition,
+    } = *listener
+    else {
+        return Ok(None);
+    };
+    let amount = if population_of_player {
+        population(state, owner)?
+    } else {
+        state.city(owner, city)?.header.population
+    };
+    Ok((amount >= minimum).then_some(definition))
+}
 /// Executes the current founding/growth population listeners against the same
-/// canonical City and shared requirement store. Reached positive boost/history/
-/// achievement paths remain explicit until their owning gameplay effects exist.
+/// canonical City and shared requirement store. Positive boosts dispatch through
+/// the caller's canonical research owner before the next registered recipient.
+/// Reached positive history/achievement paths remain explicit.
 #[allow(clippy::too_many_arguments)]
 pub fn population_changed<S: PopulationScript, E: RequirementEffects>(
     state: &mut LoadedState,
@@ -361,17 +398,9 @@ pub fn population_changed<S: PopulationScript, E: RequirementEffects>(
                     return Err(Error::Unsupported("population historic moment threshold"));
                 }
             }
-            PopulationListener::Boost {
-                population_of_player,
-                minimum,
-            } => {
-                let amount = if population_of_player {
-                    population(state, owner)?
-                } else {
-                    current
-                };
-                if amount >= minimum {
-                    return Err(Error::Unsupported("population boost trigger"));
+            PopulationListener::Boost { .. } => {
+                if let Some(definition) = population_boost(state, owner, city, listener)? {
+                    script.trigger_population_boost(state, owner, definition)?;
                 }
             }
             PopulationListener::GrandStrategic {

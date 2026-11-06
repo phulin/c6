@@ -100,26 +100,43 @@ impl<P> city_turn::PopulationEffects for Runtime<'_, P> {
         city: u32,
         delta: i32,
     ) -> Result<(), Error> {
-        let inputs = self
+        // Dispatch individually so a positive Boost can reenter the canonical
+        // research/requirements owners between the surrounding recipients.
+        let listeners = self
             .growth
-            .as_mut()
-            .ok_or(Error::Unsupported("current growth registrations"))?;
-        let owners = self
-            .modifier_owners
-            .as_mut()
-            .ok_or(Error::Unsupported("current growth modifier owner"))?;
-        callbacks::population_changed(
-            state,
-            owner,
-            city,
-            delta,
-            &inputs.population,
-            owners.requirements.sets_mut(),
-            &mut Script(&mut self.script),
-            &mut RequirementEffects(inputs.requirement_effects.as_mut()),
-        )
-        .map_err(Error::ReligionCallback)
+            .as_ref()
+            .ok_or(Error::Unsupported("current growth registrations"))?
+            .population
+            .clone();
+        for listener in &listeners {
+            if matches!(listener, callbacks::PopulationListener::Boost { .. }) {
+                if let Some(definition) = callbacks::population_boost(state, owner, city, listener)
+                    .map_err(Error::ReligionCallback)?
+                {
+                    self.population_research_boost(state, owner, definition)?;
+                }
+                continue;
+            }
+            let inputs = self.growth.as_mut().unwrap();
+            let owners = self
+                .modifier_owners
+                .as_mut()
+                .ok_or(Error::Unsupported("current growth modifier owner"))?;
+            callbacks::population_changed(
+                state,
+                owner,
+                city,
+                delta,
+                std::slice::from_ref(listener),
+                owners.requirements.sets_mut(),
+                &mut Script(&mut self.script),
+                &mut RequirementEffects(inputs.requirement_effects.as_mut()),
+            )
+            .map_err(Error::ReligionCallback)?;
+        }
+        Ok(())
     }
+
     fn report_population(
         &mut self,
         state: &mut LoadedState,

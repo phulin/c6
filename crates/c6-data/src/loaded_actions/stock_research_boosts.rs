@@ -21,8 +21,17 @@ pub struct Inputs<'a> {
     kind: research::Kind,
     stock_report: bool,
     stock_notice: bool,
+    companion: Option<Box<Inputs<'a>>>,
 }
 impl<'a> Inputs<'a> {
+    fn for_kind(&self, kind: research::Kind) -> Option<&Self> {
+        if self.kind == kind {
+            Some(self)
+        } else {
+            self.companion.as_deref().filter(|input| input.kind == kind)
+        }
+    }
+
     /// Ordered observed GameSignals+4b0 subscribers and finite stock report /
     /// notification bindings, admitted from the same current BEFORE.
     pub fn from_initial(
@@ -46,6 +55,7 @@ impl<'a> Inputs<'a> {
             kind: research::Kind::Civic,
             stock_report: culture_report,
             stock_notice: civic_notice,
+            companion: None,
         })
     }
     /// Ordered current GameSignals+1308 subscribers. `stock_report` admits
@@ -73,6 +83,7 @@ impl<'a> Inputs<'a> {
             kind: research::Kind::Technology,
             stock_report,
             stock_notice,
+            companion: None,
         })
     }
 }
@@ -83,12 +94,21 @@ impl<'a, P> Runtime<'a, P> {
         inputs: Inputs<'a>,
     ) -> Result<(), processing::Error> {
         self.check(state)?;
-        if self.research_boosts.is_some() || inputs.binding != *state.binding() {
+        if inputs.binding != *state.binding()
+            || self
+                .research_boosts
+                .as_ref()
+                .is_some_and(|current| current.for_kind(inputs.kind).is_some())
+        {
             return Err(processing::Error::Unsupported(
                 "current research boost binding",
             ));
         }
-        self.research_boosts = Some(inputs);
+        if let Some(current) = self.research_boosts.as_mut() {
+            current.companion = Some(Box::new(inputs));
+        } else {
+            self.research_boosts = Some(inputs);
+        }
         Ok(())
     }
 }
@@ -109,6 +129,7 @@ impl<P> Effects<'_, '_, P> {
             .backend
             .research_boosts
             .as_ref()
+            .and_then(|input| input.for_kind(kind))
             .ok_or_else(|| Error::Effect(effect.clone()))?;
         if inputs.binding != *state.binding() || kind != inputs.kind {
             return Err(Error::Effect(effect));
@@ -161,15 +182,20 @@ impl<P> Effects<'_, '_, P> {
         report: &c6_core::relic_creation::boost::Report,
     ) -> Result<(), Error> {
         let effect = research::Effect::Report(*report);
+        let kind = match report.event {
+            0xbf48_fda8 => research::Kind::Technology,
+            0x3fea_ad02 => research::Kind::Civic,
+            _ => return Err(Error::Effect(effect)),
+        };
         if !self
             .backend
             .research_boosts
             .as_ref()
-            .is_some_and(|v| v.binding == *state.binding() && v.stock_report)
+            .and_then(|input| input.for_kind(kind))
+            .is_some_and(|input| input.binding == *state.binding() && input.stock_report)
         {
             return Err(Error::Effect(effect));
         }
-        let kind = self.backend.research_boosts.as_ref().unwrap().kind;
         if kind == research::Kind::Technology {
             if report.event != 0xbf48_fda8
                 || report.specialization.is_none()
@@ -209,9 +235,15 @@ impl<P> Effects<'_, '_, P> {
         notice: &c6_core::relic_creation::boost::Notification,
     ) -> Result<(), Error> {
         let effect = research::Effect::Notification(*notice);
-        if !self.backend.research_boosts.as_ref().is_some_and(|v| {
-            v.binding == *state.binding() && v.stock_notice && v.kind == notice.kind
-        }) {
+        if !self
+            .backend
+            .research_boosts
+            .as_ref()
+            .and_then(|input| input.for_kind(notice.kind))
+            .is_some_and(|v| {
+                v.binding == *state.binding() && v.stock_notice && v.kind == notice.kind
+            })
+        {
             return Err(Error::Effect(effect));
         }
         // BoostCivic and BoostTech inherit empty Instance.OnAdd2d2e4b0. Duplicate detection,
@@ -246,5 +278,44 @@ impl<P> Effects<'_, '_, P> {
                 .map_err(Error::Notification)?;
         }
         Ok(())
+    }
+}
+
+impl<P> Runtime<'_, P> {
+    /// Synchronous population continuation on the already loaned research owner.
+    pub(crate) fn population_research_boost(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        definition: usize,
+    ) -> Result<(), crate::city_turn::Error> {
+        use crate::city_turn::{religion_callbacks, Error as CityError};
+        use crate::melee_attack::resolve::completion::boosts::{ResearchTrigger, Trigger};
+        let inputs = self
+            .unit_creation
+            .as_ref()
+            .and_then(|input| input.research)
+            .ok_or(CityError::Unsupported(
+                "population canonical research definitions",
+            ))?;
+        let mut runtime = self
+            .action_research
+            .take()
+            .ok_or(CityError::Unsupported("population canonical research loan"))?;
+        let result = {
+            let mut effects = Effects::new(self, &mut runtime, inputs.choices, inputs.culture);
+            ResearchTrigger {
+                definitions: inputs.definitions,
+                effects: &mut effects,
+            }
+            .trigger(state, owner, definition)
+            .map_err(|error| {
+                CityError::ReligionCallback(religion_callbacks::Error::BoostContinuation(format!(
+                    "population boost: {error:?}"
+                )))
+            })
+        };
+        self.action_research = Some(runtime);
+        result
     }
 }
