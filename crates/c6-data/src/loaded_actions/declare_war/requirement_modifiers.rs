@@ -71,6 +71,8 @@ pub struct Modifiers {
         Vec<u64>,
         crate::loaded_actions::stock_notifications::first_contact::government_modifier::Definitions,
     )>,
+    retirable_has_met: Vec<u64>,
+    retired_has_met: Vec<u64>,
     opinion_alive_majors: Option<Vec<i32>>,
     opinion_effects: Vec<(
         u64,
@@ -108,6 +110,8 @@ impl Modifiers {
             government_effects: None,
             opinion_effects: Vec::new(),
             opinion_alive_majors: None,
+            retirable_has_met: Vec::new(),
+            retired_has_met: Vec::new(),
             modifiers,
             objects,
             opinion_graph: None,
@@ -199,6 +203,51 @@ impl Modifiers {
         }
         self.government_effects = Some((labels, definitions));
         Ok(self)
+    }
+    /// Qualify actual PlayerHasMet external signal receivers imported at BEFORE.
+    /// Their external c78 subscriptions are retired only by the exact terminal
+    /// nonpersistent requirement release below, never merely by label matching.
+    pub fn with_retirable_has_met(mut self, labels: Vec<u64>) -> Result<Self, Error> {
+        if !self.retirable_has_met.is_empty()
+            || labels
+                .iter()
+                .enumerate()
+                .any(|(at, label)| labels[..at].contains(label))
+        {
+            return Err(Error::Missing("duplicate HasMet retirement receiver"));
+        }
+        self.retirable_has_met = labels;
+        Ok(self)
+    }
+    pub fn retired_has_met(&self) -> &[u64] {
+        &self.retired_has_met
+    }
+    /// PlayerHasMet::~ first drops the external subscription; the shared
+    /// release kernel then deactivates the retained zero-reference simple row.
+    pub fn retire_has_met(
+        &mut self,
+        requirements: &sets::Runtime,
+        label: u64,
+    ) -> Result<(), Error> {
+        let qualified = self.retirable_has_met.contains(&label)
+            && !self.retired_has_met.contains(&label)
+            && requirements
+                .requirement_definition(label)
+                .is_some_and(|definition| definition.id == b"REQUIRES_PLAYERS_HAVE_MET")
+            && requirements
+                .simple_requirement_for_destruction(label)
+                .is_some_and(|requirement| {
+                    requirement.active
+                        && requirement.state == 2
+                        && !requirement.inverse
+                        && !requirement.persistent
+                        && !requirement.triggered
+                });
+        if !qualified {
+            return Err(Error::Missing("diplomacy requirement destruction"));
+        }
+        self.retired_has_met.push(label);
+        Ok(())
     }
     /// Bind the actual current native Manager::GetAliveMajors vector, in order.
     /// This bounded callback profile rejects a member which ceases to be alive.
@@ -394,6 +443,41 @@ impl Modifiers {
         self.modifiers.extend(incoming.modifiers);
         Ok(())
     }
+    /// Execute the concrete leaf after an additional source-qualified dynamic
+    /// graph has selected this canonical tracked subject. Membership and applied
+    /// flags remain with that graph's CheckApplyEffects invocation.
+    pub fn apply_tracked_effect(
+        &mut self,
+        state: &mut LoadedState,
+        requirements: &mut sets::Runtime,
+        label: u64,
+        subject: usize,
+    ) -> Result<(), Error> {
+        if !self.stamp.same_instance(state.action_stamp()) {
+            return Err(Error::Missing("diplomacy modifier World identity"));
+        }
+        let modifier = self
+            .modifiers
+            .iter()
+            .position(|row| row.label == label)
+            .ok_or(Error::Missing("current diplomacy modifier receiver"))?;
+        if subject >= self.modifiers[modifier].tracked.len() {
+            return Err(Error::Missing("current diplomacy tracked subject"));
+        }
+        modifiers::apply_effect(&mut Apply {
+            state,
+            requirements,
+            owner: self,
+            modifier,
+            subject,
+        })
+        .map_err(|error| match error {
+            modifiers::EffectError::Context(error) => error,
+            modifiers::EffectError::DefinitionDisappeared => {
+                Error::Missing("diplomacy effect definition disappeared")
+            }
+        })
+    }
     /// Borrow live controls for an additional source-qualified modifier family.
     pub fn modifier_mut(&mut self, label: u64) -> Option<&mut Modifier> {
         self.modifiers.iter_mut().find(|m| m.label == label)
@@ -441,10 +525,10 @@ impl sets::changes::Context for RequirementChange<'_> {
             .modifier_changed_with_sets(self.state, self.requirements, listener, set)
             .map_err(sets::Error::Context)
     }
-    fn destroy_requirement(&mut self, _: u64) -> Result<(), sets::Error<Error>> {
-        Err(sets::Error::Context(Error::Missing(
-            "diplomacy requirement destruction",
-        )))
+    fn destroy_requirement(&mut self, label: u64) -> Result<(), sets::Error<Error>> {
+        self.modifiers
+            .retire_has_met(self.requirements, label)
+            .map_err(sets::Error::Context)
     }
     fn destroy_set(&mut self, _: u64) -> Result<(), sets::Error<Error>> {
         Err(sets::Error::Context(Error::Missing(
@@ -885,10 +969,10 @@ impl Continuations for Modifiers {
     fn destroy_requirement(
         &mut self,
         _: &mut LoadedState,
-        _: &mut Runtime,
-        _: u64,
+        runtime: &mut Runtime,
+        label: u64,
     ) -> Result<(), Error> {
-        Err(Error::Missing("diplomacy requirement destruction"))
+        self.retire_has_met(runtime.sets(), label)
     }
     fn destroy_set(&mut self, _: &mut LoadedState, _: &mut Runtime, _: u64) -> Result<(), Error> {
         Err(Error::Missing("diplomacy set destruction"))

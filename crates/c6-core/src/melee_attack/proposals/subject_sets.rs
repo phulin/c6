@@ -257,6 +257,22 @@ impl Runtime {
             .find(|r| r.label == label && r.references != 0)
             .map(|r| r.value.state())
     }
+    /// Final derived-destructor view after the last shared reference is gone.
+    /// This never revives the row or exposes it as a live predicate/callback.
+    pub fn simple_requirement_for_destruction(
+        &self,
+        label: u64,
+    ) -> Option<&crate::simple_requirement::Requirement> {
+        match &self
+            .requirements
+            .iter()
+            .find(|row| row.label == label && row.references == 0)?
+            .value
+        {
+            InitializedRequirement::Simple(value) => Some(value),
+            _ => None,
+        }
+    }
     pub fn simple_requirement(
         &self,
         label: u64,
@@ -1036,6 +1052,11 @@ mod tests {
             }
             fn destroy_initial_simple_requirement(&mut self, label: u64) -> Result<(), Error<()>> {
                 assert_eq!(self.runtime.requirement_reference_count(label), Some(0));
+                assert!(self.runtime.simple_requirement(label).is_none());
+                assert!(self
+                    .runtime
+                    .simple_requirement_for_destruction(label)
+                    .is_some_and(|row| row.active));
                 assert_eq!(self.runtime.next_native_id(), 102);
                 self.destroyed.push(label);
                 Ok(())
@@ -1081,6 +1102,10 @@ mod tests {
         assert_eq!(c.runtime.state(set), Some(3));
         assert!(c.runtime.children(set).unwrap().is_empty());
         assert_eq!(c.destroyed.len(), 1);
+        assert!(c
+            .runtime
+            .simple_requirement_for_destruction(c.destroyed[0])
+            .is_some_and(|row| !row.active));
         assert_eq!(c.runtime.next_native_id(), 103);
     }
     #[test]
