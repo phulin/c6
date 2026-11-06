@@ -213,11 +213,11 @@ pub struct MovedPublication {
 /// Source UnitAbilityGained65 publication, after current ability/cache queries.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AbilityPublication {
-    pub host_event:u32,
-    pub identity:ComponentId,
-    pub ability_index:i32,
+    pub host_event: u32,
+    pub identity: ComponentId,
+    pub ability_index: i32,
     /// Native GetAbilities snapshot after the Unit cache refresh.
-    pub active_abilities:Vec<i32>,
+    pub active_abilities: Vec<i32>,
 }
 
 /// Logical host publication fields, prepared in original Send order. EventData1
@@ -445,6 +445,10 @@ pub struct Provider<'a> {
     command_queries: Option<hold_cycling::commands::Inputs<'a>>,
     placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
     current_placement_queries: Option<CurrentPlacementQueries<'a>>,
+    combat_placement_queries: Option<(
+        &'a crate::formation_rules::Definitions,
+        &'a crate::formation_movement_cost::Definitions<'a>,
+    )>,
 }
 impl<'a> Provider<'a> {
     pub fn new(
@@ -477,6 +481,7 @@ impl<'a> Provider<'a> {
             command_queries: None,
             placement_queries: None,
             current_placement_queries: None,
+            combat_placement_queries: None,
         }
     }
     /// Reuse the computed shore-placement provider for the exact flags1,
@@ -504,6 +509,21 @@ impl<'a> Provider<'a> {
             return Err(Error::Provider("placement queries already bound"));
         }
         self.current_placement_queries = Some(queries);
+        Ok(())
+    }
+
+    /// Supply the admitted combat and District definitions used by the current
+    /// HasAdjacentMove shore query when an adjacent foreign city is defensible.
+    /// These are rule services; every query still reads the ongoing LoadedState.
+    pub fn bind_combat_placement_queries(
+        &mut self,
+        combat: &'a crate::formation_rules::Definitions,
+        districts: &'a crate::formation_movement_cost::Definitions<'a>,
+    ) -> Result<(), Error> {
+        if self.combat_placement_queries.is_some() {
+            return Err(Error::Provider("combat placement queries already bound"));
+        }
+        self.combat_placement_queries = Some((combat, districts));
         Ok(())
     }
 
@@ -589,57 +609,107 @@ impl<'a> Provider<'a> {
     }
     /// Bind the registered ordinary BuildImprovement handler. Farm activity's
     /// native UI parameter map is omitted at the semantic headless boundary.
-    pub fn bind_farm_handler(&mut self, state: &LoadedState,
+    pub fn bind_farm_handler(
+        &mut self,
+        state: &LoadedState,
         authority: &super::handlers::BoundHandlers<'_>,
-        operations: &crate::unit_operation_manager::OperationDefinitions) -> Result<(), Error> {
-        self.farm_handler = Some(Self::checked_handler(state, authority, operations,
-            c6_core::unit::BUILD_IMPROVEMENT_HASH)?);
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        self.farm_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::BUILD_IMPROVEMENT_HASH,
+        )?);
         Ok(())
     }
     /// Pillage's exact ClassParameters vtable+0x28 is the inherited empty
     /// SharedParameters.Write(map)28199e0. The wire fields remain canonical.
     /// RemoveFeature inherits the parameterless BaseHandler map writer.
-    pub fn bind_chop_handler(&mut self,state:&LoadedState,
-        authority:&super::handlers::BoundHandlers<'_>,operations:&crate::unit_operation_manager::OperationDefinitions)
-        ->Result<(),Error>{
-        self.chop_handler=Some(Self::checked_handler(state,authority,operations,c6_core::unit::REMOVE_FEATURE_HASH)?);
+    pub fn bind_chop_handler(
+        &mut self,
+        state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        self.chop_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::REMOVE_FEATURE_HASH,
+        )?);
         Ok(())
     }
-    pub fn bind_repair_handler(&mut self,state:&LoadedState,
-        authority:&super::handlers::BoundHandlers<'_>,operations:&crate::unit_operation_manager::OperationDefinitions)
-        ->Result<(),Error>{
-        self.repair_handler=Some(Self::checked_handler(state,authority,operations,c6_core::unit::REPAIR_HASH)?);
+    pub fn bind_repair_handler(
+        &mut self,
+        state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        self.repair_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::REPAIR_HASH,
+        )?);
         Ok(())
     }
-    pub fn bind_pillage_handler(&mut self,state:&LoadedState,
-        authority:&super::handlers::BoundHandlers<'_>,
-        operations:&crate::unit_operation_manager::OperationDefinitions)->Result<(),Error>{
-        self.pillage_handler=Some(Self::checked_handler(state,authority,operations,c6_core::unit::PILLAGE_HASH)?);
+    pub fn bind_pillage_handler(
+        &mut self,
+        state: &LoadedState,
+        authority: &super::handlers::BoundHandlers<'_>,
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        self.pillage_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::PILLAGE_HASH,
+        )?);
         Ok(())
     }
     /// Fortify inherits the empty BaseHandler parameter map writer.
-    pub fn bind_fortify_handler(&mut self, state: &LoadedState,
+    pub fn bind_fortify_handler(
+        &mut self,
+        state: &LoadedState,
         authority: &super::handlers::BoundHandlers<'_>,
-        operations: &crate::unit_operation_manager::OperationDefinitions) -> Result<(), Error> {
-        self.fortify_handler = Some(Self::checked_handler(state, authority, operations,
-            c6_core::unit::FORTIFY_HASH)?);
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        self.fortify_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::FORTIFY_HASH,
+        )?);
         Ok(())
     }
     /// MakeTradeRoute's ClassParameters vtable+0x28 resolves to the inherited
     /// empty SharedParameters.Write(map)28199e0. Its wire coordinates remain
     /// canonical operation state, independently of that presentation map.
-    pub fn bind_trade_route_handler(&mut self, state: &LoadedState,
+    pub fn bind_trade_route_handler(
+        &mut self,
+        state: &LoadedState,
         authority: &super::handlers::BoundHandlers<'_>,
-        operations: &crate::unit_operation_manager::OperationDefinitions) -> Result<(), Error> {
-        self.trade_route_handler = Some(Self::checked_handler(state, authority, operations,
-            c6_core::unit::MAKE_TRADE_ROUTE_HASH)?);
+        operations: &crate::unit_operation_manager::OperationDefinitions,
+    ) -> Result<(), Error> {
+        self.trade_route_handler = Some(Self::checked_handler(
+            state,
+            authority,
+            operations,
+            c6_core::unit::MAKE_TRADE_ROUTE_HASH,
+        )?);
         Ok(())
     }
     /// Charge-change's stock Unit cache callback observes the current actor;
     /// semantic charge values are retained by the Farm service report owner.
-    pub fn observe_builder_charges(&mut self, state: &LoadedState,
-        actor: UnitReference) -> Result<(), Error> {
-        if state.binding() != &self.definitions.binding { return Err(Error::ConfigurationIdentity); }
+    pub fn observe_builder_charges(
+        &mut self,
+        state: &LoadedState,
+        actor: UnitReference,
+    ) -> Result<(), Error> {
+        if state.binding() != &self.definitions.binding {
+            return Err(Error::ConfigurationIdentity);
+        }
         self.observe_unit_snapshot(state, actor).map(|_| ())
     }
     fn checked_handler(
@@ -934,7 +1004,9 @@ impl<'a> Provider<'a> {
         }
         Ok(())
     }
-    pub fn pending_ability_publications(&self)->&[AbilityPublication]{&self.ability_publications}
+    pub fn pending_ability_publications(&self) -> &[AbilityPublication] {
+        &self.ability_publications
+    }
     /// Native a96df790 consumers: Unit.OnUnitAbilityChanged27ff830 first
     /// executes current readiness/property-copy queries; Ability.PublishUpdate
     /// then reads positive native counts. Host320ca30 copies identity/index into event65.
@@ -1120,15 +1192,20 @@ impl<'a> Provider<'a> {
             }
             OPERATION_STARTED
                 if (report.subtype == c6_core::unit::SKIP_TURN_HASH
-                    || (report.subtype == c6_core::unit::FORTIFY_HASH && self.fortify_handler.is_some())
-                    || (report.subtype == c6_core::unit::MAKE_TRADE_ROUTE_HASH && self.trade_route_handler.is_some())
+                    || (report.subtype == c6_core::unit::FORTIFY_HASH
+                        && self.fortify_handler.is_some())
+                    || (report.subtype == c6_core::unit::MAKE_TRADE_ROUTE_HASH
+                        && self.trade_route_handler.is_some())
                     || (report.subtype == c6_core::unit::MOVE_TO_HASH
                         && self.move_to_handler.is_some())
                     || (report.subtype == c6_core::unit::RANGE_ATTACK_HASH
                         && self.range_attack_handler.is_some())
-                    || (report.subtype == c6_core::unit::REMOVE_FEATURE_HASH && self.chop_handler.is_some())
-                    || (report.subtype == c6_core::unit::REPAIR_HASH && self.repair_handler.is_some())
-                    || (report.subtype == c6_core::unit::PILLAGE_HASH && self.pillage_handler.is_some())
+                    || (report.subtype == c6_core::unit::REMOVE_FEATURE_HASH
+                        && self.chop_handler.is_some())
+                    || (report.subtype == c6_core::unit::REPAIR_HASH
+                        && self.repair_handler.is_some())
+                    || (report.subtype == c6_core::unit::PILLAGE_HASH
+                        && self.pillage_handler.is_some())
                     || (report.subtype == c6_core::unit::BUILD_IMPROVEMENT_HASH
                         && self.farm_handler.is_some()))
                     && report.first.is_some()
@@ -1226,9 +1303,13 @@ impl<'a> Provider<'a> {
                     // parameter writer +28 is RET and leaves the fresh map empty.
                     c6_core::unit::SKIP_TURN_HASH
                 }
-                Some(node) if node.operation_hash == c6_core::unit::FORTIFY_HASH
-                    && matches!(node.parameters, c6_core::unit::OperationParameters::None) => {
-                    self.fortify_handler.ok_or(Error::Provider("actual Fortify facade handler binding unavailable"))?;
+                Some(node)
+                    if node.operation_hash == c6_core::unit::FORTIFY_HASH
+                        && matches!(node.parameters, c6_core::unit::OperationParameters::None) =>
+                {
+                    self.fortify_handler.ok_or(Error::Provider(
+                        "actual Fortify facade handler binding unavailable",
+                    ))?;
                     c6_core::unit::FORTIFY_HASH
                 }
                 Some(node)
@@ -1269,29 +1350,61 @@ impl<'a> Provider<'a> {
                     ))?;
                     c6_core::unit::RANGE_ATTACK_HASH
                 }
-                Some(node) if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH
-                    && matches!(node.parameters, c6_core::unit::OperationParameters::MakeTradeRoute { .. }) => {
-                    self.trade_route_handler.ok_or(Error::Provider("actual MakeTradeRoute facade handler binding unavailable"))?;
+                Some(node)
+                    if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH
+                        && matches!(
+                            node.parameters,
+                            c6_core::unit::OperationParameters::MakeTradeRoute { .. }
+                        ) =>
+                {
+                    self.trade_route_handler.ok_or(Error::Provider(
+                        "actual MakeTradeRoute facade handler binding unavailable",
+                    ))?;
                     c6_core::unit::MAKE_TRADE_ROUTE_HASH
                 }
-                Some(node) if node.operation_hash == c6_core::unit::REMOVE_FEATURE_HASH
-                    && node.parameters == c6_core::unit::OperationParameters::None=>{
-                    self.chop_handler.ok_or(Error::Provider("actual RemoveFeature facade handler binding unavailable"))?;
+                Some(node)
+                    if node.operation_hash == c6_core::unit::REMOVE_FEATURE_HASH
+                        && node.parameters == c6_core::unit::OperationParameters::None =>
+                {
+                    self.chop_handler.ok_or(Error::Provider(
+                        "actual RemoveFeature facade handler binding unavailable",
+                    ))?;
                     c6_core::unit::REMOVE_FEATURE_HASH
                 }
-                Some(node) if node.operation_hash == c6_core::unit::REPAIR_HASH
-                    && matches!(node.parameters,c6_core::unit::OperationParameters::Repair{..})=>{
-                    self.repair_handler.ok_or(Error::Provider("actual Repair facade handler binding unavailable"))?;
+                Some(node)
+                    if node.operation_hash == c6_core::unit::REPAIR_HASH
+                        && matches!(
+                            node.parameters,
+                            c6_core::unit::OperationParameters::Repair { .. }
+                        ) =>
+                {
+                    self.repair_handler.ok_or(Error::Provider(
+                        "actual Repair facade handler binding unavailable",
+                    ))?;
                     c6_core::unit::REPAIR_HASH
                 }
-                Some(node) if node.operation_hash == c6_core::unit::PILLAGE_HASH
-                    && matches!(node.parameters,c6_core::unit::OperationParameters::Pillage{..})=>{
-                    self.pillage_handler.ok_or(Error::Provider("actual Pillage facade handler binding unavailable"))?;
+                Some(node)
+                    if node.operation_hash == c6_core::unit::PILLAGE_HASH
+                        && matches!(
+                            node.parameters,
+                            c6_core::unit::OperationParameters::Pillage { .. }
+                        ) =>
+                {
+                    self.pillage_handler.ok_or(Error::Provider(
+                        "actual Pillage facade handler binding unavailable",
+                    ))?;
                     c6_core::unit::PILLAGE_HASH
                 }
-                Some(node) if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH
-                    && matches!(node.parameters, c6_core::unit::OperationParameters::BuildImprovement { .. }) => {
-                    self.farm_handler.ok_or(Error::Provider("actual Farm facade handler binding unavailable"))?;
+                Some(node)
+                    if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH
+                        && matches!(
+                            node.parameters,
+                            c6_core::unit::OperationParameters::BuildImprovement { .. }
+                        ) =>
+                {
+                    self.farm_handler.ok_or(Error::Provider(
+                        "actual Farm facade handler binding unavailable",
+                    ))?;
                     c6_core::unit::BUILD_IMPROVEMENT_HASH
                 }
                 Some(_) => {
@@ -1317,7 +1430,7 @@ impl<'a> Provider<'a> {
             activity_operation,
             activity_parameters: (host_event == 35
                 && activity_operation != Some(c6_core::unit::BUILD_IMPROVEMENT_HASH))
-                .then_some([-1; 4]),
+            .then_some([-1; 4]),
         });
         Ok(())
     }
@@ -1698,7 +1811,12 @@ impl<'a> Provider<'a> {
             return queries
                 .queries
                 .placement_context(state, queries.definitions)
-                .and_then(|context| {
+                .and_then(|mut context| {
+                    if let Some((combat, districts)) = self.combat_placement_queries {
+                        context = context
+                            .with_combat_definitions(combat)
+                            .with_district_definitions(districts);
+                    }
                     context.unit_record_placement(
                         state,
                         unit,
