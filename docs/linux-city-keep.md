@@ -35,6 +35,25 @@ normal blocking changes from Consider Raze to Research, leaving the next player
 choice external. Pending-choice persistence, ordinary-action blocking, wrong-owner
 and wrong-City rejection are checked separately on the same initialized input.
 
+A separate native fixture validates capture followed by explicit Keep on **one
+persistent Session**. The completed melee yields its real legal disposition;
+Keep then borrows the same live owners, without reimporting state, reloading or
+injecting an initialized decision. The pending entry disappears, combat history
+remains, and the normal Research blocker matches native state. All compared
+gameplay fields, reached requirements/modifiers and diplomacy match. The five
+ordered GameSync draws, retained Lua math RNG and known native RNG endpoints,
+including libc state across the complete sequence, also match. Only the existing
+source-qualified fresh CityBuild planning omission remains.
+
+That sequence used public commit
+`823f8b900b7ffc0d503caefe66210a51c9083d19`, private adapter commit
+`8a3d59b3ba04db9ef03990e493eeda2f0e553fdb`, and configuration SHA-256
+`4344f65e2ac3fd8df9909067f7eb0ba6e3ed7c951f760358a5385e0122b0dd15`.
+Private evidence `evidence/linux/capture-keep-combined-session.json` records the
+single original fixture, both actual command payloads, exact inputs and source
+pins, command, build profile and result. This establishes this bounded two-action
+sequence; complete state, arbitrary chains and full turns remain unavailable.
+
 The supported callback profile excludes active spy-mission aborts, positive unit
 expulsion placement, other war types and reactivation of an existing diplomatic
 penalty tracker. Dead/free-city previous owners and cultural transfers require

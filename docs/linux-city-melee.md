@@ -65,7 +65,10 @@ external choice after completion; the pending state survives rewrapping and gate
 later Session actions. The accepted case stops at this decision boundary.
 Separate bounded [Keep City](linux-city-keep.md) and [Raze City](linux-city-raze.md)
 transitions resolve an initialized completed choice. Return and Liberate remain
-unimplemented; this capture comparison establishes the pending boundary.
+unimplemented; this capture comparison establishes the pending boundary. A
+separate [capture-to-Keep sequence](linux-city-keep.md) now validates both actions
+on one persistent Session, reusing the live owners without importing another
+state or injecting a completed decision.
 
 Capture needs current founding/transfer services, complete affected modifier and
 lifetime inputs, and stock City placement/query services. Postcapture queries read

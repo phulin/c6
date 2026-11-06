@@ -108,7 +108,12 @@ pending disposition that survives rewrapping and gates later Session actions.
 Disposition execution and a complete gameplay RNG inventory remain outside that
 comparison. Separate initialized [Keep](linux-city-keep.md) and
 [Raze](linux-city-raze.md) cases resolve the external choice through the same
-Session boundary; arbitrary disposition chaining remains unqualified.
+Session boundary. A further native fixture validates capture followed by explicit
+Keep on one persistent Session with the same live owners: no reimport, reload or
+initialized-decision injection between actions. The real pending choice gates
+ordinary actions, then Keep clears it and restores the native Research blocker.
+Compared gameplay state, reached callbacks and known RNG match across the whole
+sequence; arbitrary disposition chaining remains unqualified.
 
 The main remaining gap is generality and integration across a whole game: complete
 initialized gameplay state, all reached action effects and upkeep, full gameplay
