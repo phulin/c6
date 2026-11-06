@@ -382,7 +382,7 @@ impl<P> routes::Effects for Road<'_, '_, '_, P> {
     }
     fn report(&mut self, _: &LoadedState, _: u32, event: u32) -> Result<(), String> {
         match event {
-            0x5d0f4014 | 0x33d8725a => {
+            0x5d0f4014 | 0x33d8725a | 0xc197426a => {
                 self.backend
                     .reached
                     .push("Trade road headless connectivity publication");
@@ -496,4 +496,22 @@ fn complete_road<P>(
     )
     .map(|_| ())
     .map_err(|e| format!("Trade road: {e:?}"))
+}
+
+/// Era changes share the source setter, current visibility and subscriptions.
+pub fn upgrade_player_roads<P>(
+    state: &mut LoadedState,
+    backend: &mut stock_notifications::Runtime<'_, P>,
+    sight: &crate::unit_sight_state::Runtime,
+    inputs: &RoadInputs<'_>,
+    owner: i32,
+) -> Result<(), String> {
+    routes::upgrade_player(
+        state,
+        sight,
+        inputs.definitions,
+        owner,
+        &mut Road { backend, inputs },
+    )
+    .map_err(|e| format!("era road: {e:?}"))
 }

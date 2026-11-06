@@ -134,7 +134,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub script: stock_script::Runtime<P>,
     growth: Option<growth::Inputs>,
     social_capabilities: Option<c6_core::game_capabilities::Membership>,
-    era_changes: Option<era_changes::State>,
+    era_changes: Option<era_changes::State<'a>>,
     queued_operations: Option<Box<dyn queued_operations::Services<P> + 'a>>,
     pantheon_definitions: Option<super::pantheon_actions::Definitions>,
     pending_pantheons: Vec<(i32, bool)>,

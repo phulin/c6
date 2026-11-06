@@ -132,10 +132,13 @@ impl<P> data::Effects for Runtime<'_, P> {
         new: i32,
     ) -> Result<(), Self::Error> {
         self.check(state).map_err(Error::Backend)?;
-        self.player_era_changed(state, owner, old, new).map_err(|error| {
-            self.last_error=Some(format!("era change: {error}"));
-            Error::EraChanged {owner,old,new}
-        })
+        self.last_error = None;
+        self.player_era_changed(state, owner, old, new)
+            .map_err(|error| {
+                self.last_error
+                    .get_or_insert_with(|| format!("era change: {error}"));
+                Error::EraChanged { owner, old, new }
+            })
     }
 }
 /// Borrow at the source phase; these entry points do not reorder surrounding

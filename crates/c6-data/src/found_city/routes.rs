@@ -1,4 +1,4 @@
-//! City.Manager.SetComplete's road selection and initial road creation.
+//! Current route selection, initial road creation and era road upgrades.
 //! Source: 28b9400, 2bcdc40, 2bcdb70, 2bcd460 and 2bcd6c0.
 use crate::{
     registry::linux_type_hash,
@@ -28,6 +28,7 @@ struct Route {
     unit_only: bool,
     tech: Option<u32>,
 }
+#[derive(Clone)]
 pub struct Definitions {
     binding: c6_core::core_player::initialization::WireBinding,
     routes: Vec<Route>,
@@ -250,7 +251,8 @@ pub trait Effects {
     ) -> Result<(), Self::Error>;
 }
 /// Source Manager wrapper, called AFTER District.SetComplete and its signals.
-/// Replacement/pillaged route continuations are explicit until supported.
+/// Initial creation and clean replacement share SetRouteType2bcd460.
+/// Pillaged replacement requires its separate connectivity/restoration path.
 pub fn complete<E: Effects>(
     state: &mut LoadedState,
     sight: &crate::unit_sight_state::Runtime,
@@ -282,8 +284,15 @@ pub fn complete<E: Effects>(
     if i32::from(old.route_type) == route {
         return Ok(route);
     }
-    if old.route_type != -1 || old.flags.get(PlotFlag::RoutePillaged) {
-        return Err(Error::Missing("road replacement/pillage continuation"));
+    if old.flags.get(PlotFlag::RoutePillaged) {
+        return Err(Error::Missing("pillaged road replacement continuation"));
+    }
+    // SetRouteType clears pillage first (already false here), then publishes
+    // removal before storing the replacement route.
+    if old.route_type != -1 && !sight.messages_disabled {
+        effects
+            .report(state, plot, 0xc197426a)
+            .map_err(Error::Effect)?;
     }
     let definition = &defs.routes[route as usize];
     {
@@ -348,6 +357,30 @@ pub fn complete<E: Effects>(
         .route_changed(state, plot, route, owner)
         .map_err(Error::Effect)?;
     Ok(route)
+}
+
+/// UpgradePlayerRoutes2bce120 filters live ownership/IsRoute in plot-index
+/// order. The synchronous setter and callbacks finish before the next read.
+pub fn upgrade_player<E: Effects>(
+    state: &mut LoadedState,
+    sight: &crate::unit_sight_state::Runtime,
+    defs: &Definitions,
+    owner: i32,
+    effects: &mut E,
+) -> Result<(), Error<E::Error>> {
+    let count = state.world().map().plots.len();
+    for index in 0..count {
+        let plot = &state.world().map().plots[index];
+        if plot.route_type != -1
+            && plot
+                .city_attributes
+                .as_ref()
+                .is_some_and(|a| i32::from(a.player) == owner)
+        {
+            complete(state, sight, defs, index as u32, owner, effects)?;
+        }
+    }
+    Ok(())
 }
 
 fn allows_route(water: bool, current: i32, route: &Route, old: Option<&Route>) -> bool {

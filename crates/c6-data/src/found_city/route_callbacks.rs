@@ -13,6 +13,7 @@ pub enum Listener {
     History { route_type: i32 },
     Unsupported { label: u64 },
 }
+#[derive(Clone)]
 pub struct Inputs {
     binding: WireBinding,
     listeners: Vec<Listener>,

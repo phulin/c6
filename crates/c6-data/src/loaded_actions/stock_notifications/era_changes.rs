@@ -1,6 +1,6 @@
 //! Ordered Player.Eras.SetEra callbacks on the current stock runtime.
-//! Positive random boosts, owned-route upgrades and Gossip visibility delivery
-//! remain explicit; the supported cold branches read their live owners.
+//! Positive random boosts, pillaged-route upgrades and Gossip visibility delivery
+//! remain explicit; supported callbacks read current canonical gameplay owners.
 use super::{processing, turn_reports, Runtime};
 use c6_core::{core_player::initialization::WireBinding, loaded_state::LoadedState};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -11,12 +11,50 @@ pub enum PlayerSubscriber {
 pub enum GameSubscriber {
     Gossip,
 }
+/// Explicit stock report dispatcher scope, with no added synchronous consumers.
+#[derive(Clone, Copy, Debug)]
+pub enum CityReportScope {
+    StockHeadlessExternalPoliciesNoAddedConsumers,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CityReport {
+    pub owner: i32,
+    pub city: u32,
+    pub era: i32,
+}
 pub struct Inputs {
     binding: WireBinding,
     players: Vec<(i32, Vec<PlayerSubscriber>)>,
     game: Vec<GameSubscriber>,
+    routes: Option<RouteInputs>,
+    city_reports: Option<CityReportScope>,
+}
+struct RouteInputs {
+    definitions: crate::found_city::routes::Definitions,
+    callbacks: crate::found_city::route_callbacks::Inputs,
+    terrains: Vec<(u32, bool)>,
 }
 impl Inputs {
+    pub fn with_city_reports(mut self, scope: CityReportScope) -> Self {
+        self.city_reports = Some(scope);
+        self
+    }
+
+    /// Immutable rules/subscriptions only; all gameplay owners remain live.
+    pub fn with_routes(
+        mut self,
+        definitions: crate::found_city::routes::Definitions,
+        callbacks: crate::found_city::route_callbacks::Inputs,
+        terrains: Vec<(u32, bool)>,
+    ) -> Self {
+        self.routes = Some(RouteInputs {
+            definitions,
+            callbacks,
+            terrains,
+        });
+        self
+    }
+
     pub fn from_initial(
         state: &LoadedState,
         players: Vec<(i32, Vec<PlayerSubscriber>)>,
@@ -37,18 +75,29 @@ impl Inputs {
             binding: state.binding().clone(),
             players,
             game,
+            routes: None,
+            city_reports: None,
         })
     }
 }
-pub(super) struct State {
+pub(super) struct State<'a> {
+    sight: &'a std::cell::RefCell<crate::unit_sight_state::Runtime>,
     inputs: Inputs,
     history_empty: Option<bool>,
+    reports: Vec<CityReport>,
 }
-impl<P> Runtime<'_, P> {
+impl<'a, P> Runtime<'a, P> {
+    pub fn era_city_reports(&self) -> &[CityReport] {
+        self.era_changes
+            .as_ref()
+            .map_or(&[], |s| s.reports.as_slice())
+    }
+
     pub fn bind_era_changes(
         &mut self,
         state: &LoadedState,
         inputs: Inputs,
+        sight: &'a std::cell::RefCell<crate::unit_sight_state::Runtime>,
     ) -> Result<(), processing::Error> {
         self.check(state)?;
         if inputs.binding != *state.binding() {
@@ -56,7 +105,9 @@ impl<P> Runtime<'_, P> {
         }
         self.era_changes = Some(State {
             inputs,
+            sight,
             history_empty: None,
+            reports: Vec::new(),
         });
         Ok(())
     }
@@ -92,7 +143,7 @@ impl<P> Runtime<'_, P> {
         new: i32,
     ) -> Result<(), &'static str> {
         self.check(state).map_err(|_| "era runtime binding")?;
-        let current = self
+        let mut current = self
             .era_changes
             .take()
             .ok_or("current era callback registrations")?;
@@ -123,18 +174,32 @@ impl<P> Runtime<'_, P> {
                         if p.culture.num_random_civic_boosts_on_new_era > 0 {
                             return Err("era random civic boosts");
                         }
-                        // UpgradePlayerRoutes2bce120 selects owned route plots
-                        // before any best-route query, setter, signal or RNG.
                         if state.world().map().plots.iter().any(|p| {
-                            p.route_type >= 0
+                            p.route_type != -1
                                 && p.city_attributes
                                     .as_ref()
                                     .is_some_and(|a| i32::from(a.player) == owner)
                         }) {
-                            return Err("era current owned-route upgrade");
+                            let input = current
+                                .inputs
+                                .routes
+                                .as_ref()
+                                .ok_or("era route definitions and subscriptions")?;
+                            let sight = current
+                                .sight
+                                .try_borrow()
+                                .map_err(|_| "era current sight borrow")?;
+                            let roads =
+                                crate::loaded_actions::trade_route_actions::stock::RoadInputs {
+                                    definitions: &input.definitions,
+                                    callbacks: &input.callbacks,
+                                    terrains: &input.terrains,
+                                };
+                            crate::loaded_actions::trade_route_actions::stock::upgrade_player_roads(state, self, &sight, &roads, owner)
+                                .map_err(|e| { self.last_error = Some(e); "era owned-route upgrade continuation" })?;
                         }
                         self.reached
-                            .push("era player Techs Culture Trade cold callbacks complete");
+                            .push("era player Techs Culture Trade callbacks complete");
                     }
                 }
             }
@@ -150,9 +215,10 @@ impl<P> Runtime<'_, P> {
                     },
                 }
             }
-            // City publications are output only, but their current City query
-            // path is not admitted yet on this reached cityless transition.
-            if !state
+            // SetEra2aee880 visits the current recycled City container after
+            // both signals. Event8d005711 has no stock cache registrations; its
+            // host translator only forwards identity/new-era to an empty hook.
+            let cities = &state
                 .retained()
                 .players
                 .iter()
@@ -160,10 +226,18 @@ impl<P> Runtime<'_, P> {
                 .ok_or("era report player")?
                 .cities
                 .records
-                .entries
-                .is_empty()
-            {
-                return Err("era current City report path");
+                .entries;
+            for city in cities {
+                match current.inputs.city_reports {
+                    Some(CityReportScope::StockHeadlessExternalPoliciesNoAddedConsumers) => {
+                        current.reports.push(CityReport {
+                            owner,
+                            city: city.value.header.id,
+                            era: new,
+                        });
+                    }
+                    None => return Err("era current City report dispatcher scope"),
+                }
             }
             // SetEra's final8152ea report feeds the stock EventStream DTO, with
             // no synchronous gameplay setters/signals or RNG on this route.
