@@ -69,6 +69,10 @@ impl<P> Runtime<'_, P> {
         state: &mut LoadedState,
         header: c6_core::diplomacy_statement::SessionHeader,
     ) -> Result<(), Error> {
+        // CloseSession broadcasts the same synchronized ingress as responses.
+        // If Update changed the local control branch, retain the completed
+        // prefix and refuse an unimplemented TurnUnready continuation.
+        super::first_contact_update::preflight_ingress(state)?;
         let mut current = self
             .delegation_human
             .take()
