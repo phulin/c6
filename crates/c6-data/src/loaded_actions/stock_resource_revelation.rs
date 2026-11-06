@@ -30,15 +30,17 @@ pub enum ContinentSubscriber {
     History,
     Boost,
 }
-#[derive(Clone, Copy, Debug)]
-struct ResourceBoostCheck {
+#[derive(Clone, Debug)]
+pub(super) struct ResourceBoostCheck {
     receiver: u64,
-    resource_reference: bool,
+    resource: Option<i32>,
+    compatible_improvements: Vec<u32>,
+    boost_index: usize,
     improvement_reference: bool,
     boost_value: i32,
 }
 pub struct State {
-    definitions: resources::Definitions,
+    pub(super) definitions: resources::Definitions,
     resources: LinuxDefinitionRegistry,
     layer: usize,
     subscribers: Vec<u64>,
@@ -167,51 +169,10 @@ impl<P> Runtime<'_, P> {
         {
             return Err(Error::Missing("current resource boost registration order"));
         }
-        let improvements = collection(rules, "Improvements", "ImprovementType")
-            .map_err(|e| Error::Requirement(format!("resource boost improvements: {e:?}")))?;
-        let boosts = rules
-            .gameplay()
-            .table("Boosts")
-            .ok_or(Error::Missing("Boosts"))?;
-        let names = rules
-            .gameplay()
-            .table("BoostNames")
-            .ok_or(Error::Missing("BoostNames"))?;
-        let mut checks = Vec::new();
-        for &(receiver, row_id) in subscribers {
-            let row = boosts
-                .row_by_id(crate::RulesRowId(row_id))
-                .ok_or(Error::Missing("resource boost definition"))?;
-            let reference = |column: &'static str| -> Result<Option<u32>, Error> {
-                match row
-                    .get(column)
-                    .map_err(|e| Error::Requirement(format!("{e:?}")))?
-                {
-                    crate::SqlValue::Null => Ok(None),
-                    crate::SqlValue::Text(name) => Ok(Some(crate::registry::linux_type_hash(name))),
-                    _ => Err(Error::Missing("resource boost reference")),
-                }
-            };
-            let class = row
-                .text("BoostClass")
-                .map_err(|e| Error::Requirement(format!("{e:?}")))?;
-            let name = names
-                .rows()
-                .find(|r| r.text("BoostType").ok() == Some(class))
-                .ok_or(Error::Missing("resource boost name reference"))?;
-            checks.push(ResourceBoostCheck {
-                receiver,
-                resource_reference: reference("ResourceType")?
-                    .is_some_and(|hash| binding.resources.find_index(hash).is_some()),
-                improvement_reference: reference("ImprovementType")?
-                    .is_some_and(|hash| improvements.find_index(hash).is_some()),
-                boost_value: i32::try_from(
-                    name.integer("BoostValue")
-                        .map_err(|e| Error::Requirement(format!("{e:?}")))?,
-                )
-                .map_err(|_| Error::Missing("resource boost value"))?,
-            });
-        }
+        let checks = subscribers
+            .iter()
+            .map(|&(receiver, row)| resource_boost_check(rules, receiver, row))
+            .collect::<Result<Vec<_>, _>>()?;
         binding.resource_boost_checks = Some(checks);
         Ok(())
     }
@@ -419,6 +380,20 @@ impl<P> Runtime<'_, P> {
         player: i32,
         index: u32,
     ) -> Result<(), Error> {
+        self.update_revealed_resource_with(state, sight, player, index, |_, _, _, _| {
+            Err(Error::Missing(
+                "positive PlayerResourceCheck TriggerBoost continuation",
+            ))
+        })
+    }
+    pub(super) fn update_revealed_resource_with(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &crate::unit_sight_state::Runtime,
+        player: i32,
+        index: u32,
+        mut trigger: impl FnMut(&mut Self, &mut LoadedState, i32, usize) -> Result<(), Error>,
+    ) -> Result<(), Error> {
         if player == -1 || (player != 1000 && !state.player_alive(player).map_err(Error::State)?) {
             return Ok(());
         }
@@ -486,29 +461,15 @@ impl<P> Runtime<'_, P> {
         };
         if player != 1000 {
             binding.dispatches.push((player, actual));
-            for (position, receiver) in binding.subscribers.iter().enumerate() {
-                let check = binding.resource_boost_checks.as_ref().and_then(|checks| checks.get(position))
-                    .filter(|check| check.receiver == *receiver)
-                    .ok_or_else(|| Error::Requirement(format!("ResourceRevealed subscriber {receiver} (player {player}, resource {actual})")))?;
-                // Source reads these definition references before the territory
-                // owner. Failed guards have no state, callback or RNG effects.
-                if !check.resource_reference
-                    || !check.improvement_reference
-                    || check.boost_value != 11
-                {
-                    continue;
+            let checks = binding.subscribers.iter().enumerate().map(|(position, receiver)| {
+                binding.resource_boost_checks.as_ref().and_then(|checks| checks.get(position))
+                    .filter(|check| check.receiver == *receiver).cloned()
+                    .ok_or_else(|| Error::Requirement(format!("ResourceRevealed subscriber {receiver} (player {player}, resource {actual})")))
+            }).collect::<Result<Vec<_>, _>>()?;
+            for check in checks {
+                for boost in resource_boost_matches(state, &check, player, actual, index)? {
+                    trigger(self, state, player, boost)?;
                 }
-                let current_plot = state
-                    .world()
-                    .map()
-                    .plot_by_index(index)
-                    .ok_or(Error::Missing("resource boost current plot"))?;
-                let owner = crate::movement_placement_state::plot_owner(current_plot)
-                    .map_err(Error::Placement)?;
-                if owner != player {
-                    continue;
-                }
-                return Err(Error::Missing("positive PlayerResourceCheck improvement/resource and TriggerBoost continuation"));
             }
         }
         if sight
@@ -519,17 +480,135 @@ impl<P> Runtime<'_, P> {
             && changed
         {
             for event_hash in report_events(actual) {
-                binding.reports.push(Report {
-                    event_hash: *event_hash,
-                    player,
-                    plot: index,
-                    resource: actual,
-                    revealed_state,
-                });
+                self.resource_revelation
+                    .as_mut()
+                    .unwrap()
+                    .reports
+                    .push(Report {
+                        event_hash: *event_hash,
+                        player,
+                        plot: index,
+                        resource: actual,
+                        revealed_state,
+                    });
             }
         }
         Ok(())
     }
+}
+/// Immutable source references for Boost.Manager.PlayerResourceCheck2844a40.
+pub(super) fn resource_boost_check(
+    rules: &crate::Rules,
+    receiver: u64,
+    row_id: i64,
+) -> Result<ResourceBoostCheck, Error> {
+    let resources = collection(rules, "Resources", "ResourceType")
+        .map_err(|e| Error::Requirement(format!("{e:?}")))?;
+    let improvements = collection(rules, "Improvements", "ImprovementType")
+        .map_err(|e| Error::Requirement(format!("{e:?}")))?;
+    let boosts = rules
+        .gameplay()
+        .table("Boosts")
+        .ok_or(Error::Missing("Boosts"))?;
+    let (boost_index, row) = boosts
+        .rows()
+        .enumerate()
+        .find(|(_, row)| row.row_id() == Some(crate::RulesRowId(row_id)))
+        .ok_or(Error::Missing("resource boost definition"))?;
+    let reference = |column| -> Result<Option<u32>, Error> {
+        match row
+            .get(column)
+            .map_err(|e| Error::Requirement(format!("{e:?}")))?
+        {
+            crate::SqlValue::Null => Ok(None),
+            crate::SqlValue::Text(name) => Ok(Some(crate::registry::linux_type_hash(name))),
+            _ => Err(Error::Missing("resource boost reference")),
+        }
+    };
+    let resource = reference("ResourceType")?
+        .and_then(|hash| resources.find_index(hash))
+        .map(|v| v as i32);
+    let mut compatible_improvements = Vec::new();
+    if let Some(resource) = resource {
+        let name = &resources.entries()[resource as usize].type_name;
+        for row in rules
+            .gameplay()
+            .table("Improvement_ValidResources")
+            .ok_or(Error::Missing("Improvement_ValidResources"))?
+            .rows()
+        {
+            if row
+                .text("ResourceType")
+                .map_err(|e| Error::Requirement(format!("{e:?}")))?
+                .as_bytes()
+                == name
+            {
+                let hash = crate::registry::linux_type_hash(
+                    row.text("ImprovementType")
+                        .map_err(|e| Error::Requirement(format!("{e:?}")))?
+                        .as_bytes(),
+                );
+                if improvements.find_index(hash).is_some() {
+                    compatible_improvements.push(hash);
+                }
+            }
+        }
+    }
+    let class = row
+        .text("BoostClass")
+        .map_err(|e| Error::Requirement(format!("{e:?}")))?;
+    let name = rules
+        .gameplay()
+        .table("BoostNames")
+        .ok_or(Error::Missing("BoostNames"))?
+        .rows()
+        .find(|r| r.text("BoostType").ok() == Some(class))
+        .ok_or(Error::Missing("resource boost name"))?;
+    Ok(ResourceBoostCheck {
+        receiver,
+        resource,
+        compatible_improvements,
+        boost_index,
+        improvement_reference: reference("ImprovementType")?
+            .is_some_and(|hash| improvements.find_index(hash).is_some()),
+        boost_value: i32::try_from(
+            name.integer("BoostValue")
+                .map_err(|e| Error::Requirement(format!("{e:?}")))?,
+        )
+        .map_err(|_| Error::Missing("resource boost value"))?,
+    })
+}
+pub(super) fn resource_boost_matches(
+    state: &LoadedState,
+    check: &ResourceBoostCheck,
+    player: i32,
+    actual: i32,
+    index: u32,
+) -> Result<Vec<usize>, Error> {
+    if check.resource.is_none() || !check.improvement_reference || check.boost_value != 11 {
+        return Ok(Vec::new());
+    }
+    let plot = state
+        .world()
+        .map()
+        .plot_by_index(index)
+        .ok_or(Error::Missing("resource boost plot"))?;
+    if crate::movement_placement_state::plot_owner(plot).map_err(Error::Placement)? != player
+        || check.resource != Some(actual)
+    {
+        return Ok(Vec::new());
+    }
+    // Native iterates the resource's ordered improvement references. The boost's
+    // ImprovementType is only a presence guard; it does not select this list.
+    Ok(check
+        .compatible_improvements
+        .iter()
+        .filter(|&&hash| {
+            hash == plot.improvement_hash
+                && !plot.flags.get(c6_core::map::PlotFlag::ImprovementPillaged)
+        })
+        .map(|_| check.boost_index)
+        .collect())
 }
 fn wonder_completion_gate(event: c6_core::visibility_change::Propagation, wonder: bool) -> bool {
     event.mask & 2 != 0 && event.revealed_state != 0 && event.first_reveal && wonder

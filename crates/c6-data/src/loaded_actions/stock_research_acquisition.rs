@@ -58,6 +58,7 @@ pub struct ResourceUnlocks {
     subscribers: Vec<u64>,
     pub dispatches: Vec<(i32, i32)>,
     discovered: Option<Vec<ResourceDiscoveredSubscriber>>,
+    discovered_checks: Option<Vec<super::super::resource_revelation::ResourceBoostCheck>>,
     pub discovered_dispatches: Vec<(i32, i32, u32)>,
 }
 /// The actual Boost.Manager PlayerResourceCheck subscriber. Its definition
@@ -73,6 +74,7 @@ struct ResourceUnlockDefinition {
     hash: u32,
     technology: Option<i32>,
     civic: Option<i32>,
+    compatible_improvements: Vec<u32>,
 }
 impl<P> Runtime<'_, P> {
     /// Current Resource definition order and complete Game.ResourceUnlocked
@@ -115,6 +117,21 @@ impl<P> Runtime<'_, P> {
                 hash: crate::registry::linux_type_hash(&definition.type_name),
                 technology: reference("PrereqTech", &techs)?,
                 civic: reference("PrereqCivic", &civics)?,
+                compatible_improvements: rules
+                    .gameplay()
+                    .table("Improvement_ValidResources")
+                    .ok_or("Improvement_ValidResources")?
+                    .rows()
+                    .filter(|row| {
+                        row.text("ResourceType").ok().map(str::as_bytes)
+                            == Some(definition.type_name.as_slice())
+                    })
+                    .map(|row| {
+                        row.text("ImprovementType")
+                            .map(|name| crate::registry::linux_type_hash(name.as_bytes()))
+                            .map_err(|e| e.to_string())
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
             });
         }
         let binding = self
@@ -129,6 +146,7 @@ impl<P> Runtime<'_, P> {
             subscribers,
             dispatches: Vec::new(),
             discovered: None,
+            discovered_checks: None,
             discovered_dispatches: Vec::new(),
         });
         Ok(())
@@ -152,6 +170,34 @@ impl<P> Runtime<'_, P> {
             return Err("research resource discovery already bound".into());
         }
         inputs.discovered = Some(subscribers);
+        Ok(())
+    }
+    /// Definition row identities come from each actual current callable's
+    /// captured boost reference, in complete ResourceDiscovered ring order.
+    pub fn bind_research_resource_discovery_definitions(
+        &mut self,
+        state: &LoadedState,
+        rules: &crate::Rules,
+        subscribers: &[(u64, i64)],
+    ) -> Result<(), String> {
+        let checks = subscribers
+            .iter()
+            .map(|&(receiver, row)| {
+                super::super::resource_revelation::resource_boost_check(rules, receiver, row)
+                    .map_err(|e| e.to_string())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        self.bind_research_resource_discovery(
+            state,
+            vec![ResourceDiscoveredSubscriber::PlayerResourceCheck; checks.len()],
+        )?;
+        self.research_acquisition
+            .as_mut()
+            .unwrap()
+            .resource_unlocks
+            .as_mut()
+            .unwrap()
+            .discovered_checks = Some(checks);
         Ok(())
     }
     pub fn research_resource_discovery_dispatches(&self) -> &[(i32, i32, u32)] {
@@ -191,12 +237,29 @@ impl<P> Runtime<'_, P> {
         Ok(())
     }
 }
+impl<'a, P> Runtime<'a, P> {
+    /// Shared original ChangeResourceAmount services; no second resource ledger.
+    pub fn bind_research_resource_amount(
+        &mut self,
+        state: &LoadedState,
+        definitions: &'a crate::loaded_actions::upgrade_actions::resources::Definitions,
+        signals: &'a crate::loaded_actions::upgrade_actions::resources::Signals,
+    ) -> Result<(), String> {
+        self.check(state).map_err(|e| e.to_string())?;
+        if self.research_resource_amount.is_some() {
+            return Err("research resource amount already bound".into());
+        }
+        self.research_resource_amount = Some((definitions, signals));
+        Ok(())
+    }
+}
 impl<P> Effects<'_, '_, P> {
     fn technology_resource_unlock(
         &mut self,
         state: &mut LoadedState,
         player: i32,
         index: i32,
+        research_definitions: &research::Definitions,
     ) -> Result<(), String> {
         use c6_core::yields::{PrerequisiteKind, PrerequisiteState};
         let binding = self
@@ -273,8 +336,43 @@ impl<P> Effects<'_, '_, P> {
                     .ok_or("current research shared visibility")?;
                 // Native UpdateRevealedAt always precedes the caller's own
                 // GetRevealedState and mask4 refresh, even for hidden plots.
+                let runtime = &mut *self.runtime;
+                let choices = self.choices;
+                let culture = self.culture;
+                let choice_graph = self.choice_graph;
+                let effect_sight = self.sight;
                 self.backend
-                    .update_revealed_resource(state, sight, player, plot)
+                    .update_revealed_resource_with(
+                        state,
+                        sight,
+                        player,
+                        plot,
+                        |backend, state, player, boost| {
+                            let mut effects = Effects {
+                                backend,
+                                runtime,
+                                choices,
+                                culture,
+                                choice_graph,
+                                sight: effect_sight,
+                            };
+                            let mut context = research::Context {
+                                state,
+                                definitions: research_definitions,
+                                effects: &mut effects,
+                            };
+                            c6_core::relic_creation::boost::trigger_boost(
+                                &mut context,
+                                Some(player),
+                                boost,
+                            )
+                            .map_err(|e| {
+                                super::super::movement::Error::Requirement(format!(
+                                    "resource reveal boost: {e:?}"
+                                ))
+                            })
+                        },
+                    )
                     .map_err(|e| e.to_string())?;
                 let normal = sight
                     .shared(player)?
@@ -334,8 +432,28 @@ impl<P> Effects<'_, '_, P> {
                 .map_err(|e| format!("{e:?}"))?;
                 // GetResourceExtractableAt returns NO_RESOURCE for another
                 // owner's plot before resource visibility/improvement checks.
-                if owner == player {
-                    return Err("owned resource extraction and discovery continuation".into());
+                if owner == player && self.resource_extractable(state, player, plot, resource)? {
+                    let count = i32::from(
+                        state
+                            .world()
+                            .map()
+                            .plot_by_index(plot)
+                            .unwrap()
+                            .resource_count,
+                    );
+                    let (definitions, signals) = self
+                        .backend
+                        .research_resource_amount
+                        .ok_or("current resource amount services")?;
+                    crate::loaded_actions::upgrade_actions::resources::change_owned_amount(
+                        state,
+                        self.backend,
+                        definitions,
+                        signals,
+                        player,
+                        resource.hash,
+                        count,
+                    )?;
                 }
                 let inputs = self
                     .backend
@@ -352,22 +470,112 @@ impl<P> Effects<'_, '_, P> {
                 inputs
                     .discovered_dispatches
                     .push((player, resource.index, plot));
-                for subscriber in subscribers {
-                    match subscriber {
-                        ResourceDiscoveredSubscriber::PlayerResourceCheck => {
-                            // Source2844a40 returns at either immutable rule
-                            // guards or the owner comparison; neither draws RNG.
+                let subscriber_count = subscribers.len();
+                let checks = inputs.discovered_checks.clone();
+                if let Some(checks) = checks {
+                    if checks.len() != subscriber_count {
+                        return Err("resource discovery binding order".into());
+                    }
+                    for check in checks {
+                        for boost in super::super::resource_revelation::resource_boost_matches(
+                            state,
+                            &check,
+                            player,
+                            resource.index,
+                            plot,
+                        )
+                        .map_err(|e| e.to_string())?
+                        {
+                            let mut context = research::Context {
+                                state,
+                                definitions: research_definitions,
+                                effects: self,
+                            };
+                            c6_core::relic_creation::boost::trigger_boost(
+                                &mut context,
+                                Some(player),
+                                boost,
+                            )
+                            .map_err(|e| format!("resource discovery boost: {e:?}"))?;
                         }
                     }
+                } else if owner == player && subscriber_count != 0 {
+                    return Err("current owned ResourceDiscovered boost definitions".into());
                 }
-                // Native ResourceDiscovered notification also requires owner
-                // equality, already false on this supported branch.
+                if owner == player {
+                    // Original Send(ResourceDiscovered,PlotCoord,localized strings)
+                    // is exposed as an informational headless gameplay notice.
+                    self.backend
+                        .publish_notice(
+                            state,
+                            super::super::Notice::ResourceDiscovered {
+                                owner: player,
+                                resource: resource.index,
+                                plot,
+                            },
+                        )
+                        .map_err(|e| e.to_string())?;
+                }
             }
         }
         self.backend
             .reached
-            .push("stock technology resource unlock and unowned plot revelation");
+            .push("stock technology resource unlock and plot revelation");
         Ok(())
+    }
+    fn resource_extractable(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        index: u32,
+        resource: &ResourceUnlockDefinition,
+    ) -> Result<bool, String> {
+        use c6_core::map::PlotFlag;
+        let plot = state
+            .world()
+            .map()
+            .plot_by_index(index)
+            .ok_or("resource extraction plot")?;
+        if plot.resource_count == 0 {
+            return Ok(false);
+        }
+        let visible = self
+            .backend
+            .resource_revelation
+            .as_ref()
+            .ok_or("resource extraction definitions")?
+            .definitions
+            .visible_resource(state, owner, plot.resource_hash as i32)
+            .map_err(|e| format!("{e:?}"))?;
+        if visible == -1 {
+            return Ok(false);
+        }
+        if let Some(attributes) = &plot.city_attributes {
+            if attributes.district != u32::MAX {
+                let player = state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or("resource extraction district owner")?;
+                if let Some(district) = player
+                    .districts
+                    .records
+                    .entries
+                    .iter()
+                    .find(|e| e.value.id == attributes.district)
+                    .map(|e| &e.value)
+                {
+                    if district.is_complete && !district.pillaged {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+        Ok(!plot.flags.get(PlotFlag::ImprovementPillaged)
+            && resource
+                .compatible_improvements
+                .contains(&plot.improvement_hash))
     }
     pub(super) fn game_acquired(
         &mut self,
@@ -495,7 +703,7 @@ impl<P> Effects<'_, '_, P> {
                         };
                         if unlock {
                             if kind == research::Kind::Technology {
-                                self.technology_resource_unlock(state, player, index)
+                                self.technology_resource_unlock(state, player, index, definitions)
                                     .map_err(source_failure)?;
                             } else {
                                 return Err(source_failure(

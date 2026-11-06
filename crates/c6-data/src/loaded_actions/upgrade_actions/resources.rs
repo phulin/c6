@@ -279,10 +279,43 @@ pub fn consume_resource<P>(
     resource: u32,
     amount: i32,
 ) -> Result<(), String> {
+    change_owned_amount(
+        state,
+        backend,
+        inputs.definitions,
+        inputs.signals,
+        owner,
+        resource,
+        amount.wrapping_neg(),
+    )?;
+    let def = inputs
+        .definitions
+        .resources
+        .iter()
+        .find(|r| r.hash == resource)
+        .ok_or("upgrade resource definition")?;
+    // The fixed stock headless reporting scope has no added report consumers.
+    // Source guards precede all climate state writes and every RNG dependency.
+    if amount > 0 && def.co2.is_some_and(|v| v > 0) {
+        return Err("upgrade positive Climate.ConsumeResource usage3".into());
+    }
+    Ok(())
+}
+/// Original ChangeResourceAmount(ownership=0), including luxury allocation,
+/// source-ordered ResourceChanged consumers and semantic resource report.
+/// The caller retains the same current signal and resource owners as upgrades.
+pub fn change_owned_amount<P>(
+    state: &mut LoadedState,
+    backend: &mut Runtime<'_, P>,
+    defs: &Definitions,
+    signals: &Signals,
+    owner: i32,
+    resource: u32,
+    delta: i32,
+) -> Result<(), String> {
     backend
         .check(state)
         .map_err(|e| format!("upgrade resources: {e:?}"))?;
-    let defs = inputs.definitions;
     if &defs.binding != state.binding() {
         return Err("upgrade resource definitions binding".into());
     }
@@ -310,7 +343,7 @@ pub fn consume_resource<P>(
         .get_mut(index)
         .and_then(|r| r.value.first_mut())
         .ok_or("upgrade owned resource cell")?;
-    *cell = amount_after(*cell, amount.wrapping_neg(), def.accumulates);
+    *cell = amount_after(*cell, delta, def.accumulates);
     let uninitializing =
         crate::loaded_actions::notifications::processing::Backend::game_uninitializing(
             backend, state,
@@ -325,7 +358,6 @@ pub fn consume_resource<P>(
         )
         .map_err(|e| format!("upgrade luxury allocation: {e:?}"))?;
     }
-    let signals = inputs.signals;
     if state.binding() != &signals.binding || !signals.instance.same_instance(state.action_stamp())
     {
         return Err("upgrade resource signals binding".into());
@@ -346,7 +378,7 @@ pub fn consume_resource<P>(
                         &p.influence.copy_strategics_count,
                         &p.influence.copy_luxuries_count,
                         owner,
-                        amount.wrapping_neg(),
+                        delta,
                     )
                 {
                     return Err("upgrade ResourceChanged Influence forwarding".into());
@@ -363,11 +395,6 @@ pub fn consume_resource<P>(
             event: 0x1153df52,
             player: owner,
         });
-    // The fixed stock headless reporting scope has no added report consumers.
-    // Source guards precede all climate state writes and every RNG dependency.
-    if amount > 0 && def.co2.is_some_and(|v| v > 0) {
-        return Err("upgrade positive Climate.ConsumeResource usage3".into());
-    }
     Ok(())
 }
 /// UnitUpgraded updates maxima in melee/ranged/bombard order, without changing
