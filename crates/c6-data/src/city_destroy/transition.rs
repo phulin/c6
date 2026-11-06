@@ -212,16 +212,13 @@ fn destroy(
         remove_all_queue(context.state_mut(), city).map_err(|e| err("BuildQueue.RemoveAll", e))?;
         // Real nonempty building removal remains a mandatory gameplay service.
         call("Buildings.RemoveAll", context.remove_buildings(city))?;
-        loop {
-            let Some(id) = canonical_city(context.state(), city)
-                .map_err(|e| err("Districts.DestroyAll", e))?
-                .districts
-                .district_ids
-                .last()
-                .copied()
-            else {
-                break;
-            };
+        while let Some(id) = canonical_city(context.state(), city)
+            .map_err(|e| err("Districts.DestroyAll", e))?
+            .districts
+            .district_ids
+            .last()
+            .copied()
+        {
             let district = ComponentId {
                 owner: city.owner,
                 component_type: 3,
