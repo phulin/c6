@@ -241,14 +241,14 @@ impl RulesCache {
     }
 }
 #[derive(Clone, Copy)]
-struct NeighborDistrict {
-    hash: u32,
-    owner: i32,
-    internal_only: bool,
-    complete: bool,
-    pillaged: bool,
+pub(super) struct NeighborDistrict {
+    pub(super) hash: u32,
+    pub(super) owner: i32,
+    pub(super) internal_only: bool,
+    pub(super) complete: bool,
+    pub(super) pillaged: bool,
 }
-fn current_district(
+pub(super) fn current_district(
     state: &LoadedState,
     definitions: &Definitions,
     plot: &Plot,

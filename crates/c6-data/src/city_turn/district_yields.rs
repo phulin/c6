@@ -1,6 +1,7 @@
 //! Current numeric City.CalculateYieldFromDistricts contribution.
 //! TrackedValue labels are presentation; its raw Q8 additions are unconditional.
 mod adjacency;
+mod dynamic;
 use super::Error;
 use crate::{
     registry::{linux_type_hash, LinuxDefinitionRegistry},
@@ -189,23 +190,24 @@ impl Current<'_> {
                         .find(|e| e.value.header.id == attributes.owning_city)
                 })
                 .map(|e| &e.value);
-            // City.GetDynamicAdjacencyBonuses2898c80 filters the retained
-            // list by same/replacement district, then requested yield. A
-            // nonempty list for OTHER districts/yields does not reach spatial
-            // calculation2a3ebd0. Matching rows remain explicit dependencies.
-            if city.is_some_and(|city| {
-                city.header.dynamic_bonuses.iter().any(|bonus| {
-                    dynamic_matches(
+            if let Some(city) = city {
+                for bonus in &city.header.dynamic_bonuses {
+                    if dynamic_matches(
                         &self.definitions.replacements,
                         bonus,
                         district.district_hash,
                         hash,
-                    )
-                })
-            }) {
-                return Err(Error::Unsupported(
-                    "current dynamic district adjacency bonuses",
-                ));
+                    ) {
+                        total = total.wrapping_add(dynamic::evaluate(
+                            bonus,
+                            self.state,
+                            self.definitions,
+                            owner,
+                            district.location,
+                            plot,
+                        )?);
+                    }
+                }
             }
         }
         Ok(total)
