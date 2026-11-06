@@ -166,20 +166,15 @@ impl EffectRuntime {
                     continue;
                 }
                 let kind = ContextObject::Player(target);
-                let object = match self.objects.iter().find(|r| r.1.kind == kind) {
-                    Some(r) => r.0,
-                    None => self
-                        .append_normal_object(
-                            state,
-                            Object {
-                                kind,
-                                instance_id: 0,
-                                unit_sort_suffix: None,
-                                unit_lifecycle: None,
-                            },
-                        )
-                        .map_err(Error::Query)?,
-                };
+                // GetAlive is a newly reached dependency of this feature.
+                // A scoped imported owner may omit an existing native wrapper;
+                // absence from that partial list cannot establish a cache miss.
+                let object = self
+                    .objects
+                    .iter()
+                    .find(|r| r.1.kind == kind)
+                    .map(|r| r.0)
+                    .ok_or(Error::Missing("current AllPlayers Player wrapper"))?;
                 let requirement_result = test(state, target, definitions.belief_hash)?;
                 let requirement_set = sets::get_or_create_subject(
                     &mut Factory {
