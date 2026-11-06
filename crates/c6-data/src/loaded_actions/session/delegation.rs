@@ -107,6 +107,7 @@ impl<'a, P> Session<'_, 'a, P> {
         let result = action::respond(
             self.context.notifications.state,
             &mut self.context.notifications.backend,
+            &mut self.visibility,
             request,
             response,
             definitions,

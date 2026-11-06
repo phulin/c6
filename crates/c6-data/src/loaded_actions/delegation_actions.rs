@@ -155,6 +155,7 @@ pub trait Effects<P> {
         &self,
         state: &LoadedState,
         backend: &P,
+        visibility: &crate::game_update_state::deactivation::VisibilityHistory,
         sender: i32,
         recipient: i32,
     ) -> Result<(), Self::Error>;
@@ -168,6 +169,7 @@ pub trait Effects<P> {
         &mut self,
         state: &mut LoadedState,
         backend: &mut P,
+        visibility: &mut crate::game_update_state::deactivation::VisibilityHistory,
         sender: i32,
         recipient: i32,
     ) -> Result<(), Self::Error>;
@@ -273,6 +275,7 @@ fn change_gold<P, E: Effects<P>>(
 pub(crate) fn respond<P, E: Effects<P>>(
     state: &mut LoadedState,
     backend: &mut P,
+    visibility: &mut crate::game_update_state::deactivation::VisibilityHistory,
     request: Request,
     response: Response,
     definitions: &Definitions,
@@ -286,9 +289,13 @@ pub(crate) fn respond<P, E: Effects<P>>(
         sender, recipient, ..
     } = request.decision;
     let cost = definitions.cost(state, config)?;
-    effects
-        .preflight(state, backend, sender, recipient)
-        .map_err(Error::Effect)?;
+    let cost_q8 = cost.wrapping_shl(8);
+    let affordable = player(state, sender)?.treasury.gold_balance_q8 >= cost_q8;
+    if response == Response::Accept && affordable {
+        effects
+            .preflight(state, backend, visibility, sender, recipient)
+            .map_err(Error::Effect)?;
+    }
     // ProcessAction's initialized branch clears this AFTER evaluating policy,
     // for both acceptance and refusal. No policy selector is executed here.
     state
@@ -297,8 +304,7 @@ pub(crate) fn respond<P, E: Effects<P>>(
     if response == Response::Refuse {
         return Ok(Outcome::Refused);
     }
-    let cost_q8 = cost.wrapping_shl(8);
-    if player(state, sender)?.treasury.gold_balance_q8 < cost_q8 {
+    if !affordable {
         return Ok(Outcome::InsufficientGold);
     }
     change_gold(
@@ -318,7 +324,7 @@ pub(crate) fn respond<P, E: Effects<P>>(
         .ok_or(Error::Missing("delegation recipient slot"))? = true;
     // The source setter emits even when the flag was already true.
     effects
-        .delegation_established(state, backend, sender, recipient)
+        .delegation_established(state, backend, visibility, sender, recipient)
         .map_err(Error::Effect)?;
     effects
         .recheck_visibility(state, backend, sender, recipient)
