@@ -1,7 +1,7 @@
 # Persistent ordinary ranged combat
 
 `c6_data::loaded_actions::session::Session::range_attack` executes a qualified
-ordinary ranged Unit/Unit operation through CanStart, Test, the operation manager,
+ordinary ranged Unit/Unit or supported city-center operation through CanStart, Test, the operation manager,
 combat resolution and the stock `HeadlessMessagesProcessed` aftermath. It borrows
 the existing world, visibility runtime and reporting provider. Script state, RNG,
 callback registrations and modifier stores persist between requests.
@@ -36,7 +36,7 @@ rejects later action requests; `into_parts` returns the owners for inspection.
 The qualified stock output scope replaces native status text, XP display caches
 and platform achievement output with typed records. Additional synchronous
 consumers require explicit support. Positive unimplemented branches return errors,
-including bombard or Unit/District combat in this adapter, combat capture, joint-war XP consumers,
+including bombard, unsupported District configurations, combat capture, joint-war XP consumers,
 multiplayer combat notifications, positive rewards/yields/boosts and positive era
 score continuations. This adapter does not compose melee combat. Definition,
 observer, promotion, notification and callback inputs must describe the actual
@@ -49,6 +49,54 @@ compared gameplay state, visibility, callback effects, history, modifier lifetim
 and ordered GameSync draws. A controlled missing-report case also verifies that
 the failed prefix and Session freeze survive extraction and reassembly. These
 comparisons do not establish arbitrary ranged configurations or complete turns.
+
+## Unit ranged attacks against Ancient Walls
+
+The same `Session::range_attack` and `ranged_attack::stock::Ranged` dispatcher
+support an ordinary land ranged attacker against a major-owned city-center
+District. Supply `melee_attack::city::Definitions` in
+`execution::GenerateRules::city`, bind the current combat placement queries and
+same-origin District damage report scope, and retain the current technology and
+civic graphs for notification aftermath. The city remains a real District
+participant; it is never represented by a synthetic defending Unit.
+
+Generation registers a RANGED proposal and consumes the original inner then
+outer damage draws. Resolution applies outer damage before garrison damage,
+awards experience, clears operations, updates healing eligibility and attack
+budget, and executes war weariness, combat callbacks and
+`HeadlessMessagesProcessed` on the existing owners. It preserves both defense
+health pools and the generated pre-damage defense type. Exhausting the outer
+pool removes the wall strength contribution from subsequent current queries.
+The ranged attacker takes no retaliation damage and never advances or captures.
+
+Two retained original Linux fixtures use an Archer and a noncapital city with
+Ancient Walls. With undamaged walls, the city receives 1 garrison damage and
+14 outer damage. With 99 of 100 outer damage before the action, it receives
+25 garrison damage and the outer pool clamps to 100. Both complete through the
+persistent Session with the compared gameplay state, callbacks, history,
+visibility and ordered GameSync draws equal. The source-qualified damage report
+order is outer then garrison. Read-only post-action tests reject another ranged
+attack after its attack budget is exhausted; current wall strength loses its
+3-point contribution when the outer pool reaches 100.
+
+The existing city-melee planning boundary also applies: the library emits
+`CityAttackPlanningObservation` instead of updating the native targeting tally.
+The comparison retains the raw 0-versus-2250 tally difference and checks all
+other Targets fields. This source-qualified policy exclusion permits no
+omission of gameplay or RNG from other AI-named code.
+
+The final comparison uses public gameplay commit
+`e6a8b10bdda682c8965947bad58c0eae17ac1b87` and private adapter commit
+`6dfcab2802344d41b30cacc322c8aa0b4b9dcdb1`. Private receipts
+`evidence/linux/city-ranged-walls-session-4.json` and
+`evidence/linux/city-ranged-walls-exhaust-session-3.json` bind the canonical
+inputs, target/rules/configuration identities, executable hashes and commands.
+
+Urban Defenses, bombard/equal-type attacks, positive bypass-wall support,
+special wall-prevention modifiers and lethal garrison continuations are explicit
+unsupported branches. Other unqualified callback, promotion and joint-war
+branches retain the existing errors. These fixtures do not establish arbitrary
+city combat, all RNG sources, complete gameplay state or full turns.
 
 ## City ranged strikes
 
