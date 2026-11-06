@@ -183,6 +183,17 @@ impl<'a, P> Runtime<'a, P> {
         self.action_research = Some(runtime);
         result
     }
+    /// The current initialized encounter array, including unsaved sight writes.
+    pub fn first_contact_encountered_units(&self, owner: i32) -> Result<&[bool], Error> {
+        self.player_services
+            .as_ref()
+            .ok_or(Error::Missing("first-contact current encounter owner"))?
+            .player::<Error>(owner)
+            .map_err(|e| Error::Requirement(format!("first-contact encounter owner: {e:?}")))?
+            .encountered_units
+            .as_deref()
+            .ok_or(Error::Missing("first-contact current encounter flags"))
+    }
     pub fn pending_first_meetings(&self) -> &[c6_core::diplomacy_first_meeting::PendingDecision] {
         self.first_contact.as_ref().map_or(&[], |s| &s.pending)
     }
