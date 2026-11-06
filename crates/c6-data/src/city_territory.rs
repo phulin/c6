@@ -1,5 +1,6 @@
 //! Live city territory transitions over canonical Map and City records.
 //! Unsaved plot attributes and PlotYields objects remain explicit current state.
+pub mod lifecycle;
 use crate::{
     loaded_actions::city_range_attack, registry::linux_type_hash, unit_sight_state, Rules,
 };
