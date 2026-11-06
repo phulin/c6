@@ -2,6 +2,7 @@
 //! SimpleRequirement state/Changed delivery belongs to the shared requirement
 //! owner; these functions compute source Tests and preserve event gates.
 use crate::{resource_binding::ResourceAuthority, unit_initialization_definitions, Rules};
+mod border_army;
 use c6_core::{loaded_components::RetainedPlayer, loaded_state::LoadedState};
 #[derive(Debug)]
 pub enum Error {
@@ -9,6 +10,7 @@ pub enum Error {
     World(c6_core::world::MissingInput),
     Relations(c6_core::game_diplomatic_relations::Error),
     Definitions(unit_initialization_definitions::Error),
+    Rules(crate::Error),
     Placement(crate::movement_placement_state::Error),
     Missing(&'static str),
 }
@@ -18,10 +20,20 @@ pub enum Kind {
     Ally,
     DeclaredFriend,
     FriendlyCityOccupied,
-    NearCultureBorder { lookback: i32, threshold: i32 },
-    MetXTurns { turns: i32 },
-    AtPeace { turns: i32 },
-    OpenBorders { grace_turns: i32 },
+    NearCultureBorder {
+        radius: u32,
+        lookback: i32,
+        threshold: i32,
+    },
+    MetXTurns {
+        turns: i32,
+    },
+    AtPeace {
+        turns: i32,
+    },
+    OpenBorders {
+        grace_turns: i32,
+    },
 }
 #[derive(Clone, Copy, Debug)]
 pub struct Receiver {
@@ -31,14 +43,37 @@ pub struct Receiver {
 }
 pub struct Definitions {
     units: crate::registry::LinuxDefinitionRegistry,
+    border_units: Vec<border_army::UnitDefinition>,
 }
 impl Definitions {
     pub fn from_rules(rules: &Rules, authority: &ResourceAuthority<'_>) -> Result<Self, Error> {
         unit_initialization_definitions::Definitions::validate_resources(rules, authority)
             .map_err(Error::Definitions)?;
+        let units = unit_initialization_definitions::collection(rules, "Units", "UnitType")
+            .map_err(Error::Definitions)?;
+        let table = rules
+            .gameplay()
+            .table("Units")
+            .ok_or(Error::Missing("current army Units table"))?;
+        let border_units = units
+            .entries()
+            .iter()
+            .map(|entry| {
+                let row = table
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Missing("current army Unit row"))?;
+                Ok(border_army::UnitDefinition {
+                    trade: row.integer("MakeTradeRoute").map_err(Error::Rules)? != 0,
+                    spy: row.integer("Spy").map_err(Error::Rules)? != 0,
+                    civilian: crate::registry::linux_type_hash(
+                        row.text("FormationClass").map_err(Error::Rules)?.as_bytes(),
+                    ) == 0xc2510aa7,
+                })
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
-            units: unit_initialization_definitions::collection(rules, "Units", "UnitType")
-                .map_err(Error::Definitions)?,
+            units,
+            border_units,
         })
     }
 }
@@ -94,8 +129,8 @@ fn event_gate(
 }
 /// Actual native result convention: 0 satisfied, 1 unsatisfied, 2 permanently
 /// satisfied (elapsed contact), 3 invalid.
-/// Nonempty border armies and positive occupation/promise changes remain
-/// explicit until their gameplay continuation is supplied.
+/// Positive occupation and existing-promise changes remain explicit until their
+/// gameplay continuation is supplied.
 pub fn test(
     state: &LoadedState,
     defs: &Definitions,
@@ -138,30 +173,21 @@ pub fn test(
             Ok(1)
         }
         Kind::NearCultureBorder {
+            radius,
             lookback,
             threshold,
         } => {
             if r.context == r.subject {
                 return Ok(3);
             }
-            let _since = state
+            let since = state
                 .retained()
                 .core
                 .current_turn
                 .wrapping_sub(lookback)
                 .max(0);
-            if let Some((_, types)) = context
-                .diplomacy
-                .incursions_made
-                .iter()
-                .find(|(owner, _)| *owner == r.subject)
-            {
-                if let Some((_, turns)) = types.entries.iter().find(|(kind, _)| *kind == 0x626c7a34)
-                {
-                    if !turns.is_empty() {
-                        return Err(Error::Missing("current border incursion filtering"));
-                    }
-                }
+            if border_army::has_recent_incursion(&context.diplomacy, r.subject, since) {
+                return Ok(3);
             }
             let army = &context
                 .ai_targets
@@ -175,23 +201,33 @@ pub fn test(
                         .map_err(|_| Error::Missing("border subject index"))?,
                 )
                 .ok_or(Error::Missing("border subject index"))?;
-            for group in army
-                .army_size
-                .value
-                .as_ref()
-                .ok_or(Error::Missing("current border army contents"))?
-            {
-                if defs.units.find_index(group.hash).is_none() {
-                    return Err(Error::Missing("current army Unit definition"));
-                }
-                if !group.value.is_empty() {
-                    return Err(Error::Missing("current border army neighborhood traversal"));
-                }
+            let count = border_army::count(
+                army,
+                radius,
+                r.context,
+                r.subject,
+                |hash| {
+                    let index = defs
+                        .units
+                        .find_index(hash)
+                        .ok_or(Error::Missing("current army Unit definition"))?;
+                    defs.border_units
+                        .get(index)
+                        .copied()
+                        .ok_or(Error::Missing("current army Unit definition"))
+                },
+                |location| border_army::plot_owner(state, location),
+            )?;
+            if count < threshold {
+                return Ok(1);
             }
-            if threshold <= 0 {
+            // UpdatePromise first asks IsPromiseMade. Absence returns without
+            // mutation, callbacks or RNG. An existing promise may BreakPromise;
+            // keep that reached gameplay transition explicit.
+            if border_army::has_border_promise(&context.diplomacy, r.subject) {
                 return Err(Error::Missing("current border promise update"));
             }
-            Ok(1)
+            Ok(0)
         }
         Kind::OpenBorders { grace_turns } => {
             if crate::movement_placement_state::player_open_borders(state, r.context, r.subject)
