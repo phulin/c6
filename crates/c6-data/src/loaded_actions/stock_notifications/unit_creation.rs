@@ -62,7 +62,79 @@ pub struct State<'a> {
     pub history: Option<stock::History<'a>>,
     pub research: Option<ResearchInputs<'a>>,
 }
+// The slot accessor keeps the transfer scope independent of backend services;
+// the external owner reference cannot be accessed by the callback.
+fn with_research_loan<C, R>(
+    backend: &mut C,
+    research: &mut crate::research::Runtime,
+    slot: fn(&mut C) -> &mut Option<crate::research::Runtime>,
+    apply: impl FnOnce(&mut C) -> R,
+) -> R {
+    let holder = crate::research::Runtime {
+        binding: research.binding.clone(),
+        civic_graph: None,
+        alive_majors: None,
+        alive_major_ids: None,
+        city_order: Vec::new(),
+        game_era: None,
+        start_era_hash: None,
+        civilization_levels: Vec::new(),
+        scratch_players: Vec::new(),
+        manager_logging: None,
+    };
+    *slot(backend) = Some(std::mem::replace(research, holder));
+    let result = apply(backend);
+    *research = slot(backend)
+        .take()
+        .expect("canonical research loan retained through synchronous callback");
+    result
+}
 impl<'a, P> Runtime<'a, P> {
+    /// Loan the existing research owner to synchronous factory callbacks.
+    /// The caller's mutable reference stays borrowed for the whole scope. Its
+    /// empty identity holder is never exposed to the callback, and every normal
+    /// return (including an error) restores the mutated canonical owner.
+    pub fn with_action_research<R>(
+        &mut self,
+        research: &mut crate::research::Runtime,
+        apply: impl FnOnce(&mut Self) -> R,
+    ) -> Result<R, movement::Error> {
+        if self.action_research.is_some() || research.binding != self.binding {
+            return Err(movement::Error::Missing("canonical research loan binding"));
+        }
+        Ok(with_research_loan(
+            self,
+            research,
+            |backend| &mut backend.action_research,
+            apply,
+        ))
+    }
+
+    /// Bind immutable research definitions after the factory's current inputs.
+    pub fn bind_unit_creation_research(
+        &mut self,
+        state: &LoadedState,
+        inputs: ResearchInputs<'a>,
+    ) -> Result<(), movement::Error> {
+        self.check(state)
+            .map_err(|_| movement::Error::Missing("Unit creation research binding"))?;
+        if inputs.definitions.binding() != state.binding() {
+            return Err(movement::Error::Missing(
+                "Unit creation research rules binding",
+            ));
+        }
+        let creation = self
+            .unit_creation
+            .as_mut()
+            .ok_or(movement::Error::Missing("Unit creation inputs"))?;
+        if creation.research.is_some() {
+            return Err(movement::Error::Missing(
+                "Unit creation research already bound",
+            ));
+        }
+        creation.research = Some(inputs);
+        Ok(())
+    }
     /// Bind current City placement callbacks independently of Unit creation.
     /// Yield, amenity and alive-player services remain on this same runtime.
     pub fn bind_city_placement(
@@ -764,5 +836,72 @@ impl<P> Runtime<'_, P> {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::with_research_loan;
+    use c6_core::core_player::initialization::{
+        DatabaseIdentity, InputIdentities, WireBinding, WireRole,
+    };
+
+    #[test]
+    fn research_loan_restores_canonical_mutations_after_callback_error() {
+        let binding = WireBinding {
+            role: WireRole::ReadInputCore,
+            core_sha256: [1; 32],
+            occurrence_id: b"synthetic-research-loan".to_vec(),
+            output_id: None,
+            inputs: InputIdentities {
+                configuration_sha256: [2; 32],
+                rules_inputs_sha256: [3; 32],
+                database: DatabaseIdentity::Snapshot([4; 32]),
+                dlc_inputs_sha256: [5; 32],
+                mods_inputs_sha256: [6; 32],
+                content_inputs_sha256: [7; 32],
+            },
+        };
+        let mut research = crate::research::Runtime {
+            binding: binding.clone(),
+            civic_graph: Some(crate::research::CivicGraph {
+                nodes: vec![],
+                iteration: vec![3, 1],
+            }),
+            alive_majors: Some(vec![0, 2]),
+            alive_major_ids: Some(vec![2, 0]),
+            city_order: vec![(0, vec![])],
+            game_era: Some(1),
+            start_era_hash: Some(17),
+            civilization_levels: vec![(63, 9)],
+            scratch_players: vec![(63, false)],
+            manager_logging: Some(false),
+        };
+        let allocation = research.alive_majors.as_ref().unwrap().as_ptr();
+        let mut backend = None;
+        let result = with_research_loan(
+            &mut backend,
+            &mut research,
+            |slot| slot,
+            |slot| {
+                let owner = slot.as_mut().unwrap();
+                assert_eq!(owner.alive_majors.as_ref().unwrap().as_ptr(), allocation);
+                owner.game_era = Some(2);
+                owner.scratch_players[0].1 = true;
+                Err::<(), _>("reached callback failure")
+            },
+        );
+        assert_eq!(result, Err("reached callback failure"));
+        assert!(backend.is_none());
+        assert_eq!(research.binding, binding);
+        assert_eq!(research.alive_majors.as_ref().unwrap().as_ptr(), allocation);
+        assert_eq!(research.alive_major_ids, Some(vec![2, 0]));
+        assert_eq!(research.civic_graph.unwrap().iteration, vec![3, 1]);
+        assert_eq!(research.city_order, vec![(0, vec![])]);
+        assert_eq!(research.game_era, Some(2));
+        assert_eq!(research.start_era_hash, Some(17));
+        assert_eq!(research.civilization_levels, vec![(63, 9)]);
+        assert_eq!(research.scratch_players, vec![(63, true)]);
+        assert_eq!(research.manager_logging, Some(false));
     }
 }
