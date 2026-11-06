@@ -5,20 +5,17 @@ impl<P> Session<'_, '_, P> {
     /// The earliest completed capture whose disposition has not been resolved.
     /// Melee completion (advance, callbacks, RNG and queue cleanup) finishes
     /// before this choice becomes visible. Extracting and rewrapping Session
-    /// parts preserves it with the retained combat record.
+    /// parts preserves it with the retained combat record. Typed initialized
+    /// completed decisions are also visible without inventing combat history.
     ///
     /// Keep is available through `keep_city`; unsupported directives remain
     /// pending and other actions/turns stay blocked until resolution.
     pub fn pending_city_disposition(&self) -> Option<&PendingDisposition> {
         let backend = &self.context.notifications.backend;
-        let combat = backend.combat().ok()?;
-        backend.pending_city_dispositions().iter().find(|choice| {
-            combat.city_melees.iter().any(|row| {
-                row.captured
-                    .as_ref()
-                    .is_some_and(|capture| capture.disposition.city == choice.city)
-            })
-        })
+        backend
+            .pending_city_dispositions()
+            .iter()
+            .find(|choice| backend.completed_city_disposition(choice))
     }
 }
 

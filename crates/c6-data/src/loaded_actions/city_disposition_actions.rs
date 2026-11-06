@@ -14,6 +14,7 @@ use c6_core::{
 };
 
 pub mod keep;
+pub mod requirements;
 
 pub const DESTROY_COMMAND: u32 = 0x7b72_d9ea;
 pub const KEEP_DIRECTIVE: u32 = 0x029a_5a40;
@@ -88,6 +89,48 @@ pub enum Event {
 }
 pub trait Effects {
     fn event(&mut self, state: &mut LoadedState, event: Event) -> Result<(), String>;
+}
+
+/// Project an initialized completed combat capture's semantic pending decision
+/// from its actual current City, center, marker and rules. This never constructs
+/// a historical combat record or marks a source-timed in-flight queue complete.
+pub fn pending_from_current(
+    state: &LoadedState,
+    city: ComponentId,
+    definitions: &Definitions,
+    levels: &[(i32, u32)],
+) -> Result<PendingDisposition, Error> {
+    let owner = i32::from(city.owner);
+    let value = state
+        .city(owner, city.id)
+        .map_err(|e| error(Stage::Admission, e))?;
+    let mut center = None;
+    for &id in &value.districts.district_ids {
+        let district = state
+            .district(owner, id)
+            .map_err(|e| error(Stage::Admission, e))?;
+        if district.district_hash == c6_core::city_district::CITY_CENTER_HASH
+            && district.city_id == city.id
+        {
+            if center.is_some() {
+                return Err(error(Stage::Admission, "multiple current CityCenters"));
+            }
+            center = Some(ComponentId {
+                owner: city.owner,
+                component_type: 3,
+                id,
+            });
+        }
+    }
+    let choice = PendingDisposition {
+        city,
+        district: center.ok_or_else(|| error(Stage::Admission, "current CityCenter"))?,
+        previous_owner: value.header.just_conquered_from,
+        legal: city_capture::legal_dispositions(state, city, &definitions.capture, levels)
+            .map_err(|e| error(Stage::Admission, e))?,
+    };
+    admit(state, &choice, definitions, levels)?;
+    Ok(choice)
 }
 
 /// Revalidate the queue choice against the live city and rules. This does not

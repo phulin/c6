@@ -149,6 +149,35 @@ impl<'a, P> Runtime<'a, P> {
         &self.capture_dispositions
     }
 
+    /// Retain a typed completed decision when initializing a current snapshot.
+    /// This is not a historical melee record. Normal captures still queue at
+    /// their source site and become ready only after melee completion.
+    pub fn initialize_completed_city_disposition(
+        &mut self,
+        state: &LoadedState,
+        choice: &crate::city_capture::PendingDisposition,
+        definitions: &crate::loaded_actions::city_disposition_actions::Definitions,
+        levels: &[(i32,u32)],
+    ) -> Result<(), Error> {
+        if self.combat.as_ref().is_some_and(|combat| combat.capture_owners.is_some()) {
+            return Err(Error::Missing("disposition initialization during capture"));
+        }
+        let current=crate::loaded_actions::city_disposition_actions::pending_from_current(state,choice.city,definitions,levels)
+            .map_err(|e|Error::Requirement(format!("{e:?}")))?;
+        if &current!=choice {
+            return Err(Error::Missing("initialized disposition differs from current legal decision"));
+        }
+        self.queue_city_disposition(state,choice)?;
+        self.initialized_completed_dispositions.push(choice.city);
+        Ok(())
+    }
+    pub(crate) fn completed_city_disposition(&self, choice: &crate::city_capture::PendingDisposition) -> bool {
+        self.initialized_completed_dispositions.contains(&choice.city)
+            || self.combat.as_ref().is_some_and(|combat| combat.city_melees.iter().any(|row| {
+                row.captured.as_ref().is_some_and(|capture|capture.disposition.city==choice.city)
+            }))
+    }
+
     /// Remove exactly the completed choice after its synchronous disposition
     /// callbacks and normal blocking refresh succeed. Combat history is retained.
     pub(crate) fn complete_city_disposition(
@@ -160,6 +189,7 @@ impl<'a, P> Runtime<'a, P> {
         let at = self.capture_dispositions.iter().position(|current| current == choice)
             .ok_or(Error::Missing("current completed disposition choice"))?;
         self.capture_dispositions.remove(at);
+        self.initialized_completed_dispositions.retain(|city| *city != choice.city);
         Ok(())
     }
 
