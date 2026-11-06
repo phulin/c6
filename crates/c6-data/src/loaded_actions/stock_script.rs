@@ -623,4 +623,3 @@ mod tests {
         assert_eq!(sync.core_lock_depth(), 1);
     }
 }
-
