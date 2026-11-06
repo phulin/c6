@@ -89,8 +89,11 @@ spends 25 Faith, stores +50 Faith from camp dispersal and +100 healing from camp
 dispersal, and preserves availability, shared requirements and owned-city
 propagation. Its reached script, Mysticism inspiration and first-pantheon history
 moment (+2 era score) match the original, alongside compared typed state and known
-RNG. Other belief effects remain unsupported, and actual camp dispersal bonus
-application lacks acceptance; this does not establish complete religion coverage.
+RNG. A normal [camp-clearing action](linux-camp-clear.md) also matches the stored
+bonuses in the bounded stock case: +50 Faith and a 100-point healing request
+clamped from 66 damage to zero, including reached callbacks, history, boosts and
+ordered RNG. Other belief effects and broader camp profiles remain unsupported;
+this does not establish complete religion coverage.
 
 A representative nonhuman-major case starts with an owned city and ordinary
 Warrior. Upkeep queues the Pantheon request, and Religious activation yields a
