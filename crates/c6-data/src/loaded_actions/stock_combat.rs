@@ -149,6 +149,20 @@ impl<'a, P> Runtime<'a, P> {
         &self.capture_dispositions
     }
 
+    /// Remove exactly the completed choice after its synchronous disposition
+    /// callbacks and normal blocking refresh succeed. Combat history is retained.
+    pub(crate) fn complete_city_disposition(
+        &mut self,
+        state: &LoadedState,
+        choice: &crate::city_capture::PendingDisposition,
+    ) -> Result<(), Error> {
+        self.check(state).map_err(|_| Error::Missing("disposition World"))?;
+        let at = self.capture_dispositions.iter().position(|current| current == choice)
+            .ok_or(Error::Missing("current completed disposition choice"))?;
+        self.capture_dispositions.remove(at);
+        Ok(())
+    }
+
     pub fn bind_combat(&mut self, state: &LoadedState, combat: State<'a>) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Missing("combat World"))?;

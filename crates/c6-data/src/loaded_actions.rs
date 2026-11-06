@@ -22,6 +22,7 @@ use c6_core::{
 pub mod arena;
 pub mod choose_tech;
 pub mod city_range_attack;
+pub mod city_disposition_actions;
 pub mod command_units;
 pub mod configuration;
 pub mod declare_war;
