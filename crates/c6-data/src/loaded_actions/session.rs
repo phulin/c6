@@ -49,6 +49,8 @@ pub mod trade_route;
 pub mod declare_war;
 #[path = "session_pantheon.rs"]
 pub mod pantheon;
+#[path = "session_citizens.rs"]
+pub mod citizens;
 
 #[derive(Debug)]
 pub enum Error<E> {
