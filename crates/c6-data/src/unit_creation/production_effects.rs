@@ -83,11 +83,10 @@ pub fn observe_current_unit<E>(
     // Saved hash remapping must represent the complete native type vector.
     if buckets.len() != units.count()
         || (0..units.count()).any(|i| {
-            buckets
-                .iter()
-                .filter(|b| Some(b.hash) == units.type_hash(i))
-                .count()
-                != 1
+            // Resolve the immutable definition once per type, rather than
+            // repeating its name hash for every saved bucket.
+            let hash = units.type_hash(i);
+            buckets.iter().filter(|b| Some(b.hash) == hash).count() != 1
         })
     {
         return Err(Error::Missing("complete native Unit knowledge buckets"));
