@@ -367,6 +367,15 @@ where
         effects,
     )
     .map_err(Error::Upkeep)?;
+    // Admit the domain-mask dependency epoch before the native TestMoveTo
+    // prefix writes its Formation path cache. Those writes do not change any
+    // City, District, Building or map input used to rebuild these masks.
+    {
+        let runtime = configuration
+            .runtime(state, visibility, identity)
+            .map_err(Error::Query)?;
+        path::placement_context(state, definitions, &runtime).map_err(Error::Query)?;
+    }
     let test = test_move_to(
         state,
         definitions,
@@ -382,6 +391,21 @@ where
     if test == 0 {
         return Ok(0);
     }
+    // TestMoveTo has no gameplay callbacks and changes only Formation path
+    // storage. Reborrow the admitted masks after that cache-only mutation;
+    // this scope ends before the actual Placement callbacks below.
+    let domains = configuration
+        .city_domains
+        .map(|domains| path::CurrentCityDomains {
+            binding: domains.binding,
+            stamp: state.action_stamp(),
+            masks: domains.masks,
+        });
+    let configuration = Configuration {
+        civilization_levels: configuration.civilization_levels,
+        city_domains: domains.as_ref(),
+        execution: configuration.execution,
+    };
     let from = formation(state, identity).map_err(Error::Query)?.location;
     let Some(to) = first_step(formation(state, identity).map_err(Error::Query)?) else {
         return Ok(0);
