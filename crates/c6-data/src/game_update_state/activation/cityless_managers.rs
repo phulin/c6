@@ -508,7 +508,7 @@ fn scale(value: i32, percentage: i32) -> i32 {
 fn multiply(a: i32, b: i32) -> i32 {
     ((i64::from(a) * i64::from(b)) >> 8) as i32
 }
-fn update_tracker(t: &mut DiplomaticModifierTracker) {
+pub(super) fn update_tracker(t: &mut DiplomaticModifierTracker) {
     t.accumulation_turn_count = t.accumulation_turn_count.wrapping_add(1);
     if t.is_active
         && t.accumulation_turn_count >= t.increment_turns

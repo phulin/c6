@@ -25,7 +25,7 @@ impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
 impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
 /// This is the sole owner of imported child states and set subscription rings.
 /// It can also borrow an already-used shared owner through `from_current`.
-/// These fixed effect families only evaluate native diplomatic opinion. The
+/// These effect families update native diplomatic gameplay opinion. The
 /// human-owner path cannot send statements. Nonhuman owners additionally need
 /// a source-proven no-statement guard; reachable statements remain unsupported.
 /// No formal relation, visibility, favor or gameplay RNG effect is omitted.
@@ -314,6 +314,20 @@ fn no_opinion_statement(state: &LoadedState, row: &OwnerModifier) -> Result<bool
 /// `sets` is the same owner after the source set-state assignment.
 pub trait Services {
     type Error;
+    /// Borrow the SAME current modifier graph used by other gameplay callbacks.
+    /// The concrete owner update must enumerate subjects, use `sets` for every
+    /// child/set lifetime, and apply TradeRelations to the canonical Player
+    /// blackboard. Mirror resulting owner-control fields into `row` only after
+    /// that update; this row is the transport projection, not another graph.
+    /// False means unbound and is an explicit unsupported continuation.
+    fn trade_relations_changed(
+        &mut self,
+        _state: &mut LoadedState,
+        _sets: &mut sets::Runtime,
+        _row: &mut OwnerModifier,
+    ) -> Result<bool, Self::Error> {
+        Ok(false)
+    }
     fn test_requirement(
         &mut self,
         state: &mut LoadedState,
@@ -368,6 +382,26 @@ impl<S: Services> changes::Context for Context<'_, S> {
         new: i32,
     ) -> Result<(), sets::Error<Self::Error>> {
         if let SetListener::Owner(receiver) = listener {
+            if let Some(row) = self.runtime.owner_modifiers.iter_mut().find(|row| {
+                row.receiver == receiver
+                    && row
+                        .opinion
+                        .is_some_and(|(kind, _)| kind == OpinionKind::TradeRelations)
+            }) {
+                if row.suppressed {
+                    return Ok(());
+                }
+                if !self
+                    .backend
+                    .trade_relations_changed(self.state, &mut self.runtime.sets, row)
+                    .map_err(sets::Error::Context)?
+                {
+                    return Err(sets::Error::CurrentInput(
+                        "current TradeRelations modifier graph",
+                    ));
+                }
+                return Ok(());
+            }
             if self
                 .runtime
                 .opinion_owner_changed(self.state, receiver)
