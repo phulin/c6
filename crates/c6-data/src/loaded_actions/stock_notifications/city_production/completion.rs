@@ -133,7 +133,7 @@ pub(super) fn dispatch<P>(
                             services.attachments.maximum_loyalty(),
                             &mut ModifierReports,
                         )
-                        .map_err(|_| missing("stock building modifier attachment"))?;
+                        .map_err(|e| production::Error::ModifierAttachment(Box::new(e)))?;
                 }
             }
             Listener::SummaryOutput => {}

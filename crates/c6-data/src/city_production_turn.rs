@@ -31,6 +31,8 @@ pub enum Error {
     District(c6_core::loaded_state::district_initialization::DistrictError),
     State(c6_core::loaded_state::Error),
     Statistics(c6_core::loaded_state::game_statistics::AccessError),
+    /// Preserve the reached attachment failure after any native mutation prefix.
+    ModifierAttachment(Box<crate::melee_attack::backend::city_creation::Error>),
     MissingProgress(Order),
     IllegalSelection(Order),
     UnitProduction(Box<units::Error<crate::loaded_actions::stock_notifications::movement::Error>>),

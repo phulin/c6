@@ -11,6 +11,10 @@ impl Session<'_, '_, c6_core::unit::OperationParameters> {
     /// The supported stock scope is an ordinary owned, resource-free forest.
     /// Production uses canonical progress/completion services. Unsupported
     /// branches preserve reached effects and return an incomplete action.
+    /// Reaching the selected production threshold completes it synchronously
+    /// through the caller's completion services. Spending the final charge uses
+    /// the caller's death services: placement and sight disappear, while the
+    /// delayed-death unit remains in its roster for ordinary later retirement.
     #[allow(clippy::too_many_arguments)]
     pub fn chop(
         &mut self,
