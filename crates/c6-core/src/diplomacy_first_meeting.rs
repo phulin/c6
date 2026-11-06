@@ -40,6 +40,7 @@ pub struct Report {
 pub enum Error<E> {
     Unsupported(&'static str),
     Statement(statement::Error),
+    State(crate::loaded_state::Error),
     /// Canonical session processing has committed; do not retry it as fresh work.
     Report(E),
 }
@@ -179,13 +180,39 @@ impl Manager {
         plan: Plan,
         report: impl FnOnce(Report) -> Result<(), E>,
     ) -> Result<PendingDecision, Error<E>> {
+        let (payload, decision) = self.commit_first_meeting_statement(plan)?;
+        report(payload).map_err(Error::Report)?;
+        Ok(decision)
+    }
+    fn commit_first_meeting_statement<E>(
+        &mut self,
+        plan: Plan,
+    ) -> Result<(Report, PendingDecision), Error<E>> {
         if self.drain_owner != plan.owner || self.drain_revision != Some(plan.revision) {
             return Err(Error::Statement(statement::Error::Conflict));
         }
         self.apply_statement(plan.ownership, plan.context, Some(plan.incoming))
             .map_err(Error::Statement)?;
-        report(plan.report).map_err(Error::Report)?;
-        Ok(plan.decision)
+        Ok((plan.report, plan.decision))
+    }
+}
+impl crate::loaded_state::LoadedState {
+    /// Commit canonical session processing before invoking a report consumer
+    /// against this same LoadedState. The manager borrow ends before callbacks,
+    /// so gameplay/RNG effects can read or mutate current canonical state.
+    /// As with Manager apply, the owner must guard the common World revision
+    /// and preflight the concrete report provider before entering this method.
+    pub fn apply_first_meeting_statement<E>(
+        &mut self,
+        plan: Plan,
+        report: impl FnOnce(&mut Self, Report) -> Result<(), E>,
+    ) -> Result<PendingDecision, Error<E>> {
+        let (payload, decision) = self
+            .diplomacy_manager_mut()
+            .map_err(Error::State)?
+            .commit_first_meeting_statement(plan)?;
+        report(self, payload).map_err(Error::Report)?;
+        Ok(decision)
     }
 }
 
@@ -325,5 +352,473 @@ mod tests {
             )
             .is_err());
         assert!(manager.session_metadata().unwrap()[0].history.is_empty());
+    }
+    fn ready_choice() -> (Manager, PendingDecision, ChoiceContext) {
+        let (mut manager, context, ai, human) = fixture();
+        manager
+            .initialize_first_meeting_empty_closed_sessions(0)
+            .unwrap();
+        let plan = manager
+            .plan_first_meeting_statement(
+                StatementHandle(3),
+                context,
+                ai,
+                human,
+                &[Choice::Positive, Choice::Exit],
+            )
+            .unwrap();
+        let decision = manager
+            .apply_first_meeting_statement(plan, |_| Ok::<_, ()>(()))
+            .unwrap();
+        let context = ChoiceContext {
+            statement: Context {
+                active_session: Some(decision.session.handle),
+                ..context
+            },
+            ai,
+            human,
+            ai_has_capital: false,
+            human_has_capital: false,
+            active_human_count: 1,
+        };
+        (manager, decision, context)
+    }
+    #[test]
+    fn positive_requires_second_choice_then_keeps_complete_closed_history() {
+        let (mut manager, decision, context) = ready_choice();
+        let first = manager
+            .plan_first_meeting_choice(
+                decision,
+                Choice::Positive,
+                context,
+                [StatementHandle(4), StatementHandle(5), StatementHandle(6)],
+            )
+            .unwrap();
+        let report = manager
+            .begin_first_meeting_choice::<()>(&first)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            report.statement.kind,
+            StatementKind::FirstMeeting {
+                type_hash: INFO_EXCHANGE,
+                initiator: 1,
+                response_type: 0,
+                hospitality_city: crate::unit::PlotCoord { x: -9999, y: -9999 }
+            }
+        );
+        assert_eq!(report.session_statement_index, 3);
+        assert!(!report.first_of_type);
+        assert!(!manager
+            .statement_inventory()
+            .unwrap()
+            .iter()
+            .any(|s| s.handle == StatementHandle(4)));
+        assert_eq!(
+            manager.session_metadata().unwrap()[0].history,
+            [StatementHandle(3), StatementHandle(5), StatementHandle(6)]
+        );
+        let decision = PendingDecision {
+            statement: report.statement.handle,
+            ..decision
+        };
+        let second = manager
+            .plan_first_meeting_choice(
+                decision,
+                Choice::Positive,
+                context,
+                [StatementHandle(7), StatementHandle(8), StatementHandle(9)],
+            )
+            .unwrap();
+        assert!(manager
+            .begin_first_meeting_choice::<()>(&second)
+            .unwrap()
+            .is_none());
+        manager.close_first_meeting_choice::<()>(&second).unwrap();
+        assert!(manager.open_sessions().is_empty());
+        assert_eq!(manager.active_session().unwrap(), None);
+        assert_eq!(
+            manager.first_meeting_closed_sessions().unwrap()[0].history,
+            [
+                StatementHandle(3),
+                StatementHandle(5),
+                StatementHandle(6),
+                StatementHandle(8)
+            ]
+        );
+        assert_eq!(manager.statement_inventory().unwrap().len(), 4);
+    }
+    #[test]
+    fn exit_retains_initial_history_without_response_and_unknown_closed_refuses() {
+        let (mut manager, decision, context) = ready_choice();
+        let exit = manager
+            .plan_first_meeting_choice(decision, Choice::Exit, context, [StatementHandle(0); 3])
+            .unwrap();
+        assert!(manager
+            .begin_first_meeting_choice::<()>(&exit)
+            .unwrap()
+            .is_none());
+        manager.close_first_meeting_choice::<()>(&exit).unwrap();
+        assert_eq!(
+            manager.first_meeting_closed_sessions().unwrap()[0].history,
+            [StatementHandle(3)]
+        );
+        assert_eq!(manager.statement_inventory().unwrap().len(), 1);
+        let (mut manager, decision, context) = ready_choice();
+        manager.routing.as_mut().unwrap().closed = None;
+        assert!(manager
+            .plan_first_meeting_choice(decision, Choice::Exit, context, [StatementHandle(0); 3])
+            .is_err());
+        assert_eq!(manager.open_sessions().len(), 1);
+    }
+}
+
+pub const INFO_EXCHANGE: u32 = 0xd6b6_fe21;
+pub const POSITIVE_RESPONSE: u32 = 0x7332_f7d6;
+pub const CLOSED_REPORT_EVENT: u32 = 0x1441_0052;
+
+/// Current control/capital facts for the bounded, synchronous local single-player
+/// message continuation. A cityless fixture has no capitals to reveal.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ChoiceContext {
+    pub statement: Context,
+    pub ai: Player,
+    pub human: Player,
+    pub ai_has_capital: bool,
+    pub human_has_capital: bool,
+    pub active_human_count: u32,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ChoiceEffect {
+    Statement(Report),
+    /// Native SetHadFriendlyMeeting(player, other, true), including the archive
+    /// dirty boundary. The required owner performs this actual gameplay write.
+    FriendlyMeeting {
+        player: i32,
+        other: i32,
+    },
+    SessionClosed {
+        session_id: u32,
+    },
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ChoiceOutcome {
+    Pending(PendingDecision),
+    Closed(SessionHeader),
+}
+#[derive(Debug)]
+pub struct ChoicePlan {
+    owner: u64,
+    revision: u64,
+    decision: PendingDecision,
+    choice: Choice,
+    info_exchange: bool,
+    /// Source identities: local queued response (destroyed on delivery),
+    /// delivered response and optional AI followup. They must all be fresh.
+    handles: [StatementHandle; 3],
+}
+impl Manager {
+    /// Bind an actual observed empty closed list once; an unavailable or
+    /// nonempty observation is never silently replaced with an empty owner.
+    pub fn initialize_first_meeting_empty_closed_sessions(
+        &mut self,
+        observed_count: usize,
+    ) -> Result<(), Error<std::convert::Infallible>> {
+        let routing = self
+            .routing
+            .as_mut()
+            .filter(|r| r.authoritative)
+            .ok_or(Error::Unsupported("closed session routing"))?;
+        if observed_count != 0 || routing.closed.is_some() {
+            return Err(Error::Unsupported("initial closed session inventory"));
+        }
+        routing.closed = Some(Vec::new());
+        self.invalidate_drain_plans();
+        Ok(())
+    }
+    pub fn first_meeting_closed_sessions(
+        &self,
+    ) -> Option<&[crate::diplomacy_manager::ObservedSession]> {
+        self.routing
+            .as_ref()
+            .filter(|r| r.authoritative)?
+            .closed
+            .as_deref()
+    }
+    /// Plan one explicit player choice. The owner admits the existing local
+    /// synchronized message delivery boundary and guards its common World stamp.
+    /// Only this single open session is supported; no queued/other-session work
+    /// can be hidden by collapsing the synchronous message roundtrip.
+    pub fn plan_first_meeting_choice(
+        &self,
+        decision: PendingDecision,
+        choice: Choice,
+        context: ChoiceContext,
+        handles: [StatementHandle; 3],
+    ) -> Result<ChoicePlan, Error<std::convert::Infallible>> {
+        let fail = Error::Unsupported;
+        let revision = self
+            .drain_revision
+            .ok_or(Error::Statement(statement::Error::Conflict))?;
+        let routing = self
+            .routing
+            .as_ref()
+            .filter(|r| r.authoritative)
+            .ok_or(fail("first meeting routing"))?;
+        let inventory = self
+            .statements
+            .as_deref()
+            .ok_or(fail("first meeting inventory"))?;
+        if self.open_sessions.len() != 1
+            || routing.metadata.len() != 1
+            || routing.closed.is_none()
+            || routing.active != Some(decision.session.handle)
+            || context.statement.active_session != routing.active
+            || context.statement.local_player != decision.player
+            || context.statement.game_mode != statement::SINGLE_PLAYER_MODE
+            || context.statement.logging != statement::Logging::OrdinaryHostDisabled
+            || self
+                .execution_profile()
+                .is_some_and(|p| p != (context.statement.game_mode, context.statement.logging))
+            || context.ai.owner != decision.session.from
+            || context.human.owner != decision.session.to
+            || !context.ai.major
+            || context.ai.human
+            || !context.human.major
+            || !context.human.human
+            || context.human.owner != decision.player
+            || context.ai_has_capital
+            || context.human_has_capital
+            || context.active_human_count == 0
+        {
+            return Err(fail("cityless local first meeting choice profile"));
+        }
+        let metadata = &routing.metadata[0];
+        if metadata.header != decision.session
+            || !self.open_sessions[0].pending.is_empty()
+            || !metadata.queued.is_empty()
+            || metadata.history.last() != Some(&decision.statement)
+            || decision.choices != [Choice::Positive, Choice::Exit]
+        {
+            return Err(fail("first meeting decision ownership"));
+        }
+        let selected = inventory
+            .iter()
+            .find(|s| s.handle == decision.statement)
+            .ok_or(fail("first meeting selected statement"))?;
+        let info_exchange = match selected.kind {
+            StatementKind::FirstMeeting {
+                type_hash,
+                initiator,
+                response_type,
+                hospitality_city,
+            } if initiator == context.ai.owner
+                && hospitality_city.x == -9999
+                && hospitality_city.y == -9999
+                && selected.from == context.ai.owner
+                && selected.to == context.human.owner
+                && selected.session_id == decision.session.id =>
+            {
+                if type_hash == crate::diplomacy_meeting::NEUTRAL_MEETING
+                    && response_type == INITIAL_RESPONSE
+                    && metadata.history.len() == 1
+                {
+                    false
+                } else if type_hash == INFO_EXCHANGE
+                    && response_type == 0
+                    && metadata.history.len() == 3
+                {
+                    true
+                } else {
+                    return Err(fail("first meeting response phase"));
+                }
+            }
+            _ => return Err(fail("first meeting choice payload")),
+        };
+        // All retained history must belong to this source-bounded conversation.
+        if metadata
+            .history
+            .iter()
+            .any(|h| inventory.iter().filter(|s| s.handle == *h).count() != 1)
+        {
+            return Err(fail("first meeting history inventory"));
+        }
+        if choice == Choice::Positive {
+            if handles
+                .iter()
+                .enumerate()
+                .any(|(i, h)| handles[..i].contains(h) || inventory.iter().any(|s| s.handle == *h))
+            {
+                return Err(fail("fresh first meeting response identities"));
+            }
+        }
+        Ok(ChoicePlan {
+            owner: self.drain_owner,
+            revision,
+            decision,
+            choice,
+            info_exchange,
+            handles,
+        })
+    }
+    /// Commit the source local response queue/broadcast/delivery roundtrip.
+    /// The transient queued response is destroyed by RemoveMatchingPending;
+    /// only its separately reconstructed delivered object reaches history.
+    fn begin_first_meeting_choice<E>(
+        &mut self,
+        plan: &ChoicePlan,
+    ) -> Result<Option<Report>, Error<E>> {
+        if self.drain_owner != plan.owner || self.drain_revision != Some(plan.revision) {
+            return Err(Error::Statement(statement::Error::Conflict));
+        }
+        let routing = self
+            .routing
+            .as_mut()
+            .filter(|r| r.authoritative)
+            .ok_or(Error::Unsupported("first meeting routing"))?;
+        let inventory = self
+            .statements
+            .as_mut()
+            .ok_or(Error::Unsupported("first meeting inventory"))?;
+        let metadata = &mut routing.metadata[0];
+        if plan.choice == Choice::Exit {
+            return Ok(None);
+        }
+        let selected = *inventory
+            .iter()
+            .find(|s| s.handle == plan.decision.statement)
+            .ok_or(Error::Unsupported("first meeting selected statement"))?;
+        let StatementKind::FirstMeeting {
+            type_hash,
+            initiator,
+            hospitality_city,
+            ..
+        } = selected.kind
+        else {
+            return Err(Error::Unsupported("first meeting payload"));
+        };
+        inventory
+            .try_reserve(2)
+            .map_err(|_| Error::Statement(statement::Error::ResourceLimit))?;
+        metadata
+            .history
+            .try_reserve(2)
+            .map_err(|_| Error::Statement(statement::Error::ResourceLimit))?;
+        let delivered = StatementInfo {
+            handle: plan.handles[1],
+            session_id: selected.session_id,
+            from: selected.to,
+            to: selected.from,
+            kind: StatementKind::FirstMeeting {
+                type_hash,
+                initiator,
+                response_type: POSITIVE_RESPONSE,
+                hospitality_city,
+            },
+        };
+        // plan.handles[0] names the queued/local object whose ordinary destructor
+        // has completed during delivery; do not retain an extra payload owner.
+        inventory.push(delivered);
+        metadata.history.push(delivered.handle);
+        if plan.info_exchange {
+            self.invalidate_drain_plans();
+            return Ok(None);
+        }
+        // NO_MANS positive creates a fresh AI-originating InfoExchange. Create
+        // leaves response zero; Session.Add sets initiator from the session.
+        let followup = StatementInfo {
+            handle: plan.handles[2],
+            session_id: selected.session_id,
+            from: selected.from,
+            to: selected.to,
+            kind: StatementKind::FirstMeeting {
+                type_hash: INFO_EXCHANGE,
+                initiator: metadata.header.from,
+                response_type: 0,
+                hospitality_city,
+            },
+        };
+        inventory.push(followup);
+        metadata.history.push(followup.handle);
+        let report = Report {
+            statement: followup,
+            session: metadata.header,
+            first_of_type: false,
+            session_statement_index: metadata.history.len() as u32,
+        };
+        self.invalidate_drain_plans();
+        Ok(Some(report))
+    }
+    fn close_first_meeting_choice<E>(&mut self, plan: &ChoicePlan) -> Result<(), Error<E>> {
+        let routing = self
+            .routing
+            .as_mut()
+            .filter(|r| r.authoritative)
+            .ok_or(Error::Unsupported("first meeting close routing"))?;
+        let closed = routing
+            .closed
+            .as_mut()
+            .ok_or(Error::Unsupported("closed session inventory"))?;
+        closed
+            .try_reserve(1)
+            .map_err(|_| Error::Statement(statement::Error::ResourceLimit))?;
+        let metadata = routing.metadata.remove(0);
+        let session = self.open_sessions.remove(0);
+        closed.push(crate::diplomacy_manager::ObservedSession {
+            header: metadata.header,
+            history: metadata.history,
+            pending: session.pending,
+            queued: metadata.queued,
+        });
+        routing.active = None;
+        self.invalidate_drain_plans();
+        // Native HandleCloseSession calls Manager.Process after the report. This
+        // profile has no open sessions, so that continuation has no subtype work.
+        let _ = plan;
+        Ok(())
+    }
+}
+impl crate::loaded_state::LoadedState {
+    /// Resolve one external choice through the bounded current local transport.
+    /// Required providers perform both ordered friendly flags and actual reached
+    /// reports. Errors preserve the completed source prefix and remain visible.
+    pub fn apply_first_meeting_choice<E>(
+        &mut self,
+        plan: ChoicePlan,
+        mut effect: impl FnMut(&mut Self, ChoiceEffect) -> Result<(), E>,
+    ) -> Result<ChoiceOutcome, Error<E>> {
+        let report = self
+            .diplomacy_manager_mut()
+            .map_err(Error::State)?
+            .begin_first_meeting_choice(&plan)?;
+        if let Some(report) = report {
+            effect(self, ChoiceEffect::Statement(report)).map_err(Error::Report)?;
+            return Ok(ChoiceOutcome::Pending(PendingDecision {
+                session: report.session,
+                statement: report.statement.handle,
+                player: report.statement.to,
+                choices: [Choice::Positive, Choice::Exit],
+            }));
+        }
+        if plan.choice == Choice::Positive {
+            for (player, other) in [
+                (plan.decision.session.from, plan.decision.session.to),
+                (plan.decision.session.to, plan.decision.session.from),
+            ] {
+                effect(self, ChoiceEffect::FriendlyMeeting { player, other })
+                    .map_err(Error::Report)?;
+            }
+        }
+        self.diplomacy_manager_mut()
+            .map_err(Error::State)?
+            .close_first_meeting_choice(&plan)?;
+        effect(
+            self,
+            ChoiceEffect::SessionClosed {
+                session_id: plan.decision.session.id,
+            },
+        )
+        .map_err(Error::Report)?;
+        Ok(ChoiceOutcome::Closed(plan.decision.session))
     }
 }

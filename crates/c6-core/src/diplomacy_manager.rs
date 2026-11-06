@@ -111,6 +111,8 @@ pub(crate) struct Routing {
     pub(crate) authoritative: bool,
     pub(crate) metadata: Vec<SessionMetadata>,
     pub(crate) active: Option<SessionHandle>,
+    /// Explicitly imported closed ownership; None means unobserved.
+    pub(crate) closed: Option<Vec<ObservedSession>>,
     // Representation-only fresh object labels, never native numeric SessionID.
     pub(crate) next_object_label: u64,
 }
@@ -321,6 +323,7 @@ impl Manager {
         }
         manager.routing = Some(Routing {
             authoritative: true,
+            closed: None,
             metadata,
             active,
             next_object_label,
@@ -398,6 +401,20 @@ impl Manager {
         let metadata = self
             .session_metadata()
             .map_err(|_| statement::Error::Conflict)?;
+        if self
+            .routing
+            .as_ref()
+            .and_then(|r| r.closed.as_ref())
+            .is_some_and(|closed| {
+                closed.iter().any(|s| {
+                    s.history.contains(&retired)
+                        || s.queued.contains(&retired)
+                        || s.pending.iter().any(|p| p.statement == retired)
+                })
+            })
+        {
+            return Err(statement::Error::Conflict);
+        }
         let mut removed_target_reference = false;
         for (session, metadata) in self.open_sessions.iter().zip(metadata) {
             if metadata.history.contains(&retired) || metadata.queued.contains(&retired) {
