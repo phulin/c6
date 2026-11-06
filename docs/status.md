@@ -23,7 +23,7 @@ does not initialize a new Civ VI game. See the
 | Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and first physical step | Representative Linux cases; not district/building pillage or complete trade-route lifecycle coverage |
 | Research and government | Technology/civic selection and progress; explicit government and policy choices | Bounded definitions, effects and decision paths |
 | Religion | Human Initiation Rites pantheon choice and founding | Representative initialized Linux case, including stored modifiers, owned-city propagation and reached callbacks; NPC continuation and other beliefs remain unsupported |
-| Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; nonlethal city-center melee without walls; promotions and upgrades | Representative Linux cases, including persistent Session melee; city capture remains under integration and lacks native acceptance; not all combat types, modifiers or aftermath branches |
+| Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; city-center melee without walls, including bounded noncapital capture to the pending disposition; promotions and upgrades | Representative Linux cases, including persistent Session capture; disposition execution needs separate qualification; not all combat types, modifiers or aftermath branches |
 | Diplomacy | Direct surprise-war declaration | Bounded cityless case; not complete diplomacy or war consequences in arbitrary worlds |
 | Turns and decisions | FoundCity → explicit research/Monument choices → Fortify → three ordinary rounds on one Session, with human and NPC decisions supplied externally | Compared gameplay state, core processors, global religion, represented requirements and known RNG match; raw annotations/reference differences and incomplete RNG/runtime coverage remain explicit |
 | Supporting components | Explicit RNG records/streams, numerical helpers, typed wire codecs, owned component state and registered SQLite rules profiles | Schema/profile-specific; wire transport is distinct from complete save import or live-world reconstruction |
@@ -74,8 +74,12 @@ city with no walls and both combatants surviving: 18 attacker damage, 50 city
 damage and 3 XP. It completes genuine action cleanup and preserves the compared
 gameplay effects and ordered GameSync draws. A source-qualified native AI
 targeting tally is omitted and represented by a typed planning observation;
-the raw discrepancy and scope are documented. This does not establish city
-capture or a complete gameplay RNG inventory.
+the raw discrepancy and scope are documented. A separate lethal noncapital
+capture case completes destruction/reconstruction and melee cleanup with 12
+attacker damage, 10 XP and five matching ordered GameSync draws. It yields a typed
+pending disposition that survives rewrapping and gates later Session actions.
+Disposition execution and a complete gameplay RNG inventory remain outside that
+comparison.
 
 The main remaining gap is generality and integration across a whole game: complete
 initialized gameplay state, all reached action effects and upkeep, full gameplay
