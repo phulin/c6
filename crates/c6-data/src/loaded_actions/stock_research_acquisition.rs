@@ -41,21 +41,33 @@ pub enum AnalysisSubscriber {
 /// Source order is preserved, including repeated player and boost callbacks.
 #[derive(Clone, Debug)]
 pub enum GameSubscriber {
-    Diplomacy { owner: i32 },
+    Diplomacy {
+        owner: i32,
+    },
     NoAttachedModifiers,
     /// The actual AttachGameEffects consumer. The reporting bit qualifies the
     /// current a5423bfe registrations and stock DTO publication closure.
     AttachedModifiers {
         capacity_report_cache_only: bool,
+        /// Exact border-report registrations reach only omitted cache/presentation consumers.
+        borders_report_cache_only: bool,
     },
-    PlayerCatchup { owner: i32 },
+    PlayerCatchup {
+        owner: i32,
+    },
     EmptyQuests,
-    BoostReference { index: Option<i32> },
+    BoostReference {
+        index: Option<i32>,
+    },
     EmptyGossipVisibility,
-    ZeroEraScore { owners: Vec<i32> },
+    ZeroEraScore {
+        owners: Vec<i32>,
+    },
     StartEraHistory,
     EmptyScriptRegistry,
-    FewerThanEightEverMajors { count: usize },
+    FewerThanEightEverMajors {
+        count: usize,
+    },
 }
 #[derive(Clone, Debug)]
 pub struct ResourceUnlocks {
@@ -680,6 +692,7 @@ impl<P> Effects<'_, '_, P> {
                 }
                 GameSubscriber::AttachedModifiers {
                     capacity_report_cache_only,
+                    borders_report_cache_only,
                 } => {
                     let (hash, recipes) = definitions
                         .attached_modifiers(kind, index)
@@ -703,6 +716,7 @@ impl<P> Effects<'_, '_, P> {
                                     hash,
                                     recipes,
                                     &self.runtime.civilization_levels,
+                                    borders_report_cache_only,
                                 )
                             })
                             .map_err(|e| source_failure(format!("{e:?}")))?

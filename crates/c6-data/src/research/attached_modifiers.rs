@@ -7,6 +7,8 @@ pub enum Effect {
     TradeCapacity,
     GovernorPoints,
     ReligiousTourismReduction,
+    EnforceBorders,
+    GrantSpy,
 }
 #[derive(Clone, Debug)]
 pub struct Recipe {
@@ -108,6 +110,10 @@ fn compile(db: &Database, kind: Kind, name: &[u8]) -> Result<Vec<Recipe>, String
             b"EFFECT_ADJUST_PLAYER_RELIGIOUS_TOURISM_REDUCTION" => {
                 (Effect::ReligiousTourismReduction, b"Modifier".as_slice())
             }
+            b"EFFECT_ADJUST_PLAYER_ENFORCE_BORDERS" => {
+                (Effect::EnforceBorders, b"Enable".as_slice())
+            }
+            b"EFFECT_GRANT_SPY" => (Effect::GrantSpy, b"Amount".as_slice()),
             _ => {
                 return Err(format!(
                     "unsupported research modifier {}",
@@ -121,7 +127,12 @@ fn compile(db: &Database, kind: Kind, name: &[u8]) -> Result<Vec<Recipe>, String
                 String::from_utf8_lossy(&id)
             ));
         }
-        let mut amount = 0;
+        // AdjustPlayerEnforceBorders initializes Enable through GetBooleanValue(default=true).
+        let mut amount = if effect == Effect::EnforceBorders {
+            1
+        } else {
+            0
+        };
         for argument in table(db, "ModifierArguments")?
             .rows()
             .filter(|r| text(*r, "ModifierId").ok() == Some(id.as_slice()))
@@ -129,6 +140,14 @@ fn compile(db: &Database, kind: Kind, name: &[u8]) -> Result<Vec<Recipe>, String
             if text(argument, "Name")? == parameter {
                 if text(argument, "Type")? != b"ARGTYPE_IDENTITY" {
                     return Err("dynamic research Amount".into());
+                }
+                if effect == Effect::EnforceBorders {
+                    amount = match text(argument, "Value")? {
+                        b"0" => 0,
+                        b"1" => 1,
+                        _ => return Err("unsupported research Enable boolean spelling".into()),
+                    };
+                    continue;
                 }
                 amount = std::str::from_utf8(text(argument, "Value")?)
                     .map_err(|e| e.to_string())?
@@ -203,6 +222,30 @@ mod tests {
                 .iter()
                 .all(|r| r.amount == 0));
         }
+    }
+    #[test]
+    fn border_boolean_and_spy_amount_preserve_native_defaults() {
+        let db = database("UPDATE DynamicModifiers SET EffectType='EFFECT_ADJUST_PLAYER_ENFORCE_BORDERS'; UPDATE ModifierArguments SET Name='Enable',Value='0';");
+        let recipes = compile(&db, Kind::Civic, b"C").unwrap();
+        assert!(recipes
+            .iter()
+            .all(|r| r.effect == Effect::EnforceBorders && r.amount == 0));
+        let db = database(
+            "UPDATE DynamicModifiers SET EffectType='EFFECT_ADJUST_PLAYER_ENFORCE_BORDERS';",
+        );
+        assert!(compile(&db, Kind::Civic, b"C")
+            .unwrap()
+            .iter()
+            .all(|r| r.amount == 1));
+        let db = database("UPDATE DynamicModifiers SET EffectType='EFFECT_GRANT_SPY';");
+        assert_eq!(
+            compile(&db, Kind::Civic, b"C")
+                .unwrap()
+                .iter()
+                .map(|r| (r.effect, r.amount))
+                .collect::<Vec<_>>(),
+            [(Effect::GrantSpy, 1), (Effect::GrantSpy, -2)]
+        );
     }
     #[test]
     fn research_attachment_rejects_unimplemented_requirements_flags_and_effects() {

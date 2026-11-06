@@ -265,6 +265,7 @@ impl EffectRuntime {
                     context,
                     effect,
                     amount,
+                    ..
                 } => (context, amount, effect),
                 _ => continue,
             };
@@ -482,22 +483,48 @@ impl EffectRuntime {
         hash: u32,
         recipes: &[crate::research::attached_modifiers::Recipe],
         civilization_levels: &[(i32, u32)],
+        borders_report_cache_only: bool,
     ) -> Result<(), Error> {
         self.current_owner(state).map_err(Error::Query)?;
         if recipes.is_empty() {
             return Ok(());
         }
-        if recipes
-            .iter()
-            .any(|r| r.effect == crate::research::attached_modifiers::Effect::GovernorPoints)
-        {
+        let is_major = if recipes.iter().any(|r| {
+            matches!(
+                r.effect,
+                crate::research::attached_modifiers::Effect::GovernorPoints
+                    | crate::research::attached_modifiers::Effect::GrantSpy
+            )
+        }) {
             let level = civilization_levels
                 .iter()
                 .find(|r| r.0 == owner)
                 .map(|r| r.1)
                 .ok_or(Error::Missing("current governor player civilization level"))?;
-            if level == 0x253718b0 {
+            if level == 0x253718b0
+                && recipes.iter().any(|r| {
+                    r.effect == crate::research::attached_modifiers::Effect::GovernorPoints
+                })
+            {
                 return Err(Error::Missing("major governor points: maximum, title messaging and reporting consumers unqualified"));
+            }
+            level == 0x253718b0
+        } else {
+            false
+        };
+        for recipe in recipes {
+            if recipe.effect == crate::research::attached_modifiers::Effect::EnforceBorders {
+                let current = state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Missing("current border diplomacy Player"))?
+                    .diplomacy
+                    .can_enforce_borders;
+                if current != (recipe.amount != 0) {
+                    qualify_border_change(state, owner, borders_report_cache_only)?;
+                }
             }
         }
         let kind = super::super::ContextObject::Research { owner, kind, hash };
@@ -540,6 +567,8 @@ impl EffectRuntime {
                         context,
                         effect,
                         amount: recipe.amount,
+                        is_major,
+                        borders_report_cache_only,
                     },
                 },
             )?;
@@ -556,6 +585,8 @@ impl EffectRuntime {
             context,
             effect: counter,
             amount,
+            is_major,
+            borders_report_cache_only,
         } = *self.effect(effect).map_err(Error::Query)?
         {
             let super::super::ContextObject::Research { owner, .. } =
@@ -579,6 +610,44 @@ impl EffectRuntime {
                         } else {
                             amount
                         });
+                }
+                crate::research::attached_modifiers::Effect::GrantSpy => {
+                    // Apply has an IsMajor guard; Remove always reaches ChangeSpyCapacity,
+                    // whose nonmajor branch assigns zero rather than adding the delta.
+                    if remove || is_major {
+                        let espionage = state
+                            .activation_managers_mut(owner)
+                            .map_err(|_| Error::Missing("current spy Espionage"))?
+                            .espionage;
+                        espionage.spy_capacity = if is_major {
+                            espionage.spy_capacity.wrapping_add(if remove {
+                                amount.wrapping_neg()
+                            } else {
+                                amount
+                            })
+                        } else {
+                            0
+                        };
+                    }
+                }
+                crate::research::attached_modifiers::Effect::EnforceBorders => {
+                    let enabled = (amount != 0) ^ remove;
+                    let current = state
+                        .retained()
+                        .players
+                        .iter()
+                        .find(|p| p.header.owner == owner)
+                        .ok_or(Error::Missing("current border diplomacy Player"))?
+                        .diplomacy
+                        .can_enforce_borders;
+                    if current != enabled {
+                        qualify_border_change(state, owner, borders_report_cache_only)?;
+                        state
+                            .activation_managers_mut(owner)
+                            .map_err(|_| Error::Missing("current border diplomacy Player"))?
+                            .diplomacy
+                            .can_enforce_borders = enabled;
+                    }
                 }
                 crate::research::attached_modifiers::Effect::TradeCapacity => {
                     return Err(Error::Missing("research counter effect family"))
@@ -897,4 +966,31 @@ pub(super) fn release<E: crate::city_production_turn::modifier_effects::Effects>
         set,
     )
     .map_err(|e| Error::Requirement(Box::new(e)))
+}
+
+/// SetCanEnforceBorders calls ExpelFromTerritory for every other alive player.
+/// With no plot owned by this player, its per-unit plot-owner equality cannot
+/// reach pathfinding, movement, notifications or RNG. Positive territory cases
+/// remain unsupported rather than silently skipping those gameplay effects.
+fn qualify_border_change(
+    state: &LoadedState,
+    owner: i32,
+    report_cache_only: bool,
+) -> Result<(), Error> {
+    if !report_cache_only {
+        return Err(Error::Missing(
+            "enforce borders reporting consumers unqualified",
+        ));
+    }
+    for plot in &state.world().map().plots {
+        if crate::movement_placement_state::plot_owner(plot)
+            .map_err(|_| Error::Missing("current border Plot owner"))?
+            == owner
+        {
+            return Err(Error::Missing(
+                "enforce borders with owned territory: expulsion continuation unqualified",
+            ));
+        }
+    }
+    Ok(())
 }

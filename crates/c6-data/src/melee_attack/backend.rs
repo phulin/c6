@@ -246,12 +246,13 @@ pub enum EffectState {
         context: u64,
         amount: i32,
     },
-    /// Ordinary owner research effects; the governor leaf is reached only for
-    /// a byte-verified nonmajor owner and has no counter/reporting effects.
+    /// Ordinary owner research effects with the current civilization-level qualification.
     ResearchCounter {
         context: u64,
         effect: crate::research::attached_modifiers::Effect,
         amount: i32,
+        is_major: bool,
+        borders_report_cache_only: bool,
     },
     TradeRouteCapacity {
         context: u64,
