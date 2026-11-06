@@ -154,9 +154,9 @@ impl<P> completion::Effects for Current<'_, '_, '_, P> {
         &mut self,
         state: &mut LoadedState,
         route: &Route,
+        origin: ComponentId,
+        destination: ComponentId,
     ) -> Result<(), String> {
-        let origin = route.origin_city;
-        let destination = route.destination_city;
         // Native UpdateCitiesAlongPath(-1) visits every current city center in
         // path order. Domestic own-center branches have no counter change.
         let path = state

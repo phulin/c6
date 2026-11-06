@@ -28,6 +28,8 @@ pub trait Effects {
         &mut self,
         state: &mut LoadedState,
         route: &Route,
+        origin: ComponentId,
+        destination: ComponentId,
     ) -> Result<(), Self::Error>;
 }
 fn construct_post<E: Effects>(
@@ -110,6 +112,6 @@ pub fn expire<E: Effects>(
     construct_post(state, origin, i32::from(origin.owner), effects)?;
     construct_post(state, destination, i32::from(origin.owner), effects)?;
     effects
-        .cleanup_removed_route(state, &route)
+        .cleanup_removed_route(state, &route, origin, destination)
         .map_err(Error::Effect)
 }
