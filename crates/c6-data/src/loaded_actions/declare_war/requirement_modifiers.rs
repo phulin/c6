@@ -433,32 +433,7 @@ fn first_tracker(
         visibility: a.visibility,
     }
 }
-#[cfg(test)]
-mod activation_tests {
-    use super::*;
-    #[test]
-    fn first_negative_penalty_corrects_increment_and_preserves_reduction() {
-        let a = Activation {
-            label: 1,
-            definition: vec![],
-            initial: -18,
-            maximum: -18,
-            increment: 1,
-            increment_turns: 0,
-            cooldown_turns: 0,
-            reduction: 1,
-            name: b"occupied".to_vec(),
-            visibility: 0,
-            remove_immediately: false,
-        };
-        let t = first_tracker(&a);
-        assert_eq!(
-            (t.current_value, t.increment, t.reduction),
-            (-4608, -256, 256)
-        );
-        assert!(t.is_active);
-    }
-}
+
 impl Continuations for Modifiers {
     type Error = Error;
     fn modifier_changed(
@@ -508,5 +483,32 @@ impl Continuations for Modifiers {
     }
     fn reset_trigger(&mut self, _: &mut LoadedState, _: &mut Runtime, _: u64) -> Result<(), Error> {
         Err(Error::Missing("diplomacy trigger reset"))
+    }
+}
+
+#[cfg(test)]
+mod activation_tests {
+    use super::*;
+    #[test]
+    fn first_negative_penalty_corrects_increment_and_preserves_reduction() {
+        let a = Activation {
+            label: 1,
+            definition: vec![],
+            initial: -18,
+            maximum: -18,
+            increment: 1,
+            increment_turns: 0,
+            cooldown_turns: 0,
+            reduction: 1,
+            name: b"occupied".to_vec(),
+            visibility: 0,
+            remove_immediately: false,
+        };
+        let t = first_tracker(&a);
+        assert_eq!(
+            (t.current_value, t.increment, t.reduction),
+            (-4608, -256, 256)
+        );
+        assert!(t.is_active);
     }
 }
