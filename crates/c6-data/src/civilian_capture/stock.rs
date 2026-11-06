@@ -11,6 +11,7 @@ use c6_core::loaded_state::LoadedState;
 /// creation immediately afterwards sees all death changes on those owners.
 pub struct Death<'a, 'd, 'r> {
     pub input: &'a crate::builder_improvement::death::Inputs<'d, 'r>,
+    pub default_defeat_bindings: &'a [crate::unit_kill::stock::default_defeat::Binding],
 }
 impl<P> unit_kill::Continuations<stock::Runtime<'_, P>> for Death<'_, '_, '_> {
     type Error = unit_kill::stock::Error;
@@ -22,6 +23,26 @@ impl<P> unit_kill::Continuations<stock::Runtime<'_, P>> for Death<'_, '_, '_> {
         actor: (i32, u32),
     ) -> Result<(), unit_kill::Error<Self::Error, movement::Error>> {
         let input = self.input;
+        let bindings = self.default_defeat_bindings;
+        // Native -1 remains the all-types sentinel; nonnegative values are
+        // cached native definition indices, not Unit type hashes.
+        let unit_types = input
+            .metadata
+            .death_listeners
+            .iter()
+            .filter_map(|listener| {
+                if let unit_kill::stock::Listener::DefaultDefeatFilter {
+                    receiver,
+                    unit_type,
+                    ..
+                } = *listener
+                {
+                    Some((receiver, unit_type as u32))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
         backend
             .with_modifier_owners(|backend, owners| {
                 let mut influence =
@@ -50,9 +71,15 @@ impl<P> unit_kill::Continuations<stock::Runtime<'_, P>> for Death<'_, '_, '_> {
                         )
                         .map_err(|e| unit_kill::stock::Error::Influence(format!("{e:?}")))
                     };
+                let mut requirements = unit_kill::stock::default_defeat::OwnerWithUnits {
+                    runtime: &mut owners.requirements,
+                    bindings,
+                    unit_types: &unit_types,
+                    movement: input.movement,
+                };
                 let mut callbacks = unit_kill::stock::Stock::new(
                     &mut owners.effects,
-                    &mut owners.requirements,
+                    &mut requirements,
                     input.unit_definitions,
                     input.metadata,
                 )
@@ -74,11 +101,37 @@ impl<P> unit_kill::Continuations<stock::Runtime<'_, P>> for Death<'_, '_, '_> {
         ability: i32,
     ) -> Result<(), unit_kill::Error<Self::Error, movement::Error>> {
         let input = self.input;
+        let bindings = self.default_defeat_bindings;
+        // Native -1 remains the all-types sentinel; nonnegative values are
+        // cached native definition indices, not Unit type hashes.
+        let unit_types = input
+            .metadata
+            .death_listeners
+            .iter()
+            .filter_map(|listener| {
+                if let unit_kill::stock::Listener::DefaultDefeatFilter {
+                    receiver,
+                    unit_type,
+                    ..
+                } = *listener
+                {
+                    Some((receiver, unit_type as u32))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
         backend
             .with_modifier_owners(|backend, owners| {
+                let mut requirements = unit_kill::stock::default_defeat::OwnerWithUnits {
+                    runtime: &mut owners.requirements,
+                    bindings,
+                    unit_types: &unit_types,
+                    movement: input.movement,
+                };
                 let mut callbacks = unit_kill::stock::Stock::new(
                     &mut owners.effects,
-                    &mut owners.requirements,
+                    &mut requirements,
                     input.unit_definitions,
                     input.metadata,
                 )
