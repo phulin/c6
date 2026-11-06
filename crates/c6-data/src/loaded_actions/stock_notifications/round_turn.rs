@@ -128,6 +128,9 @@ pub struct State<'a, 'd, 'r, E> {
     pub player_end: round_end::Inputs<'a, 'd, 'r>,
 }
 impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, E> {
+    fn climate(&self) -> Option<&crate::game_update_state::round_climate::Runtime> {
+        Some(&self.climate)
+    }
     fn random_events(&self) -> Option<&crate::game_update_state::round_random_events::Runtime> {
         Some(&self.random)
     }

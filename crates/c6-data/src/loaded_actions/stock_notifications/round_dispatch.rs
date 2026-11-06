@@ -23,6 +23,9 @@ pub(crate) enum TurnMessage {
 /// The bound service borrows current rule/query owners. It receives the same
 /// backend and update runtime for every call, including later rounds.
 pub trait Services<P> {
+    fn climate(&self) -> Option<&crate::game_update_state::round_climate::Runtime> {
+        None
+    }
     fn random_events(&self) -> Option<&crate::game_update_state::round_random_events::Runtime> {
         None
     }
@@ -37,6 +40,12 @@ pub trait Services<P> {
     ) -> Result<Progress, Error>;
 }
 impl<'a, P> Runtime<'a, P> {
+    /// Current climate state, unavailable while the round service is executing.
+    pub fn round_climate(&self) -> Option<&crate::game_update_state::round_climate::Runtime> {
+        self.round_services
+            .as_ref()
+            .and_then(|service| service.climate())
+    }
     /// Current persistent RandomEvents manager, unavailable while its round service is executing.
     pub fn round_random_events(
         &self,
