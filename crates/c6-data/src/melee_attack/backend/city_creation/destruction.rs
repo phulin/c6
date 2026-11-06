@@ -241,7 +241,8 @@ fn primary_object(
         | ContextObject::Game
         | ContextObject::Team(_)
         | ContextObject::Improvement { .. } => Ok(handle),
-        ContextObject::Plot(_)
+        ContextObject::Belief { .. }
+        | ContextObject::Plot(_)
         | ContextObject::Alliance { .. }
         | ContextObject::Emergency { .. } => Err(Error::Missing(
             "DistrictDestroyed source-qualified primary object class",

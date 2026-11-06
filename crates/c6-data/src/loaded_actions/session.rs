@@ -47,6 +47,8 @@ pub mod promotion;
 pub mod trade_route;
 #[path = "session_declare_war.rs"]
 pub mod declare_war;
+#[path = "session_pantheon.rs"]
+pub mod pantheon;
 
 #[derive(Debug)]
 pub enum Error<E> {

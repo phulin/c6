@@ -4,6 +4,7 @@
 use super::proposals;
 pub mod allocation;
 pub mod city_creation;
+pub mod pantheon;
 pub mod emergency;
 pub mod improvement;
 pub mod requirements;
@@ -21,6 +22,12 @@ use c6_core::{
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ContextObject {
+    /// Belief wrapper with its original composite Religion identity.
+    Belief {
+        founder: i32,
+        religion_native_type: i32,
+        belief: u32,
+    },
     /// Global Game wrapper; never substituted for a Plot or Player interface.
     Game,
     /// Native Team wrapper retained in the same normal ObjectPool.
@@ -256,6 +263,7 @@ pub struct EffectRuntime {
     unit_modifiers: Option<Vec<c6_core::unit_kill::objects::Modifier>>,
     city_creation: Option<city_creation::Creation>,
     allocations: allocation::State,
+    pantheons: Vec<pantheon::Attachment>,
 }
 #[derive(Debug)]
 pub enum QueryError {
@@ -308,6 +316,7 @@ impl EffectRuntime {
             unit_modifiers: None,
             city_creation: None,
             allocations: allocation::State::from_initial(state),
+            pantheons: Vec::new(),
         })
     }
     fn current_owner(&self, state: &LoadedState) -> Result<(), QueryError> {
@@ -379,7 +388,10 @@ impl EffectRuntime {
                     ));
                 }
             }
-            ContextObject::Policy { owner, .. } | ContextObject::Government { owner, .. } => {
+            ContextObject::Player(owner)
+            | ContextObject::Belief { founder: owner, .. }
+            | ContextObject::Policy { owner, .. }
+            | ContextObject::Government { owner, .. } => {
                 state
                     .world()
                     .valid_player(owner)
@@ -873,6 +885,7 @@ impl player_strength::Context for EffectContext<'_> {
             }
             ContextObject::Alliance { .. } => return Ok(None),
             ContextObject::Game
+            | ContextObject::Belief { .. }
             | ContextObject::Team(_)
             | ContextObject::Emergency { .. }
             | ContextObject::City(_)

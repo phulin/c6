@@ -372,6 +372,7 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
             }
             ContextObject::Alliance { .. } => Err(Error::Missing("IPlayer on alliance context")),
             ContextObject::Game
+            | ContextObject::Belief { .. }
             | ContextObject::Team(_)
             | ContextObject::Emergency { .. }
             | ContextObject::City(_)

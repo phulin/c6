@@ -36,6 +36,7 @@ mod fortify;
 pub mod move_to;
 pub mod notifications;
 pub mod policy_actions;
+pub mod pantheon_actions;
 pub mod pillage;
 pub mod purchase_actions;
 pub mod upgrade_actions;
