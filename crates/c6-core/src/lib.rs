@@ -500,3 +500,5 @@ pub mod influence_map_update;
 pub mod unit_creation;
 
 pub mod geographic_names;
+
+pub mod diplomatic_delegation_policy;
