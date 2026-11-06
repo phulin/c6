@@ -861,7 +861,7 @@ pub(crate) fn bombard_attack_modifier<'a>(
         .map_err(|e| kernel::AttackError::Opening(kernel::Error::Query(Error::State(e))))?
         .domain;
     if domain == 2 {
-        let penalty = definitions.bombard_unit_modifier.ok_or_else(|| {
+        let penalty = definitions.bombard_unit_modifier.ok_or({
             kernel::AttackError::Opening(kernel::Error::Query(Error::Missing(
                 "COMBAT_BOMBARD_VS_UNIT_STRENGTH_MODIFIER",
             )))
