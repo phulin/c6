@@ -97,11 +97,20 @@ pub fn manage_citizen(
     Ok(Outcome { reallocated })
 }
 impl Session<'_, '_> {
+    /// Query command hints using this Session's canonical current yield and
+    /// territory owners. Capacity queries do not visit/update appeal or emit
+    /// worker reports, so no appeal subscriber registry is needed here.
     pub fn managed_city_plots(
-        &self, owner: i32, city: u32, effects: &mut impl citizens::Effects,
+        &mut self, owner: i32, city: u32,
+        definitions: &citizens::Definitions,
+        appeal: &crate::city_production_turn::appeal::Definitions,
+        fallout: &[i32],
     ) -> Result<Vec<ManagedPlot>, Error<crate::city_turn::Error>> {
         self.ordinary_player_action(owner)?;
-        managed_plots(self.state(), owner, city, effects).map_err(Error::Action)
+        managed_plots(self.context.notifications.state, owner, city,
+            &mut workers::Current { backend: &mut self.context.notifications.backend,
+                definitions, appeal, fallout, appeal_subscribers: None,
+                reports: &mut Vec::new() }).map_err(Error::Action)
     }
     /// Apply a location request using the same stock yield, territory and
     /// gameplay/RNG owners already retained by this Session.
