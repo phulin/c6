@@ -181,6 +181,10 @@ pub trait Movement<E: OperationReports> {
     fn start_trade(&mut self, _state: &mut LoadedState,
         _actor: (i32, u32), _node: &OperationNode, _effects: &mut E)
         -> Result<Option<skip_turn::StartData>, Self::Error> { Ok(None) }
+    /// Exact reached Manager.ExpireRoute, including ordered gameplay effects.
+    fn trade_expire(&mut self, _state: &mut LoadedState,
+        _origin: c6_core::trade::ComponentId, _destination: c6_core::trade::ComponentId,
+        _effects: &mut E) -> Result<Option<()>, Self::Error> { Ok(None) }
     /// Current Manager.GetEarliestEndTurnForRoute; None leaves later origin
     /// checks incomplete rather than inventing a fixed route duration.
     fn trade_earliest_end_turn(&self, _state: &LoadedState, _push_turn: i32)
@@ -1171,7 +1175,7 @@ fn continue_operation<E: Effects, M: Movement<E>>(
             } else if node.operation_hash == c6_core::unit::ALERT_HASH {
                 alert::check_complete(state, actor, &mut data, runtime, effects, movement)?;
             } else if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
-                trade::check_complete(state, actor, &node, &mut data, movement)?;
+                trade::check_complete(state, actor, &node, &mut data, effects, movement)?;
             } else if matches!(node.operation_hash,c6_core::unit::RANGE_ATTACK_HASH | c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH | c6_core::unit::REMOVE_FEATURE_HASH) {
                 // Both inherit BaseHandler.CheckComplete2d95670.
                 data.delete = true;

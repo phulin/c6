@@ -2,6 +2,7 @@
 //! hashes are separate. Absent domains remain unknown rather than empty arrays.
 pub mod history;
 pub mod round;
+pub mod trade;
 use super::{Error, LoadedState, ObservedSnapshotWitness, WireBinding};
 
 #[derive(Debug)]
@@ -27,6 +28,7 @@ pub struct Runtime {
     construction_rates: Option<Vec<[i32; 4]>>,
     discovery_rates: Option<Vec<[i32; 2]>>,
     boost_rates: Option<Vec<[i32; 2]>>,
+    trade_completion_rates: Option<Vec<i32>>,
     district_construction_rates: Option<Vec<i32>>,
     world_turn: Option<round::WorldTurn>,
 }
@@ -107,6 +109,7 @@ impl LoadedState {
             construction_rates: None,
             discovery_rates: None,
             boost_rates: None,
+            trade_completion_rates: None,
             district_construction_rates: None,
             world_turn: None,
         });

@@ -10,6 +10,25 @@ impl LoadedState {
         city_ai_id: u32,
         origin: crate::trade::ComponentId,
     ) -> Result<(), Error> {
+        self.change_city_trade_route_count(owner, city_ai_id, origin, 1)
+    }
+    /// AI.Trade.City.EndTradeRouteFrom21b5060 decrements this same canonical
+    /// bookkeeping for the matching origin, independently of policy selection.
+    pub fn observe_city_trade_route_ended(
+        &mut self,
+        owner: i32,
+        city_ai_id: u32,
+        origin: crate::trade::ComponentId,
+    ) -> Result<(), Error> {
+        self.change_city_trade_route_count(owner, city_ai_id, origin, -1)
+    }
+    fn change_city_trade_route_count(
+        &mut self,
+        owner: i32,
+        city_ai_id: u32,
+        origin: crate::trade::ComponentId,
+        delta: i32,
+    ) -> Result<(), Error> {
         let manager = self
             .retained
             .players
@@ -35,8 +54,11 @@ impl LoadedState {
             .iter_mut()
             .find(|e| e.city_build.city_ai_id == city_ai_id)
             .unwrap();
-        city.city_build.city_trade.current_routes =
-            city.city_build.city_trade.current_routes.wrapping_add(1);
+        city.city_build.city_trade.current_routes = city
+            .city_build
+            .city_trade
+            .current_routes
+            .wrapping_add(delta);
         Ok(())
     }
     /// Mark native production analyses unavailable when production decisions

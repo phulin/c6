@@ -117,8 +117,11 @@ pub struct Trade<'s, 'a, 'r> {
     pub path_definitions: &'s actions::trade_route_actions::path::Definitions,
     pub lifetime: &'s actions::trade_route_actions::lifetime::Definitions,
     pub roads: &'s actions::trade_route_actions::stock::RoadInputs<'a>,
+    pub ending: Option<&'s actions::trade_route_actions::ending_stock::Inputs<'a>>,
+    pub ending_reports: Option<
+        &'s mut dyn actions::trade_route_actions::ending_stock::Reports<OperationParameters>,
+    >,
     pub trade_search: &'s std::cell::RefCell<c6_core::pathfinder::TwoLayer>,
-    pub manager: &'s std::cell::RefCell<crate::game_update_state::round_trade::Runtime>,
 }
 impl Services<OperationParameters> for Trade<'_, '_, '_> {
     fn advance(
@@ -142,11 +145,6 @@ impl Services<OperationParameters> for Trade<'_, '_, '_> {
             .trade_search
             .try_borrow_mut()
             .map_err(|e| format!("queued trade route search: {e}"))?;
-        let mut manager = self
-            .manager
-            .try_borrow_mut()
-            .map_err(|e| format!("queued trade manager: {e}"))?;
-        manager.validate(state).map_err(|e| format!("{e:?}"))?;
         let mut movement = move_to::ComputedMovement {
             path: self.current.path,
             placement: self.current.placement,
@@ -157,13 +155,15 @@ impl Services<OperationParameters> for Trade<'_, '_, '_> {
         let mut continuations = actions::trade_route_actions::stock::Ongoing {
             lifetime: self.lifetime,
             roads: self.roads,
+            ending: self.ending,
+            ending_reports: self.ending_reports.as_deref_mut(),
         };
         let mut movement = actions::trade_route_actions::current::Current {
             movement: &mut movement,
             definitions: self.definitions,
             path_definitions: self.path_definitions,
             search: &mut trade_search,
-            manager: &mut manager,
+            manager: None,
             continuations: &mut continuations,
         };
         let result = automation::advance_player_unit(

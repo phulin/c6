@@ -62,7 +62,7 @@ impl<'a> Session<'_, 'a, OperationParameters> {
             definitions,
             path_definitions,
             search,
-            manager,
+            manager: Some(manager),
             continuations: &mut callbacks,
         };
         let result = move_to::execute_operation_active_request(

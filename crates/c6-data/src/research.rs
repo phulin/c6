@@ -640,6 +640,7 @@ impl Definitions {
             .ok_or(Error::IllegalCivic(index))?;
         Ok(cost.era.and_then(|era| self.eras.type_hash(era as usize)))
     }
+    pub fn binding(&self) -> &c6_core::core_player::initialization::WireBinding { &self.binding }
     pub fn diplomatic_visibility(&self) -> &diplomacy::Definitions {
         &self.diplomatic_visibility
     }

@@ -416,11 +416,27 @@ impl<P> routes::Effects for Road<'_, '_, '_, P> {
 
 /// Reached automatic movement continuations require only current lifetime and
 /// road effects. Starting a fresh route still requires the full action owner.
-pub struct Ongoing<'s, 'a> {
+pub struct Ongoing<'s, 'a, 'reports, P> {
     pub lifetime: &'s super::lifetime::Definitions,
+    pub ending: Option<&'s super::ending_stock::Inputs<'a>>,
+    pub ending_reports: Option<&'s mut (dyn super::ending_stock::Reports<P> + 'reports)>,
     pub roads: &'s RoadInputs<'a>,
 }
-impl<P> Continuations<stock_notifications::Runtime<'_, P>> for Ongoing<'_, '_> {
+impl<P> Continuations<stock_notifications::Runtime<'_, P>> for Ongoing<'_, '_, '_, P> {
+    fn expire_route(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut stock_notifications::Runtime<'_, P>,
+        origin: ComponentId,
+        destination: ComponentId,
+    ) -> Result<Option<()>, String> {
+        let (Some(inputs), Some(reports)) = (self.ending, self.ending_reports.as_deref_mut())
+        else {
+            return Ok(None);
+        };
+        super::ending_stock::expire(state, backend, inputs, reports, origin, destination).map(Some)
+    }
+
     fn earliest_end_turn(
         &self,
         state: &LoadedState,

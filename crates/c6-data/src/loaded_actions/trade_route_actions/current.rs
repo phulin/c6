@@ -42,6 +42,16 @@ pub enum Event {
     },
 }
 pub trait Continuations<E> {
+    fn expire_route(
+        &mut self,
+        _state: &mut LoadedState,
+        _backend: &mut E,
+        _origin: ComponentId,
+        _destination: ComponentId,
+    ) -> Result<Option<()>, String> {
+        Ok(None)
+    }
+
     fn earliest_end_turn(
         &self,
         _state: &LoadedState,
@@ -78,7 +88,9 @@ pub struct Current<'s, 'a, 'r, S> {
     pub definitions: &'s Definitions,
     pub path_definitions: &'s path::Definitions,
     pub search: &'s mut TwoLayer,
-    pub manager: &'s mut round_trade::Runtime,
+    /// Required only when creating a new route. Ongoing queue execution uses
+    /// the graph and leaves the canonical round-upkeep manager with its owner.
+    pub manager: Option<&'s mut round_trade::Runtime>,
     pub continuations: &'s mut S,
 }
 #[derive(Debug)]
@@ -279,7 +291,9 @@ where
         let _ = super::start(
             state,
             self.definitions,
-            self.manager,
+            self.manager
+                .as_deref_mut()
+                .ok_or(Failure::Missing("Trade initiation manager owner"))?,
             actor,
             destination,
             major,
@@ -306,6 +320,17 @@ where
             delete: false,
             action: true,
         }))
+    }
+    fn trade_expire(
+        &mut self,
+        state: &mut LoadedState,
+        origin: ComponentId,
+        destination: ComponentId,
+        backend: &mut E,
+    ) -> Result<Option<()>, Self::Error> {
+        self.continuations
+            .expire_route(state, backend, origin, destination)
+            .map_err(|e| Failure::Trade(Error::Effect(e)))
     }
     fn trade_earliest_end_turn(
         &self,

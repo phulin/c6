@@ -5,11 +5,12 @@
 use super::*;
 
 pub(super) fn check_complete<E: Effects, M: Movement<E>>(
-    state: &LoadedState,
+    state: &mut LoadedState,
     actor: (i32, u32),
     node: &OperationNode,
     data: &mut Processing,
-    movement: &M,
+    effects: &mut E,
+    movement: &mut M,
 ) -> Result<(), Error<EffectError<E>, M::Error>> {
     let OperationParameters::MakeTradeRoute {
         location0,
@@ -71,7 +72,12 @@ pub(super) fn check_complete<E: Effects, M: Movement<E>>(
     if state.retained().core.current_turn < earliest {
         return Ok(());
     }
-    Err(Error::Unsupported("MakeTradeRoute route expiry effects"))
+    movement
+        .trade_expire(state, origin, destination, effects)
+        .map_err(Error::Movement)?
+        .ok_or(Error::Unsupported("MakeTradeRoute route expiry effects"))?;
+    data.delete = true;
+    Ok(())
 }
 
 /// MakeTradeRoute.Update2da0ae0. Native ignores ProcessingData: the movement

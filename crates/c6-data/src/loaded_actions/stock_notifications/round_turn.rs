@@ -110,7 +110,9 @@ pub struct State<'a, 'd, 'r, E> {
     pub carbon: crate::game_update_state::round_climate::CarbonRules<'a>,
     pub alive_ids: &'a [i32],
     pub alive_major_ids: &'a [i32],
-    pub trade: crate::game_update_state::round_trade::Runtime,
+    /// Actions and round upkeep share this one manager; only the Rc handle
+    /// is copied. Failed/reentrant mutable borrowing is an incomplete boundary.
+    pub trade: std::rc::Rc<std::cell::RefCell<crate::game_update_state::round_trade::Runtime>>,
     pub random_definitions: crate::game_update_state::round_random_events::Definitions,
     pub random: crate::game_update_state::round_random_events::Runtime,
     pub fallout: crate::game_update_state::round_fallout::Runtime,
@@ -165,6 +167,10 @@ impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, 
                 ));
             }
         }
+        let mut trade = self
+            .trade
+            .try_borrow_mut()
+            .map_err(|_| Error::Unsupported("round current Trade manager borrow"))?;
         let mut current = Current {
             world: round_world::Current {
                 backend,
@@ -177,7 +183,7 @@ impl<P, E: Effects<P>> super::round_dispatch::Services<P> for State<'_, '_, '_, 
                     removable_feature_hashes: self.carbon.removable_feature_hashes,
                 },
                 alive_major_ids: self.alive_major_ids,
-                trade: &mut self.trade,
+                trade: &mut trade,
                 random_definitions: &self.random_definitions,
                 random: &mut self.random,
                 fallout: &mut self.fallout,

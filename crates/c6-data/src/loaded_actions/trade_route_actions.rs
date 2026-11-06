@@ -5,7 +5,9 @@
 //! Cold paths use the current search callbacks. An unimplemented subscriber returns
 //! an explicit incomplete result;
 //! neither a captured path nor a successful empty callback is supplied here.
+pub mod completion;
 pub mod current;
+pub mod ending_stock;
 pub mod lifetime;
 pub mod path;
 pub mod stock;
