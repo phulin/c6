@@ -11,6 +11,8 @@ pub mod boosts;
 pub mod diplomacy;
 #[path = "stock_first_contact/history.rs"]
 pub mod history;
+#[path = "stock_first_contact/random_modifier.rs"]
+pub mod random_modifier;
 #[path = "stock_first_contact/requirements.rs"]
 pub mod requirements;
 #[path = "stock_first_contact/targets.rs"]
@@ -205,8 +207,8 @@ impl<'a, P> Runtime<'a, P> {
         state: &mut LoadedState,
         issuer: i32,
         choice: c6_core::diplomacy_first_meeting::Choice,
-    ) -> Result<c6_core::diplomacy_first_meeting::ChoiceOutcome, Error> {
-        use c6_core::diplomacy_first_meeting::{ChoiceContext, ChoiceEffect, ChoiceOutcome};
+    ) -> Result<c6_core::diplomacy_first_meeting::ChoiceProgress, Error> {
+        use c6_core::diplomacy_first_meeting::{ChoiceContext, ChoiceEffect, ChoiceProgress};
         let mut current = self
             .first_contact
             .take()
@@ -314,6 +316,11 @@ impl<'a, P> Runtime<'a, P> {
                 ai_has_capital: has_capital(decision.session.from)?,
                 human_has_capital: has_capital(decision.session.to)?,
                 active_human_count,
+                local_turn_active: state
+                    .partial_player_controls(current.input.local_player)
+                    .map_err(Error::State)?
+                    .turn_active
+                    .ok_or(Error::Missing("first-contact current local turn-active"))?,
             };
             let plan = manager
                 .plan_first_meeting_choice(decision, choice, context, handles)
@@ -321,7 +328,7 @@ impl<'a, P> Runtime<'a, P> {
             current.pending.remove(0);
             current.next_statement = next;
             let outcome = state
-                .apply_first_meeting_choice(plan, |state, effect| match effect {
+                .begin_first_meeting_choice(plan, |state, effect| match effect {
                     ChoiceEffect::Statement(report) => current
                         .input
                         .effects
@@ -337,6 +344,9 @@ impl<'a, P> Runtime<'a, P> {
                             .ok_or(Error::Missing("first-contact friendly cell"))? = true;
                         Ok(())
                     }
+                    ChoiceEffect::ResultActionUpdate { .. } => Err(Error::Missing(
+                        "first-contact result update must use retained Session continuation",
+                    )),
                     ChoiceEffect::SessionClosed { session_id } => current
                         .input
                         .effects
@@ -345,11 +355,38 @@ impl<'a, P> Runtime<'a, P> {
                 .map_err(|e| {
                     Error::Requirement(format!("first-contact response continuation: {e:?}"))
                 })?;
-            if let ChoiceOutcome::Pending(decision) = outcome {
-                current.pending.push(decision);
+            if let ChoiceProgress::Pending(decision) = &outcome {
+                current.pending.push(*decision);
             }
             Ok(outcome)
         })();
+        self.first_contact = Some(current);
+        result
+    }
+    /// Complete the retained close only after the canonical Session returned
+    /// from the delivered StatementResult action's mandatory Game.Update.
+    pub fn resume_first_meeting_after_result_update(
+        &mut self,
+        state: &mut LoadedState,
+        continuation: c6_core::diplomacy_first_meeting::ResultActionContinuation,
+    ) -> Result<c6_core::diplomacy_first_meeting::ChoiceOutcome, Error> {
+        let mut current = self
+            .first_contact
+            .take()
+            .ok_or(Error::Missing("first-contact current response consumers"))?;
+        let result = state
+            .resume_first_meeting_after_result_update(continuation, |state, effect| match effect {
+                c6_core::diplomacy_first_meeting::ChoiceEffect::SessionClosed { session_id } => {
+                    current
+                        .input
+                        .effects
+                        .session_closed(state, self, session_id)
+                }
+                _ => Err(Error::Missing(
+                    "first-contact unexpected resumed close effect",
+                )),
+            })
+            .map_err(|e| Error::Requirement(format!("first-contact resumed close: {e:?}")));
         self.first_contact = Some(current);
         result
     }
