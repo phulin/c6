@@ -48,6 +48,23 @@ impl<'a, P> Session<'_, 'a, P> {
         services: &mut S,
         budget: &mut usize,
     ) -> Result<Outcome, Error<UpdateError<S::Error>>> {
+        self.respond_first_meeting_with_visibility_update(
+            issuer, choice, None, inputs, services, budget,
+        )
+    }
+
+    /// Deliver a response with the SAME live sight owner used by movement.
+    /// Required when an information exchange reveals either current capital.
+    #[allow(clippy::too_many_arguments)]
+    pub fn respond_first_meeting_with_visibility_update<S: TurnServices<'a, P>>(
+        &mut self,
+        issuer: i32,
+        choice: Choice,
+        visibility: Option<stock::first_contact::cities::Visibility<'_>>,
+        inputs: &deactivation::Inputs<'_, '_, '_>,
+        services: &mut S,
+        budget: &mut usize,
+    ) -> Result<Outcome, Error<UpdateError<S::Error>>> {
         if let Some(failure) = &self.failed {
             return Err(Error::Failed(failure.clone()));
         }
@@ -75,12 +92,19 @@ impl<'a, P> Session<'_, 'a, P> {
         }
         let before = self.state().action_stamp();
         let decision = self.pending_first_meetings().first().copied();
+        self.begin_action_research()?;
         let result = self
             .context
             .notifications
             .backend
-            .respond_first_meeting(self.context.notifications.state, issuer, choice)
+            .respond_first_meeting_with_visibility(
+                self.context.notifications.state,
+                issuer,
+                choice,
+                visibility,
+            )
             .map_err(UpdateError::Response);
+        self.end_action_research()?;
         let partial = self.state().action_stamp() != before
             || self.pending_first_meetings().first().copied() != decision;
         match self.retain(result, partial)? {

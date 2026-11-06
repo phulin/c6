@@ -7,6 +7,8 @@ use crate::loaded_actions::stock_notifications::{movement::Error, Runtime};
 use crate::{loaded_upkeep::OperationReports, research};
 #[path = "stock_first_contact/boosts.rs"]
 pub mod boosts;
+#[path = "stock_first_contact/cities.rs"]
+pub mod cities;
 #[path = "stock_first_contact/diplomacy.rs"]
 pub mod diplomacy;
 #[path = "stock_first_contact/government_modifier.rs"]
@@ -212,6 +214,15 @@ impl<'a, P> Runtime<'a, P> {
         issuer: i32,
         choice: c6_core::diplomacy_first_meeting::Choice,
     ) -> Result<c6_core::diplomacy_first_meeting::ChoiceProgress, Error> {
+        self.respond_first_meeting_with_visibility(state, issuer, choice, None)
+    }
+    pub fn respond_first_meeting_with_visibility(
+        &mut self,
+        state: &mut LoadedState,
+        issuer: i32,
+        choice: c6_core::diplomacy_first_meeting::Choice,
+        mut visibility: Option<cities::Visibility<'_>>,
+    ) -> Result<c6_core::diplomacy_first_meeting::ChoiceProgress, Error> {
         use c6_core::diplomacy_first_meeting::{ChoiceContext, ChoiceEffect, ChoiceProgress};
         let mut current = self
             .first_contact
@@ -326,6 +337,22 @@ impl<'a, P> Runtime<'a, P> {
                     .turn_active
                     .ok_or(Error::Missing("first-contact current local turn-active"))?,
             };
+            if choice == c6_core::diplomacy_first_meeting::Choice::Positive
+                && manager.statement_inventory().is_some_and(|inventory| {
+                    inventory.iter().any(|s| {
+                        s.handle == decision.statement
+                            && matches!(s.kind,
+                        c6_core::diplomacy_statement::StatementKind::FirstMeeting { type_hash, .. }
+                        if type_hash == c6_core::diplomacy_first_meeting::INFO_EXCHANGE)
+                    })
+                })
+                && (context.ai_has_capital || context.human_has_capital)
+                && visibility.is_none()
+            {
+                return Err(Error::Missing(
+                    "first-contact capital reveal visibility owner",
+                ));
+            }
             let plan = manager
                 .plan_first_meeting_choice(decision, choice, context, handles)
                 .map_err(|e| Error::Requirement(format!("first-contact response plan: {e:?}")))?;
@@ -347,6 +374,9 @@ impl<'a, P> Runtime<'a, P> {
                             .get_mut(index)
                             .ok_or(Error::Missing("first-contact friendly cell"))? = true;
                         Ok(())
+                    }
+                    ChoiceEffect::RevealCapital { owner, recipient } => {
+                        cities::reveal(state, self, visibility.as_mut(), owner, recipient)
                     }
                     ChoiceEffect::ResultActionUpdate { .. } => Err(Error::Missing(
                         "first-contact result update must use retained Session continuation",
@@ -577,18 +607,15 @@ impl<P> meeting::Context for Context<'_, '_, P> {
         {
             return Err(Error::Missing("first-contact major-pair profile"));
         }
-        // This first-contact profile reaches neutral hospitality. City-bearing
-        // contacts require the native closest-city ordering and its consumers.
-        for owner in [first, second] {
-            let player = self
-                .state
-                .retained()
-                .players
-                .iter()
-                .find(|p| p.header.owner == owner)
-                .ok_or(Error::Missing("first-contact player"))?;
-            if !player.cities.records.entries.is_empty() {
-                return Err(Error::Missing("first-contact city hospitality"));
+        // City-bearing neutral meetings use the same current nearest-city query.
+        // Hospitality statement branches remain explicitly unsupported.
+        if let Some(plot) = plot {
+            for owner in [first, second] {
+                if cities::closest(self.state, owner, plot)?.is_some_and(|(_, distance)| {
+                    distance <= self.current.input.hospitality_distance
+                }) {
+                    return Err(Error::Missing("first-contact city hospitality statement"));
+                }
             }
         }
         if plot.is_some()
@@ -748,26 +775,14 @@ impl<P> meeting::Context for Context<'_, '_, P> {
             .effects
             .report(self.state, self.backend, report)
     }
-    fn closest_city(&mut self, owner: i32, _: u32) -> Result<Option<(i32, u32)>, Error> {
-        let player = self
-            .state
-            .retained()
-            .players
-            .iter()
-            .find(|p| p.header.owner == owner)
-            .ok_or(Error::Missing("first-contact current hospitality player"))?;
-        if !player.cities.records.entries.is_empty() {
-            return Err(Error::Missing(
-                "first-contact city hospitality after callbacks",
-            ));
-        }
-        Ok(None)
+    fn closest_city(&mut self, owner: i32, plot: u32) -> Result<Option<(i32, u32)>, Error> {
+        Ok(cities::closest(self.state, owner, plot)?.map(|(id, _)| (owner, id)))
     }
-    fn city_distance(&mut self, _: (i32, u32), _: u32) -> Result<i32, Error> {
-        Err(Error::Missing("first-contact city hospitality"))
+    fn city_distance(&mut self, city: (i32, u32), plot: u32) -> Result<i32, Error> {
+        cities::distance(self.state, city, plot)
     }
-    fn city_location(&mut self, _: (i32, u32)) -> Result<PlotCoord, Error> {
-        Err(Error::Missing("first-contact city hospitality"))
+    fn city_location(&mut self, city: (i32, u32)) -> Result<PlotCoord, Error> {
+        cities::location(self.state, city)
     }
     fn hospitality_distance(&mut self) -> Result<i32, Error> {
         Ok(self.current.input.hospitality_distance)

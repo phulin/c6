@@ -414,6 +414,22 @@ mod tests {
         (manager, decision, context)
     }
     #[test]
+    fn founded_capitals_allow_external_positive_and_exit() {
+        for choice in [Choice::Positive, Choice::Exit] {
+            let (manager, decision, mut context) = ready_choice();
+            context.ai_has_capital = true;
+            context.human_has_capital = true;
+            assert!(manager
+                .plan_first_meeting_choice(
+                    decision,
+                    choice,
+                    context,
+                    [StatementHandle(4), StatementHandle(5), StatementHandle(6)]
+                )
+                .is_ok());
+        }
+    }
+    #[test]
     fn positive_requires_second_choice_then_keeps_complete_closed_history() {
         let (mut manager, decision, context) = ready_choice();
         let first = manager
@@ -531,7 +547,7 @@ pub const CLOSED_REPORT_EVENT: u32 = 0x1441_0052;
 pub const STATEMENT_RESULT_ACTION: u32 = 0x6ecb_4120;
 
 /// Current control/capital facts for the bounded, synchronous local single-player
-/// message continuation. A cityless fixture has no capitals to reveal.
+/// message continuation. The visibility provider owns present-capital effects.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ChoiceContext {
     pub statement: Context,
@@ -552,6 +568,12 @@ pub enum ChoiceEffect {
     FriendlyMeeting {
         player: i32,
         other: i32,
+    },
+    /// Query the current capital and permanently reveal its radius-one neighborhood.
+    /// Missing capitals skip; present capitals require the canonical visibility owner.
+    RevealCapital {
+        owner: i32,
+        recipient: i32,
     },
     /// Delivered Messages.DiplomacyAction::Execute unconditionally enters
     /// Game.Update AFTER the reconstructed result statement's gameplay effects.
@@ -653,11 +675,9 @@ impl Manager {
             || !context.human.major
             || !context.human.human
             || context.human.owner != decision.player
-            || context.ai_has_capital
-            || context.human_has_capital
             || context.active_human_count == 0
         {
-            return Err(fail("cityless local first meeting choice profile"));
+            return Err(fail("local first meeting choice profile"));
         }
         let metadata = &routing.metadata[0];
         if metadata.header != decision.session
@@ -981,6 +1001,14 @@ impl crate::loaded_state::LoadedState {
                 (plan.decision.session.to, plan.decision.session.from),
             ] {
                 effect(self, ChoiceEffect::FriendlyMeeting { player, other })
+                    .map_err(Error::Report)?;
+            }
+            // The delivered response reverses the initial statement endpoints.
+            for (owner, recipient) in [
+                (plan.decision.session.to, plan.decision.session.from),
+                (plan.decision.session.from, plan.decision.session.to),
+            ] {
+                effect(self, ChoiceEffect::RevealCapital { owner, recipient })
                     .map_err(Error::Report)?;
             }
             return Ok(ChoiceProgress::RequiresResultActionUpdate(
