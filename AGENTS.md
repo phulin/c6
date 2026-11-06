@@ -31,6 +31,16 @@ The objective is an exact headless Civ VI state/action/turn library, checked aga
 - Commit coherent, validated checkpoints and push the authorized project repositories. Coordinate the current public push writer and report commit IDs and unresolved gaps. Ghidra project commits require a clean save/close before snapshotting; follow private `../c6-re/docs/ghidra.md`.
 - Designate one private-repository push owner at a time. After committing immutable closed-project snapshot chunks, release snapshot-write ownership so other verified descendants can be prepared; batch those descendants into one push. Do not launch duplicate concurrent uploads of large snapshot packs.
 
+
+### Feature iteration
+
+- Assign each distinct new feature to one fresh agent; keep that owner for related implementation and comparison failures until the feature is finished. Avoid routine per-fix handoffs.
+- Batch source-established dependencies and related fixes toward the complete feature outcome.
+- Use the existing comparison output to summarize the first concrete divergence automatically; retain full observations on disk and avoid a separate triage framework.
+- Run focused checks while iterating, then appropriate broader checks at completion. Repeat checks for new changes, failures or concrete unresolved concerns.
+
+These efficiency rules leave native parity, unsupported-branch handling and exact committed-source/input reproducibility requirements unchanged.
+
 ## Exactness and evidence
 
 - The user explicitly defines the simulator as yielding to external policies for **all player decisions**. Execute exact rules/upkeep between decisions and yield at the next genuine decision boundary; native AI policy choices must not silently fulfill actions or end turns.

@@ -920,8 +920,26 @@ impl modifiers::EffectContext for Apply<'_> {
         }
         let key = m.instance as u32;
         let at = entries.partition_point(|e| e.key < key);
-        if entries.get(at).is_some_and(|e| e.key == key) {
-            return Err(Error::Missing("existing diplomacy tracker activation"));
+        if let Some(entry) = entries.get(at).filter(|e| e.key == key) {
+            // BaseApply2366390 compares the desired whole integer with
+            // GetCurrentValue.AsInt before calling Blackboard.Activate.
+            if random.is_none()
+                && !a.remove_immediately
+                && values.initial == entry.tracker.current_value >> 8
+            {
+                return Ok(true);
+            }
+            if random.is_some() || a.remove_immediately {
+                return Err(Error::Missing(
+                    "existing immediate diplomacy tracker activation",
+                ));
+            }
+            let parameters = first_tracker(&values);
+            crate::game_update_state::activation::trade_relations_opinion::initialize_and_activate(
+                &mut entries[at].tracker,
+                &parameters,
+            );
+            return Ok(true);
         }
         // BaseEffect skips Activate when its integer value already equals the
         // current value (zero for the absent tracker).

@@ -281,16 +281,38 @@ fn apply_value(
         return Err("TradeRelations immediate-remove effect");
     }
     let at = tracker_slot(entries, key)?;
-    let tracker = &mut entries[at].tracker;
     let initial = value.wrapping_shl(8);
+    initialize_and_activate(
+        &mut entries[at].tracker,
+        &Tracker {
+            is_active: false,
+            current_value: 0,
+            accumulation_turn_count: 0,
+            initial_value: initial,
+            max_value: initial,
+            increment: effect.increment.wrapping_shl(8),
+            reduction: effect.reduction.wrapping_shl(8),
+            increment_turns: effect.increment_turns,
+            cooldown_turns: effect.cooldown_turns,
+            modifier_name: b"LOC_TOOLTIP_SAMPLE_DIPLOMACY_TRADE_RELATIONS".to_vec(),
+            visibility: effect.visibility,
+        },
+    );
+    Ok(())
+}
+
+/// Blackboard.Activate reinitializes existing parameters before conditional
+/// tracker activation; keep its arithmetic shared by concrete opinion leaves.
+pub(crate) fn initialize_and_activate(tracker: &mut Tracker, parameters: &Tracker) {
+    let initial = parameters.initial_value;
     tracker.initial_value = initial;
-    tracker.max_value = initial; // SetModifierValue override supplies BOTH.
-    tracker.increment = effect.increment.wrapping_shl(8);
-    tracker.reduction = effect.reduction.wrapping_shl(8);
-    tracker.increment_turns = effect.increment_turns;
-    tracker.cooldown_turns = effect.cooldown_turns;
-    tracker.modifier_name = b"LOC_TOOLTIP_SAMPLE_DIPLOMACY_TRADE_RELATIONS".to_vec();
-    tracker.visibility = effect.visibility;
+    tracker.max_value = parameters.max_value;
+    tracker.increment = parameters.increment;
+    tracker.reduction = parameters.reduction;
+    tracker.increment_turns = parameters.increment_turns;
+    tracker.cooldown_turns = parameters.cooldown_turns;
+    tracker.modifier_name.clone_from(&parameters.modifier_name);
+    tracker.visibility = parameters.visibility;
     if multiply(tracker.increment, tracker.max_value) < 0 {
         tracker.increment = tracker.increment.wrapping_neg();
     }
@@ -315,7 +337,6 @@ fn apply_value(
             tracker.current_value = tracker.current_value.min(initial);
         }
     }
-    Ok(())
 }
 
 #[cfg(test)]

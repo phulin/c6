@@ -82,8 +82,8 @@ impl crate::loaded_actions::stock_notifications::first_contact::opinion_callback
             research::Error::Missing(cause) | research::Error::Effect(cause) => cause,
             _ => "opinion current Culture calculation",
         })?;
-        // GetFaithCultureStrength2361440 truncates each Q8 independently,
+        // GetFaithCultureStrength2361440 shifts each signed Q8 independently,
         // wraps their whole-integer sum, then clamps nonpositive to one.
-        Ok((faith / 256).wrapping_add(culture / 256).max(1))
+        Ok((faith >> 8).wrapping_add(culture >> 8).max(1))
     }
 }
