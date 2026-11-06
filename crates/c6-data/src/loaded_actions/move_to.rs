@@ -933,7 +933,10 @@ where
             }
         };
         if delete {
-            if front(state,actor)?.operation_hash==c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+            // Activate2da2790 still calls PopFront after Continue callbacks
+            // remove the current node. PopFront2da1cc0 returns for NULL Front.
+            if unit(state, actor)?.k_operations.nodes.first().is_some_and(|node|
+                node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH) {
                 movement.pop_expired_trade_route(state,actor,effects).map_err(Error::Movement)?
                     .ok_or(Error::Unsupported("Trade Deactivate composition"))?;
             } else {
