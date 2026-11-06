@@ -409,6 +409,7 @@ mod tests {
             ai_has_capital: false,
             human_has_capital: false,
             active_human_count: 1,
+            local_turn_active: true,
         };
         (manager, decision, context)
     }
@@ -451,6 +452,27 @@ mod tests {
             statement: report.statement.handle,
             ..decision
         };
+        assert!(manager
+            .plan_first_meeting_choice(
+                decision,
+                Choice::Positive,
+                ChoiceContext {
+                    local_turn_active: false,
+                    ..context
+                },
+                [StatementHandle(7), StatementHandle(8), StatementHandle(9)],
+            )
+            .is_err());
+        let matching = crate::diplomacy_manager::PendingAction {
+            id: STATEMENT_RESULT_ACTION,
+            from: context.human.owner,
+            to: context.ai.owner,
+        };
+        let unrelated = crate::diplomacy_manager::PendingAction {
+            id: 123,
+            ..matching
+        };
+        manager.pending_actions = Some(vec![unrelated, matching, matching]);
         let second = manager
             .plan_first_meeting_choice(
                 decision,
@@ -463,6 +485,7 @@ mod tests {
             .begin_first_meeting_choice::<()>(&second)
             .unwrap()
             .is_none());
+        assert_eq!(manager.pending_actions().unwrap(), [unrelated, matching]);
         manager.close_first_meeting_choice::<()>(&second).unwrap();
         assert!(manager.open_sessions().is_empty());
         assert_eq!(manager.active_session().unwrap(), None);
@@ -505,6 +528,7 @@ mod tests {
 pub const INFO_EXCHANGE: u32 = 0xd6b6_fe21;
 pub const POSITIVE_RESPONSE: u32 = 0x7332_f7d6;
 pub const CLOSED_REPORT_EVENT: u32 = 0x1441_0052;
+pub const STATEMENT_RESULT_ACTION: u32 = 0x6ecb_4120;
 
 /// Current control/capital facts for the bounded, synchronous local single-player
 /// message continuation. A cityless fixture has no capitals to reveal.
@@ -516,6 +540,9 @@ pub struct ChoiceContext {
     pub ai_has_capital: bool,
     pub human_has_capital: bool,
     pub active_human_count: u32,
+    /// Actual current local human IsTurnActive. Result-action messages unready
+    /// turns; true takes CanUnreadyTurn's source early false return.
+    pub local_turn_active: bool,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ChoiceEffect {
@@ -525,6 +552,16 @@ pub enum ChoiceEffect {
     FriendlyMeeting {
         player: i32,
         other: i32,
+    },
+    /// Delivered Messages.DiplomacyAction::Execute unconditionally enters
+    /// Game.Update AFTER the reconstructed result statement's gameplay effects.
+    /// The canonical Session owns this continuation, including reached policy
+    /// boundaries/RNG; a report-only or successful no-op provider is invalid.
+    /// The generated CloseSession command remains ordered after this action.
+    ResultActionUpdate {
+        action_type: u32,
+        from: i32,
+        to: i32,
     },
     SessionClosed {
         session_id: u32,
@@ -694,6 +731,14 @@ impl Manager {
                 }
             }
         }
+        if choice == Choice::Positive && info_exchange && !context.local_turn_active {
+            return Err(fail(
+                "first meeting result-action local unready continuation",
+            ));
+        }
+        if choice == Choice::Positive && info_exchange && self.pending_actions.is_none() {
+            return Err(fail("first meeting result-action pending inventory"));
+        }
         if choice == Choice::Positive
             && handles
                 .iter()
@@ -771,6 +816,17 @@ impl Manager {
         inventory.push(delivered);
         metadata.history.push(delivered.handle);
         if plan.info_exchange {
+            // ProcessAction removes only the FIRST pending entry matching action
+            // TYPE/from/to before invoking the reconstructed result statement.
+            // PendingAction.id is the native type hash, not Action.Instance ID.
+            let pending = self.pending_actions.as_mut().ok_or(Error::Unsupported(
+                "first meeting result-action pending inventory",
+            ))?;
+            if let Some(index) = pending.iter().position(|a| {
+                a.id == STATEMENT_RESULT_ACTION && a.from == delivered.from && a.to == delivered.to
+            }) {
+                pending.remove(index);
+            }
             self.invalidate_drain_plans();
             return Ok(None);
         }
@@ -805,12 +861,29 @@ impl Manager {
             .as_mut()
             .filter(|r| r.authoritative)
             .ok_or(Error::Unsupported("first meeting close routing"))?;
-        if routing.metadata.len() != 1
+        let expected_history = if plan.info_exchange {
+            if plan.choice == Choice::Positive {
+                4
+            } else {
+                3
+            }
+        } else {
+            1
+        };
+        let expected_tail = if plan.choice == Choice::Positive {
+            plan.handles[1]
+        } else {
+            plan.decision.statement
+        };
+        if self.drain_owner != plan.owner
+            || routing.metadata.len() != 1
             || self.open_sessions.len() != 1
             || routing.metadata[0].header != plan.decision.session
             || routing.active != Some(plan.decision.session.handle)
             || !self.open_sessions[0].pending.is_empty()
             || !routing.metadata[0].queued.is_empty()
+            || routing.metadata[0].history.len() != expected_history
+            || routing.metadata[0].history.last() != Some(&expected_tail)
         {
             return Err(Error::Statement(statement::Error::Conflict));
         }
@@ -836,22 +909,66 @@ impl Manager {
         Ok(())
     }
 }
+/// Owned close-command continuation after a delivered StatementResult's
+/// deterministic gameplay effects, before its mandatory Game.Update completes.
+/// Retain it while the canonical Session runs Update or yields a player choice.
+#[derive(Debug)]
+pub struct ResultActionContinuation {
+    plan: ChoicePlan,
+}
+impl ResultActionContinuation {
+    pub fn action(&self) -> ChoiceEffect {
+        ChoiceEffect::ResultActionUpdate {
+            action_type: STATEMENT_RESULT_ACTION,
+            from: self.plan.decision.session.to,
+            to: self.plan.decision.session.from,
+        }
+    }
+    pub fn session(&self) -> SessionHeader {
+        self.plan.decision.session
+    }
+}
+#[derive(Debug)]
+pub enum ChoiceProgress {
+    Pending(PendingDecision),
+    RequiresResultActionUpdate(ResultActionContinuation),
+    Closed(SessionHeader),
+}
 impl crate::loaded_state::LoadedState {
     /// Resolve one external choice through the bounded current local transport.
-    /// Required providers perform both ordered friendly flags and actual reached
-    /// reports. Errors preserve the completed source prefix and remain visible.
+    /// This convenience wrapper requires its callback to complete the actual
+    /// result-action Update. Session owners that must loan shared update/research
+    /// services use begin/resume below and retain the explicit continuation.
     pub fn apply_first_meeting_choice<E>(
         &mut self,
         plan: ChoicePlan,
         mut effect: impl FnMut(&mut Self, ChoiceEffect) -> Result<(), E>,
     ) -> Result<ChoiceOutcome, Error<E>> {
+        match self.begin_first_meeting_choice(plan, &mut effect)? {
+            ChoiceProgress::Pending(decision) => Ok(ChoiceOutcome::Pending(decision)),
+            ChoiceProgress::Closed(session) => Ok(ChoiceOutcome::Closed(session)),
+            ChoiceProgress::RequiresResultActionUpdate(continuation) => {
+                effect(self, continuation.action()).map_err(Error::Report)?;
+                self.resume_first_meeting_after_result_update(continuation, effect)
+            }
+        }
+    }
+    /// Commit response ownership and reached deterministic result gameplay,
+    /// then explicitly return the mandatory Update continuation before closing.
+    /// No callback is asked to borrow Session-owned update/research state while
+    /// a backend or this LoadedState already has an incompatible loan.
+    pub fn begin_first_meeting_choice<E>(
+        &mut self,
+        plan: ChoicePlan,
+        mut effect: impl FnMut(&mut Self, ChoiceEffect) -> Result<(), E>,
+    ) -> Result<ChoiceProgress, Error<E>> {
         let report = self
             .diplomacy_manager_mut()
             .map_err(Error::State)?
             .begin_first_meeting_choice(&plan)?;
         if let Some(report) = report {
             effect(self, ChoiceEffect::Statement(report)).map_err(Error::Report)?;
-            return Ok(ChoiceOutcome::Pending(PendingDecision {
+            return Ok(ChoiceProgress::Pending(PendingDecision {
                 session: report.session,
                 statement: report.statement.handle,
                 player: report.statement.to,
@@ -866,7 +983,32 @@ impl crate::loaded_state::LoadedState {
                 effect(self, ChoiceEffect::FriendlyMeeting { player, other })
                     .map_err(Error::Report)?;
             }
+            return Ok(ChoiceProgress::RequiresResultActionUpdate(
+                ResultActionContinuation { plan },
+            ));
         }
+        self.finish_first_meeting_close(plan, effect)
+            .map(|outcome| match outcome {
+                ChoiceOutcome::Closed(session) => ChoiceProgress::Closed(session),
+                ChoiceOutcome::Pending(_) => unreachable!("close returns only Closed"),
+            })
+    }
+    /// Resume only after the same Session has completed the delivered action's
+    /// mandatory Game.Update, including its pending-diplomacy/profile tail. A
+    /// genuine player decision suspends this continuation; it is not completion.
+    /// Validate current logical ownership/history again after Update mutations.
+    pub fn resume_first_meeting_after_result_update<E>(
+        &mut self,
+        continuation: ResultActionContinuation,
+        effect: impl FnMut(&mut Self, ChoiceEffect) -> Result<(), E>,
+    ) -> Result<ChoiceOutcome, Error<E>> {
+        self.finish_first_meeting_close(continuation.plan, effect)
+    }
+    fn finish_first_meeting_close<E>(
+        &mut self,
+        plan: ChoicePlan,
+        mut effect: impl FnMut(&mut Self, ChoiceEffect) -> Result<(), E>,
+    ) -> Result<ChoiceOutcome, Error<E>> {
         self.diplomacy_manager_mut()
             .map_err(Error::State)?
             .close_first_meeting_choice(&plan)?;

@@ -123,7 +123,7 @@ pub(crate) struct Routing {
 pub struct Manager {
     ever_alive: Vec<PlayerHandle>,
     pub(crate) open_sessions: Vec<Session<StatementHandle>>,
-    pending_actions: Option<Vec<PendingAction>>,
+    pub(crate) pending_actions: Option<Vec<PendingAction>>,
     pub(crate) routing: Option<Routing>,
     pub(crate) statements: Option<Vec<StatementInfo>>,
     execution_profile: Option<(u32, statement::Logging)>,
