@@ -7,6 +7,7 @@ pub mod definitions;
 pub mod destruction;
 pub mod government;
 pub mod policy;
+pub mod requirement_cleanup;
 mod primary;
 use super::{EffectRuntime, QueryError};
 use c6_core::{
@@ -76,6 +77,7 @@ pub(super) struct Creation {
     modifiers: Vec<Dynamic>,
     government: government::State,
     primary: primary::State,
+    requirement_cleanup: requirement_cleanup::State,
     objects: Vec<Object>,
     loyalty: ListenerRing<LoyaltyListener>,
     loyalty_subscriptions: Vec<(u64, Subscription)>,
@@ -128,6 +130,7 @@ impl EffectRuntime {
             modifiers: Vec::new(),
             government: government::State::default(),
             primary: primary::State::default(),
+            requirement_cleanup: requirement_cleanup::State::default(),
             objects,
             loyalty,
             loyalty_subscriptions: Vec::new(),

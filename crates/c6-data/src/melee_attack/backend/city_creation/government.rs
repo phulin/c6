@@ -542,6 +542,9 @@ impl<E: crate::city_production_turn::modifier_effects::Effects> changes::Context
             .ok_or(sets::Error::Context(Error::Missing(
                 "CityHasBuilding lifecycle",
             )))?;
+        if creation.requirement_cleanup.destroy(label).map_err(sets::Error::Context)? {
+            return Ok(());
+        }
         let r = creation
             .government
             .building
