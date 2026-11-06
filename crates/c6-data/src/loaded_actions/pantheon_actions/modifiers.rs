@@ -48,6 +48,10 @@ fn arg<'a>(db: &'a Database, id: &[u8], name: &[u8]) -> Result<&'a [u8], Error> 
     }
     text(r, "Value")
 }
+fn integer(r: Row<'_>, column: &str) -> Result<i32, Error> {
+    crate::game_parameters::sql_integer(r.get(column).map_err(Error::Rules)?)
+        .ok_or(Error::Unsupported("pantheon SQL integer"))
+}
 fn flags(r: Row<'_>) -> Result<(), Error> {
     for n in [
         "RunOnce",
@@ -57,7 +61,7 @@ fn flags(r: Row<'_>) -> Result<(), Error> {
         "OwnerStackLimit",
         "SubjectStackLimit",
     ] {
-        if r.integer(n).map_err(Error::Rules)? != 0 {
+        if integer(r, n)? != 0 {
             return Err(Error::Unsupported("pantheon modifier flags"));
         }
     }
@@ -118,7 +122,7 @@ impl Definitions {
                 return Err(Error::Unsupported("pantheon requirement type"));
             }
             for n in ["Inverse", "Reverse", "Persistent", "Triggered"] {
-                if req.integer(n).map_err(Error::Rules)? != 0 {
+                if integer(req, n)? != 0 {
                     return Err(Error::Unsupported("pantheon requirement flags"));
                 }
             }
@@ -192,11 +196,11 @@ mod tests {
         let c = rusqlite::Connection::open(&path).unwrap();
         c.execute_batch("CREATE TABLE Beliefs(BeliefType TEXT);CREATE TABLE BeliefModifiers(BeliefType TEXT,ModifierID TEXT);CREATE TABLE Modifiers(ModifierId TEXT,ModifierType TEXT,RunOnce,NewOnly,Permanent,Repeatable,OwnerRequirementSetId TEXT,SubjectRequirementSetId TEXT,OwnerStackLimit,SubjectStackLimit);CREATE TABLE DynamicModifiers(ModifierType TEXT,CollectionType TEXT,EffectType TEXT);CREATE TABLE ModifierArguments(ModifierId TEXT,Name TEXT,Type TEXT,Value TEXT);CREATE TABLE RequirementSets(RequirementSetId TEXT,RequirementSetType TEXT);CREATE TABLE RequirementSetRequirements(RequirementSetId TEXT,RequirementId TEXT);CREATE TABLE Requirements(RequirementId TEXT,RequirementType TEXT,Inverse,Reverse,Persistent,Triggered);CREATE TABLE RequirementArguments(RequirementId TEXT);
         INSERT INTO Beliefs VALUES('BELIEF_INITIATION_RITES');
-        INSERT INTO BeliefModifiers VALUES('BELIEF_INITIATION_RITES','Z_HEAL'),('BELIEF_INITIATION_RITES','A_FAITH');
-        INSERT INTO Modifiers VALUES('A_FAITH','ATTACH',0,0,0,0,NULL,'S',0,0),('Z_HEAL','ATTACH',0,0,0,0,NULL,'S',0,0),('FAITH','F',0,0,0,0,NULL,NULL,0,0),('HEAL','H',0,0,0,0,NULL,NULL,0,0);
-        INSERT INTO DynamicModifiers VALUES('ATTACH','COLLECTION_ALL_PLAYERS','EFFECT_ATTACH_MODIFIER'),('F','COLLECTION_OWNER','EFFECT_ADJUST_PLAYER_FAITH_FROM_DISPERSAL'),('H','COLLECTION_OWNER','EFFECT_ADJUST_PLAYER_HEALING_FROM_DISPERSAL');
-        INSERT INTO ModifierArguments VALUES('A_FAITH','ModifierId','ARGTYPE_IDENTITY','FAITH'),('Z_HEAL','ModifierId','ARGTYPE_IDENTITY','HEAL'),('FAITH','Amount','ARGTYPE_IDENTITY','50'),('HEAL','Amount','ARGTYPE_IDENTITY','100');
-        INSERT INTO RequirementSets VALUES('S','REQUIREMENTSET_TEST_ALL');INSERT INTO RequirementSetRequirements VALUES('S','R');INSERT INTO Requirements VALUES('R','REQUIREMENT_PLAYER_HAS_PANTHEON',0,0,0,0);").unwrap();
+        INSERT INTO BeliefModifiers VALUES('BELIEF_INITIATION_RITES','INITIATION_RITES_HEALING_DISPERSAL'),('BELIEF_INITIATION_RITES','INITIATION_RITES_FAITH_DISPERSAL');
+        INSERT INTO Modifiers VALUES('INITIATION_RITES_FAITH_DISPERSAL','MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER',0,0,0,0,NULL,'PLAYER_HAS_PANTHEON_REQUIREMENTS',NULL,NULL),('INITIATION_RITES_HEALING_DISPERSAL','MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER',0,0,0,0,NULL,'PLAYER_HAS_PANTHEON_REQUIREMENTS',NULL,NULL),('INITIATION_RITES_FAITH_DISPERSAL_MODIFIER','MODIFIER_PLAYER_ADJUST_FAITH_FROM_DISPERSAL',0,0,0,0,NULL,NULL,NULL,NULL),('INITIATION_RITES_HEALING_DISPERSAL_MODIFIER','MODIFIER_PLAYER_ADJUST_HEALING_FROM_DISPERSAL',0,0,0,0,NULL,NULL,NULL,NULL);
+        INSERT INTO DynamicModifiers VALUES('MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER','COLLECTION_ALL_PLAYERS','EFFECT_ATTACH_MODIFIER'),('MODIFIER_PLAYER_ADJUST_FAITH_FROM_DISPERSAL','COLLECTION_OWNER','EFFECT_ADJUST_PLAYER_FAITH_FROM_DISPERSAL'),('MODIFIER_PLAYER_ADJUST_HEALING_FROM_DISPERSAL','COLLECTION_OWNER','EFFECT_ADJUST_PLAYER_HEALING_FROM_DISPERSAL');
+        INSERT INTO ModifierArguments VALUES('INITIATION_RITES_FAITH_DISPERSAL','ModifierId','ARGTYPE_IDENTITY','INITIATION_RITES_FAITH_DISPERSAL_MODIFIER'),('INITIATION_RITES_HEALING_DISPERSAL','ModifierId','ARGTYPE_IDENTITY','INITIATION_RITES_HEALING_DISPERSAL_MODIFIER'),('INITIATION_RITES_FAITH_DISPERSAL_MODIFIER','Amount','ARGTYPE_IDENTITY','50'),('INITIATION_RITES_HEALING_DISPERSAL_MODIFIER','Amount','ARGTYPE_IDENTITY','100');
+        INSERT INTO RequirementSets VALUES('PLAYER_HAS_PANTHEON_REQUIREMENTS','REQUIREMENTSET_TEST_ALL');INSERT INTO RequirementSetRequirements VALUES('PLAYER_HAS_PANTHEON_REQUIREMENTS','REQUIRES_PLAYER_HAS_PANTHEON');INSERT INTO Requirements VALUES('REQUIRES_PLAYER_HAS_PANTHEON','REQUIREMENT_PLAYER_HAS_PANTHEON',0,0,0,0);").unwrap();
         c.execute_batch(extra).unwrap();
         drop(c);
         let db = crate::inspect(&path).unwrap();
@@ -207,7 +211,7 @@ mod tests {
     fn compiles_complete_sorted_global_player_graph_with_both_real_effects() {
         let d = Definitions::from_database(&database("")).unwrap().unwrap();
         assert_eq!(d.recipes.len(), 2);
-        assert_eq!(d.recipes[0].id, b"A_FAITH");
+        assert_eq!(d.recipes[0].id, b"INITIATION_RITES_FAITH_DISPERSAL");
         assert_eq!(d.recipes[0].effect, Effect::FaithFromDispersal);
         assert_eq!(d.recipes[0].amount, 50);
         assert_eq!(d.recipes[1].effect, Effect::HealingFromDispersal);
@@ -215,7 +219,7 @@ mod tests {
     }
     #[test]
     fn unknown_or_missing_reached_effects_and_requirements_are_explicit() {
-        for sql in ["DELETE FROM BeliefModifiers WHERE ModifierId='Z_HEAL';","UPDATE Modifiers SET Permanent=1 WHERE ModifierId='HEAL';","UPDATE Requirements SET Inverse=1;","UPDATE ModifierArguments SET Type='ARGTYPE_PROPERTY';","UPDATE DynamicModifiers SET CollectionType='COLLECTION_ALL_CITIES' WHERE ModifierType='ATTACH';"] {
+        for sql in ["DELETE FROM BeliefModifiers WHERE ModifierId='INITIATION_RITES_HEALING_DISPERSAL';","UPDATE Modifiers SET Permanent=1 WHERE ModifierId='INITIATION_RITES_HEALING_DISPERSAL_MODIFIER';","UPDATE Requirements SET Inverse=1;","UPDATE ModifierArguments SET Type='ARGTYPE_PROPERTY';","UPDATE DynamicModifiers SET CollectionType='COLLECTION_ALL_CITIES' WHERE ModifierType='MODIFIER_ALL_PLAYERS_ATTACH_MODIFIER';"] {
             assert!(Definitions::from_database(&database(sql)).is_err(),"{sql}");
         }
     }
