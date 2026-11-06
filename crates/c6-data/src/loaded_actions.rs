@@ -120,6 +120,7 @@ pub enum Error {
     CommandHoldCycling(
         Box<reporting::hold_cycling::Error<reporting::hold_cycling::commands::Error>>,
     ),
+    SnapshotHoldCycling(Box<reporting::hold_cycling::snapshot_effects::CheckError>),
     State(StateError),
     ScriptRegistry(c6_core::script_event_registry::RegistryError),
     World(c6_core::world::MissingInput),

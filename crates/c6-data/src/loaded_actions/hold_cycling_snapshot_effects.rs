@@ -237,20 +237,30 @@ pub struct Inputs<'a> {
     pub build_maps: &'a crate::unit_creation::signals::BuildMaps,
     pub empty_operation_tests: &'a CachedEmptyOperationTests,
 }
+#[derive(Debug)]
+pub enum CheckError {
+    Unsupported(&'static str),
+    Upgrade(upgrade_actions::Error<()>),
+}
+impl From<&'static str> for CheckError {
+    fn from(value: &'static str) -> Self {
+        Self::Unsupported(value)
+    }
+}
 impl Inputs<'_> {
     /// Validate the current actor at every discarded snapshot. No supplied
     /// CanStart answers, policy choices, gameplay stores or RNG are involved.
-    pub fn check(self, state: &LoadedState, unit: &Unit) -> Result<()> {
+    pub fn check(self, state: &LoadedState, unit: &Unit) -> std::result::Result<(), CheckError> {
         let d = self.definitions;
         if state.binding() != &d.binding || self.empty_operation_tests.binding != d.binding {
-            return Err("snapshot effects current binding");
+            return Err("snapshot effects current binding".into());
         }
         let properties = d
             .warrior_properties
             .as_ref()
             .ok_or("snapshot current Warrior definition properties")?;
         if properties.entries.iter().any(|e| e.key == 0x3f9140c1) {
-            return Err("snapshot teleport-city definition property continuation");
+            return Err("snapshot teleport-city definition property continuation".into());
         }
         let runtime = state
             .unit_runtime(unit.e_owner, unit.id)
@@ -262,7 +272,7 @@ impl Inputs<'_> {
                 != Some(b"UNIT_WARRIOR".as_slice())
             || unit.e_type_index != hash(b"UNIT_WARRIOR")
         {
-            return Err("snapshot effects supports current land Warrior only");
+            return Err("snapshot effects supports current land Warrior only".into());
         }
         if unit.i_build_charges > 0
             || unit.i_park_charges > 0
@@ -278,10 +288,10 @@ impl Inputs<'_> {
             || unit.k_combat_modifers.i_bombard_strength_modifier > 0
             || queried_ability_present(&d.abilities, &runtime.abilities)
         {
-            return Err("snapshot positive specialized Warrior effects");
+            return Err("snapshot positive specialized Warrior effects".into());
         }
         if !unit.k_operations.nodes.is_empty() {
-            return Err("snapshot effects current operation interruption");
+            return Err("snapshot effects current operation interruption".into());
         }
         let map = state.world().map();
         let (plot_index, plot) = c6_core::movement_world::plot_at(map, unit.k_location)
@@ -291,7 +301,7 @@ impl Inputs<'_> {
                 .map_err(|_| "snapshot effects plot owner")?
                 != unit.e_owner
         {
-            return Err("snapshot effects requires own land plot");
+            return Err("snapshot effects requires own land plot".into());
         }
         // XP2 CondemnHeretic/PlunderTradeRoute first scan current cell owners.
         // With no foreign identity, no religion/diplomacy/output branch runs.
@@ -306,7 +316,7 @@ impl Inputs<'_> {
                     .iter()
                     .any(|r| i32::from(r.component_id().owner) != unit.e_owner)
                 {
-                    return Err("snapshot foreign current-cell command continuation");
+                    return Err("snapshot foreign current-cell command continuation".into());
                 }
             }
         }
@@ -316,10 +326,10 @@ impl Inputs<'_> {
             self.build_maps,
             (unit.e_owner, unit.id),
         )
-        .map_err(|_| "snapshot upgrade target query")?
+        .map_err(CheckError::Upgrade)?
         .is_some()
         {
-            return Err("snapshot positive Upgrade continuation");
+            return Err("snapshot positive Upgrade continuation".into());
         }
         let player = state
             .retained()
@@ -358,7 +368,7 @@ impl Inputs<'_> {
             if !missing(&d.civics, civic, &world_player.civics)?
                 && !missing(&d.techs, tech, &world_player.technologies)?
             {
-                return Err("snapshot unlocked military formation continuation");
+                return Err("snapshot unlocked military formation continuation".into());
             }
         }
         // Airlift's radius-one callback only reads District/City buildings or
@@ -373,7 +383,7 @@ impl Inputs<'_> {
                         .iter()
                         .any(|b| b.definition_hash == building && b.value >= 0)
                 }) {
-                    return Err("snapshot positive Airlift building continuation");
+                    return Err("snapshot positive Airlift building continuation".into());
                 }
             }
         }
@@ -387,7 +397,7 @@ impl Inputs<'_> {
                     .map_err(|_| "snapshot Airlift adjacency")?)
                 && p.improvement_hash != u32::MAX
             {
-                return Err("snapshot Airlift improvement property continuation");
+                return Err("snapshot Airlift improvement property continuation".into());
             }
         }
         Ok(())

@@ -1477,7 +1477,9 @@ impl<'a> Provider<'a> {
             return Ok(ReadinessPath::AdjacentMove(witness));
         }
         if let Some(inputs) = self.snapshot_effects {
-            inputs.check(state, unit).map_err(Error::Provider)?;
+            inputs
+                .check(state, unit)
+                .map_err(|e| Error::SnapshotHoldCycling(Box::new(e)))?;
             return Ok(ReadinessPath::DiscardedHoldCycling);
         }
         // FillVariants reaches the same CanCyclePast fallback as direct
