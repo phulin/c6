@@ -436,6 +436,11 @@ pub trait SubjectContext {
         context: i32,
         subject: Subject,
     ) -> Result<InitializedRequirement, Error<Self::Error>>;
+    /// Derived Simple destruction when initial TestAll/TestAny prunes the final
+    /// strong child owner. Const requirements have no derived gameplay lifetime.
+    fn destroy_initial_simple_requirement(&mut self, label: u64) -> Result<(), Error<Self::Error>> {
+        Err(Error::DynamicReleaseRequired(label))
+    }
     fn log_missing_set(&mut self, id: &[u8]) -> Result<(), Self::Error>;
     fn log_created_requirement(&mut self, id: u32) -> Result<(), Self::Error>;
     fn log_created_set(&mut self, id: u32) -> Result<(), Self::Error>;
@@ -526,6 +531,24 @@ pub fn get_or_create_subject<C: SubjectContext>(
     subject: Subject,
     id: &[u8],
 ) -> Result<Option<u64>, Error<C::Error>> {
+    get_or_create_subject_inner(c, Some(receiver), context, subject, id)
+}
+/// Native local GetRequirementSet strong owner, without a modifier subscription.
+pub fn get_or_create_unsubscribed_subject<C: SubjectContext>(
+    c: &mut C,
+    context: i32,
+    subject: Subject,
+    id: &[u8],
+) -> Result<Option<u64>, Error<C::Error>> {
+    get_or_create_subject_inner(c, None, context, subject, id)
+}
+fn get_or_create_subject_inner<C: SubjectContext>(
+    c: &mut C,
+    receiver: Option<u64>,
+    context: i32,
+    subject: Subject,
+    id: &[u8],
+) -> Result<Option<u64>, Error<C::Error>> {
     use Error::Context as Cx;
     let definition = c
         .subject_sets()
@@ -537,12 +560,14 @@ pub fn get_or_create_subject<C: SubjectContext>(
     if let Some(s) = c.subject_sets_mut().map_err(Cx)?.sets.iter_mut().find(|s| {
         s.alive && s.context == context && s.subject == subject && s.definition == definition
     }) {
-        s.subscribers
-            .try_reserve(1)
-            .map_err(|_| Error::Allocation)?;
-        let listener = SetListener::Subject(receiver);
-        let token = s.changed.subscribe(listener).map_err(Error::Ring)?;
-        s.subscribers.push((listener, token));
+        if let Some(receiver) = receiver {
+            s.subscribers
+                .try_reserve(1)
+                .map_err(|_| Error::Allocation)?;
+            let listener = SetListener::Subject(receiver);
+            let token = s.changed.subscribe(listener).map_err(Error::Ring)?;
+            s.subscribers.push((listener, token));
+        }
         s.references = s.references.checked_add(1).ok_or(Error::CounterExhausted)?;
         return Ok(Some(s.label));
     }
@@ -645,13 +670,9 @@ pub fn get_or_create_subject<C: SubjectContext>(
         alive: true,
         references: 1,
     });
-    let mut initial = Initial::<C::Error> {
-        runtime: r,
-        label,
-        _error: std::marker::PhantomData,
-    };
-    let is_any = initial.runtime.constant_any.iter().any(|name| name == id);
-    let dynamic_any = initial.runtime.dynamic_any.iter().any(|name| name == id);
+    let is_any = r.constant_any.iter().any(|name| name == id);
+    let dynamic_any = r.dynamic_any.iter().any(|name| name == id);
+    let mut initial = Initial { context: c, label };
     let tested = if dynamic_any {
         all::test_any(&mut initial)
     } else if is_any {
@@ -674,15 +695,19 @@ pub fn get_or_create_subject<C: SubjectContext>(
     c.log_created_set(native_id).map_err(Cx)?;
     let r = c.subject_sets_mut().map_err(Cx)?;
     let s = r.sets.iter_mut().find(|s| s.label == label).unwrap();
-    s.subscribers
-        .try_reserve(1)
-        .map_err(|_| Error::Allocation)?;
-    let listener = SetListener::Subject(receiver);
-    let token = s.changed.subscribe(listener).map_err(Error::Ring)?;
-    s.subscribers.push((listener, token));
+    if let Some(receiver) = receiver {
+        s.subscribers
+            .try_reserve(1)
+            .map_err(|_| Error::Allocation)?;
+        let listener = SetListener::Subject(receiver);
+        let token = s.changed.subscribe(listener).map_err(Error::Ring)?;
+        s.subscribers.push((listener, token));
+    }
     Ok(Some(label))
 }
-fn test_constant_any<E>(initial: &mut Initial<'_, E>) -> Result<i32, all::Error<Error<E>>> {
+fn test_constant_any<C: SubjectContext>(
+    initial: &mut Initial<'_, C>,
+) -> Result<i32, all::Error<Error<C::Error>>> {
     use all::Context;
     let children = initial.children().map_err(all::Error::Context)?.to_vec();
     if children.is_empty() {
@@ -709,69 +734,101 @@ fn test_constant_any<E>(initial: &mut Initial<'_, E>) -> Result<i32, all::Error<
     }
     Ok(3)
 }
-struct Initial<'a, E> {
-    runtime: &'a mut Runtime,
+struct Initial<'a, C: SubjectContext> {
+    context: &'a mut C,
     label: u64,
-    _error: std::marker::PhantomData<E>,
 }
-impl<E> Initial<'_, E> {
-    fn set(&self) -> &Set {
-        self.runtime
+impl<C: SubjectContext> Initial<'_, C> {
+    fn set(&self) -> Result<&Set, Error<C::Error>> {
+        self.context
+            .subject_sets()
+            .map_err(Error::Context)?
             .sets
             .iter()
             .find(|s| s.label == self.label)
-            .unwrap()
+            .ok_or(Error::MissingSet)
     }
-    fn set_mut(&mut self) -> &mut Set {
-        self.runtime
+    fn set_mut(&mut self) -> Result<&mut Set, Error<C::Error>> {
+        self.context
+            .subject_sets_mut()
+            .map_err(Error::Context)?
             .sets
             .iter_mut()
             .find(|s| s.label == self.label)
-            .unwrap()
+            .ok_or(Error::MissingSet)
+    }
+    fn release_child(&mut self, id: u64) -> Result<(), Error<C::Error>> {
+        let runtime = self.context.subject_sets_mut().map_err(Error::Context)?;
+        let row = runtime
+            .requirements
+            .iter_mut()
+            .find(|r| r.label == id)
+            .ok_or(Error::MissingSet)?;
+        row.references = row.references.checked_sub(1).ok_or(Error::MissingSet)?;
+        let destroy = row.references == 0 && matches!(row.value, InitializedRequirement::Simple(_));
+        if destroy {
+            self.context.destroy_initial_simple_requirement(id)?;
+            let runtime = self.context.subject_sets_mut().map_err(Error::Context)?;
+            let row = runtime
+                .requirements
+                .iter_mut()
+                .find(|r| r.label == id)
+                .ok_or(Error::MissingSet)?;
+            if let InitializedRequirement::Simple(value) = &mut row.value {
+                value.active = false;
+            }
+        }
+        Ok(())
     }
 }
-impl<E> all::Context for Initial<'_, E> {
-    type Error = Error<E>;
+impl<C: SubjectContext> all::Context for Initial<'_, C> {
+    type Error = Error<C::Error>;
     fn children(&self) -> Result<&[u64], Self::Error> {
-        Ok(&self.set().children)
+        Ok(&self.set()?.children)
     }
     fn child_state(&self, id: u64) -> Result<i32, Self::Error> {
-        self.runtime
-            .requirements
-            .iter()
-            .find(|r| r.label == id && r.references != 0)
-            .map(|r| r.value.state())
+        self.context
+            .subject_sets()
+            .map_err(Error::Context)?
+            .requirement_state(id)
             .ok_or(Error::MissingSet)
     }
     fn child_persistent(&self, id: u64) -> Result<bool, Self::Error> {
-        let r = self
-            .runtime
+        let runtime = self.context.subject_sets().map_err(Error::Context)?;
+        let r = runtime
             .requirements
             .iter()
             .find(|r| r.label == id && r.references != 0)
             .ok_or(Error::MissingSet)?;
-        Ok(self.runtime.requirement_definitions[r.definition].persistent)
+        Ok(runtime.requirement_definitions[r.definition].persistent)
     }
     fn remove_child(&mut self, id: u64) -> Result<(), Self::Error> {
-        self.runtime.detach_child(self.label, id)?;
-        self.runtime.release_child(id)
+        self.context
+            .subject_sets_mut()
+            .map_err(Error::Context)?
+            .detach_child(self.label, id)?;
+        self.release_child(id)
     }
     fn remove_all_children(&mut self) -> Result<(), Self::Error> {
-        let children = self.runtime.detach_all_children(self.label)?;
-        for id in children {
-            self.runtime.release_child(id)?;
+        let children = self
+            .context
+            .subject_sets_mut()
+            .map_err(Error::Context)?
+            .detach_all_children(self.label)?;
+        for id in children.into_iter().rev() {
+            self.release_child(id)?;
         }
         Ok(())
     }
     fn state(&self) -> Result<i32, Self::Error> {
-        Ok(self.set().state)
+        Ok(self.set()?.state)
     }
     fn store_state(&mut self, state: i32) -> Result<(), Self::Error> {
-        self.set_mut().state = state;
+        self.set_mut()?.state = state;
         Ok(())
     }
     fn changed(&mut self, _: i32, _: i32) -> Result<(), Self::Error> {
-        if self.set().subscribers.is_empty() {
+        if self.set()?.subscribers.is_empty() {
             Ok(())
         } else {
             Err(Error::MissingSubscription)
@@ -917,6 +974,118 @@ mod tests {
         assert_eq!(f.runtime.next_native_id(), 103);
         assert_eq!(f.runtime.state(id), Some(3));
         assert_eq!(f.runtime.children(id), Some([].as_slice()));
+    }
+    #[test]
+    fn permanent_initial_failure_destroys_pruned_simple_before_set_id_assignment() {
+        struct Pruning {
+            runtime: Runtime,
+            destroyed: Vec<u64>,
+        }
+        impl SubjectContext for Pruning {
+            type Error = ();
+            fn subject_sets(&self) -> Result<&Runtime, ()> {
+                Ok(&self.runtime)
+            }
+            fn subject_sets_mut(&mut self) -> Result<&mut Runtime, ()> {
+                Ok(&mut self.runtime)
+            }
+            fn initialize_requirement(
+                &mut self,
+                _: u64,
+                d: &RequirementDefinition,
+                _: i32,
+                _: Subject,
+            ) -> Result<InitializedRequirement, Error<()>> {
+                Ok(if d.id == b"D" {
+                    InitializedRequirement::Simple(crate::simple_requirement::Requirement {
+                        active: true,
+                        state: 1,
+                        inverse: false,
+                        persistent: false,
+                        triggered: false,
+                    })
+                } else {
+                    InitializedRequirement::Const(3)
+                })
+            }
+            fn destroy_initial_simple_requirement(&mut self, label: u64) -> Result<(), Error<()>> {
+                assert_eq!(self.runtime.requirement_reference_count(label), Some(0));
+                assert_eq!(self.runtime.next_native_id(), 102);
+                self.destroyed.push(label);
+                Ok(())
+            }
+            fn log_missing_set(&mut self, _: &[u8]) -> Result<(), ()> {
+                Ok(())
+            }
+            fn log_created_requirement(&mut self, _: u32) -> Result<(), ()> {
+                Ok(())
+            }
+            fn log_created_set(&mut self, _: u32) -> Result<(), ()> {
+                assert_eq!(self.destroyed.len(), 1);
+                Ok(())
+            }
+        }
+        let definitions = [b"D", b"C"]
+            .iter()
+            .map(|id| RequirementDefinition {
+                id: id.to_vec(),
+                predicate: Predicate::Unsupported(1),
+                inverse: false,
+                persistent: false,
+            })
+            .collect();
+        let mut c = Pruning {
+            runtime: Runtime::from_initial(
+                100,
+                vec![(
+                    b"S".to_vec(),
+                    Some(SetDefinition {
+                        id: b"S".to_vec(),
+                        requirements: vec![b"D".to_vec(), b"C".to_vec()],
+                    }),
+                )],
+                definitions,
+            )
+            .unwrap(),
+            destroyed: vec![],
+        };
+        let set = get_or_create_unsubscribed_subject(&mut c, 9, Subject::ModifierObject(5), b"S")
+            .unwrap()
+            .unwrap();
+        assert_eq!(c.runtime.state(set), Some(3));
+        assert!(c.runtime.children(set).unwrap().is_empty());
+        assert_eq!(c.destroyed.len(), 1);
+        assert_eq!(c.runtime.next_native_id(), 103);
+    }
+    #[test]
+    fn local_strong_owner_reuses_cache_without_installing_a_listener() {
+        let p = subject();
+        let mut f = fixture(&[b"religion"], false);
+        let first = get_or_create_unsubscribed_subject(
+            &mut ProposalContext(&mut f),
+            9,
+            Subject::Proposal(p),
+            b"set",
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(f.runtime.set_has_subscribers(first), Some(false));
+        let next_id = f.runtime.next_native_id();
+        let second = get_or_create_unsubscribed_subject(
+            &mut ProposalContext(&mut f),
+            9,
+            Subject::Proposal(p),
+            b"set",
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(first, second);
+        assert_eq!(f.runtime.next_native_id(), next_id);
+        assert_eq!(f.runtime.set_reference_count(first), Some(2));
+        f.runtime.release::<()>(first).unwrap();
+        assert!(f.runtime.state(second).is_some());
+        f.runtime.release::<()>(second).unwrap();
+        assert_eq!(f.runtime.state(first), None);
     }
     #[test]
     fn source_cache_reuses_live_set_but_context_wrappers_remain_distinct() {

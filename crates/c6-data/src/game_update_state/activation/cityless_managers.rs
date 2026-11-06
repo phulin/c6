@@ -262,6 +262,7 @@ pub struct Runtime {
     congress: Option<CongressInputs>,
     pub(crate) congress_round: Option<crate::game_update_state::round_congress::Current>,
     emergency_signals: Option<Vec<c6_core::game_emergency::Signal>>,
+    capture_emergency: Option<crate::city_capture::emergency::Current>,
 }
 impl Runtime {
     pub fn initialize_congress_round(
@@ -283,6 +284,36 @@ impl Runtime {
             .ok_or(missing("current Congress/Emergency owner"))
     }
     /// The signal list belongs to the same live Emergency manager as instances.
+    pub fn initialize_capture_emergency(
+        &mut self,
+        state: &LoadedState,
+        current: crate::city_capture::emergency::Current,
+    ) -> Result<(), Error> {
+        self.validate(state)?;
+        if self.capture_emergency.is_some() {
+            return Err(missing("capture Emergency owner already initialized"));
+        }
+        self.capture_emergency = Some(current);
+        Ok(())
+    }
+    pub fn capture_emergency(
+        &self,
+        state: &LoadedState,
+    ) -> Result<&crate::city_capture::emergency::Current, Error> {
+        self.validate(state)?;
+        self.capture_emergency
+            .as_ref()
+            .ok_or(missing("current capture Emergency pending/signals"))
+    }
+    pub(crate) fn capture_emergency_mut(
+        &mut self,
+        state: &LoadedState,
+    ) -> Result<&mut crate::city_capture::emergency::Current, Error> {
+        self.validate(state)?;
+        self.capture_emergency
+            .as_mut()
+            .ok_or(missing("current capture Emergency pending/signals"))
+    }
     pub fn initialize_emergency_signals(
         &mut self,
         state: &LoadedState,
@@ -324,6 +355,7 @@ impl Runtime {
             congress: None,
             congress_round: None,
             emergency_signals: None,
+            capture_emergency: None,
         }
     }
     pub fn initialize_congress(
