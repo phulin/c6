@@ -1,6 +1,7 @@
 //! Concrete components of Linux City destruction. The complete destruction
 //! transition is unfinished; these operations do not release the City identity.
 //! Positive unsupported components fail before silently discarding gameplay.
+pub mod callbacks;
 pub mod effects;
 pub mod requirements;
 pub mod transition;
