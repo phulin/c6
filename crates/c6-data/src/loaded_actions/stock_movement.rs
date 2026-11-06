@@ -308,16 +308,30 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
                     .movement
                     .as_ref()
                     .ok_or(Error::Missing("movement services"))?;
+                // The native completion subscriber traverses current Units,
+                // after any creation/removal since Movement was installed.
+                let order = state
+                    .world()
+                    .player(i32::from(report.identity.owner))
+                    .map_err(Error::World)?
+                    .unit_records()
+                    .map_err(Error::World)?
+                    .iter()
+                    .map(|row| {
+                        UnitReference::from_component_id(ComponentId {
+                            owner: row.value.e_owner as i16,
+                            component_type: 1,
+                            id: row.value.id,
+                        })
+                    })
+                    .collect::<Vec<_>>();
                 self.reporting
                     .send_move_complete_report(
                         state,
                         report,
                         reporting::MoveCompleteInputs {
                             local_observer: movement.local_observer,
-                            native_unit_order: movement
-                                .unit_orders
-                                .get(&i32::from(report.identity.owner))
-                                .map(Vec::as_slice),
+                            native_unit_order: Some(&order),
                         },
                     )
                     .map_err(Error::Rules)
