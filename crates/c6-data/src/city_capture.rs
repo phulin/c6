@@ -3,6 +3,7 @@
 //! every phase. Mandatory continuations have no successful default.
 pub mod callbacks;
 pub mod emergency;
+pub mod retired_district;
 use crate::loaded_actions::stock_notifications::founding;
 use c6_core::{
     city_capture::{self as core, Snapshot},
