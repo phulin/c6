@@ -30,6 +30,7 @@ pub mod city_strike;
 pub mod combat;
 #[path = "session_declare_war.rs"]
 pub mod declare_war;
+pub mod delegation;
 #[path = "session_district.rs"]
 pub mod district;
 pub mod first_contact;
@@ -71,6 +72,8 @@ pub enum Error<E> {
     PendingCityDisposition(c6_core::unit::ComponentId),
     /// The initial diplomacy statement has reached an external response choice.
     PendingFirstMeeting(c6_core::diplomacy_first_meeting::PendingDecision),
+    /// A command is paused at the recipient's genuine external decision.
+    PendingDelegation(super::delegation_actions::PendingDecision),
     /// This request does not belong to the current ordinary player-action site.
     DecisionBoundary(&'static str),
     Action(E),
@@ -133,6 +136,14 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
             .first_meeting_update
             .as_ref()
             .and_then(|pending| pending.choice.as_ref())
+            .or_else(|| {
+                self.context
+                    .notifications
+                    .backend
+                    .delegation
+                    .as_ref()
+                    .and_then(|pending| pending.policy_choice())
+            })
             .or_else(|| self.context.notifications.backend.pending_policy_choice())
     }
     pub fn pending_first_meetings(&self) -> &[c6_core::diplomacy_first_meeting::PendingDecision] {
@@ -252,6 +263,16 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         Ok(())
     }
     fn check<E>(&self) -> Result<(), Error<E>> {
+        if let Some(pending) = &self.context.notifications.backend.delegation {
+            return Err(match pending {
+                delegation::Continuation::Decision(request) => {
+                    Error::PendingDelegation(request.decision)
+                }
+                delegation::Continuation::Update { .. } => {
+                    Error::DecisionBoundary("resume delegation action update")
+                }
+            });
+        }
         if self
             .context
             .notifications
@@ -777,23 +798,33 @@ impl<P> Session<'_, '_, P> {
             .notifications
             .backend
             .first_meeting_update
-            .as_ref();
+            .as_ref()
+            .map(|pending| pending.choice.as_ref())
+            .or_else(|| {
+                self.context
+                    .notifications
+                    .backend
+                    .delegation
+                    .as_ref()
+                    .and_then(|pending| match pending {
+                        delegation::Continuation::Update { choice, .. } => Some(choice.as_ref()),
+                        delegation::Continuation::Decision(_) => None,
+                    })
+            });
         let resolving_result_choice = result_choice.is_some();
         if let Some(pending) = result_choice {
             if let Some(failure) = &self.failed {
                 return Err(Error::Failed(failure.clone()));
             }
-            let Some(choice) = pending.choice.as_ref() else {
-                return Err(Error::DecisionBoundary(
-                    "resume first-contact result update",
-                ));
+            let Some(choice) = pending else {
+                return Err(Error::DecisionBoundary("resume diplomatic action update"));
             };
             if choice.player != player
                 || choice.kind != PolicyKind::Research(kind)
                 || !choice.options.contains(&index)
             {
                 return Err(Error::DecisionBoundary(
-                    "request differs from first-contact research choice",
+                    "request differs from diplomatic update research choice",
                 ));
             }
             match self.update.pending_player_effect() {
@@ -803,7 +834,7 @@ impl<P> Session<'_, '_, P> {
                 ) if owner == player => {}
                 _ => {
                     return Err(Error::DecisionBoundary(
-                        "first-contact research callback differs",
+                        "diplomatic update research callback differs",
                     ))
                 }
             }
@@ -836,7 +867,7 @@ impl<P> Session<'_, '_, P> {
                 && c6_core::research_turn::current(&research, player, kind)? != index
             {
                 return Err(crate::research::Error::Missing(
-                    "first-contact research request did not select the choice",
+                    "diplomatic update research request did not select the choice",
                 ));
             }
             Ok(())
@@ -845,6 +876,11 @@ impl<P> Session<'_, '_, P> {
             effects.backend.resolve_research_choice(player, kind);
             if let Some(pending) = effects.backend.first_meeting_update.as_mut() {
                 pending.choice = None;
+            }
+            if let Some(delegation::Continuation::Update { choice, .. }) =
+                effects.backend.delegation.as_mut()
+            {
+                *choice = None;
             }
         }
         let partial_failure = !matches!(

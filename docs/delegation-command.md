@@ -1,0 +1,13 @@
+# Bounded delegation command
+
+`c6_data::loaded_actions::session::Session` can retain a human sender's delegation command at an initialized AI recipient's external accept/refuse decision. This is a bounded Linux XP2 command path; complete Civ VI state, arbitrary actions and full turns remain unimplemented.
+
+Build `delegation_actions::Definitions::from_rules` from the same rules and state, then call `request_diplomatic_delegation(sender, recipient, definitions, configuration)`. `pending_delegation()` identifies the recipient and its two choices. The recipient can respond while inactive; it does not acquire an ordinary player action or end its turn. Other actions and turn progression refuse the pending boundary.
+
+`respond_diplomatic_delegation` takes the external response, the current effects provider and ordinary `TurnServices`. It preserves the initialized recipient's partner-action closed flag update for either response. An affordable acceptance debits the sender, delivers gold callbacks, establishes the delegation and its callbacks, rechecks diplomatic visibility, then credits the recipient and delivers its gold callbacks. The setter emits its signal even for an already established delegation. Costs use current game-speed scaling and purchase-divisor rounding; balance changes clamp as in the native treasury.
+
+The command message then performs its required single `Game.Update`. A reached policy choice returns `Progress::Choice` and retains the outcome. Resolve the current choice through the existing Session policy API, then call `resume_diplomatic_delegation_update`. Completion returns `Progress::Complete`; it does not imply a completed turn. Pending decisions and update continuations remain on the existing backend when extracting and rebuilding Session parts. Callback failures retain the affected prefix and make the Session fail explicitly.
+
+The effects provider must execute current gold, delegation-established and visibility callbacks against the same gameplay, modifier and RNG owners. Missing provider support is an error; there are no successful default callbacks. The original engine is not a production dependency.
+
+This surface executes the `SetDelegation` command. It does **not** implement the broader diplomatic UI offer query or complete legal-action enumeration. Its supported endpoints are met, peaceful, alive majors with a human sender and initialized AI recipient. Human recipients, multiplayer, uninitialized diplomatic response handlers and unrelated action branches remain unsupported. Native parity for this new command is pending; synthetic checks alone do not establish original-engine equivalence.

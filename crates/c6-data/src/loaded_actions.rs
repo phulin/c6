@@ -30,6 +30,7 @@ pub mod culture_notifications;
 pub mod current_aftermath;
 pub mod current_city_domains;
 pub mod declare_war;
+pub mod delegation_actions;
 pub mod diplomacy_pending_deals;
 mod fortify;
 pub mod government_actions;
