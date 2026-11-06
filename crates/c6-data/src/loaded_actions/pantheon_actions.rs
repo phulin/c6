@@ -202,6 +202,30 @@ pub trait Effects {
         defs: &Definitions,
     ) -> Result<(), Self::Error>;
 }
+/// Canonical Linux ChangeFaithBalance/SetFaithBalance sequence. Callbacks run
+/// after the saturating Q8 write, with the signal preceding the report. A failed
+/// callback retains its changed prefix and suppresses subsequent publications.
+pub fn change_faith_balance<E>(
+    state: &mut LoadedState,
+    owner: i32,
+    delta_q8: i32,
+    mut event: impl FnMut(&mut LoadedState, i32, Event) -> Result<(), E>,
+) -> Result<(), Error<E>> {
+    let old = player::<E>(state, owner)?.religion.faith_balance_q8;
+    let new = old.saturating_add(delta_q8);
+    if old != new {
+        state
+            .social_components_mut(owner)
+            .map_err(Error::State)?
+            .religion
+            .faith_balance_q8 = new;
+        event(state, owner, Event::FaithChanged { balance_q8: new }).map_err(Error::Effects)?;
+        event(state, owner, Event::ReportFaithChanged { balance_q8: new })
+            .map_err(Error::Effects)?;
+    }
+    Ok(())
+}
+
 /// Validates before mutation. Callback errors preserve the actual changed
 /// prefix; callers must retain failure rather than issue another action.
 pub fn found<E: Effects>(
@@ -235,26 +259,9 @@ pub fn found<E: Effects>(
         .minimum_faith_for_next_pantheon
         .wrapping_neg()
         .wrapping_shl(8);
-    let old = player::<E::Error>(state, owner)?.religion.faith_balance_q8;
-    let new = old.saturating_add(delta);
-    if old != new {
-        state
-            .social_components_mut(owner)
-            .map_err(Error::State)?
-            .religion
-            .faith_balance_q8 = new;
-        effects
-            .event(state, owner, Event::FaithChanged { balance_q8: new }, defs)
-            .map_err(Error::Effects)?;
-        effects
-            .event(
-                state,
-                owner,
-                Event::ReportFaithChanged { balance_q8: new },
-                defs,
-            )
-            .map_err(Error::Effects)?;
-    }
+    change_faith_balance(state, owner, delta, |state, owner, event| {
+        effects.event(state, owner, event, defs)
+    })?;
     let cities = player::<E::Error>(state, owner)?
         .cities
         .records

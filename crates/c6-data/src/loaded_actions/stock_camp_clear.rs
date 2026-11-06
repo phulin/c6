@@ -193,6 +193,15 @@ pub enum Report {
 /// All registrations and current services belong to this initialized instance.
 /// Stock report/cache routes must have no added synchronous gameplay consumers.
 pub struct Inputs<'a> {
+    /// Same current normal-placement providers used by the action. Required
+    /// only when the current Player has positive dispersal healing.
+    pub healing: Option<(
+        &'a crate::unit_placement_state::Definitions<'a, 'a>,
+        &'a crate::unit_placement_state::Queries<'a>,
+    )>,
+    /// Ordered current FaithChanged receivers; absent is unknown, not empty.
+    pub faith_changed: Option<&'a [FaithListener]>,
+    pub faith_report_qualified: bool,
     pub definitions: &'a Definitions,
     pub destroyed: Vec<Destroyed>,
     pub dispersed: Vec<Dispersed>,
@@ -206,6 +215,11 @@ pub struct Inputs<'a> {
     pub research: &'a research::Definitions,
     pub choices: &'a choose_tech::Definitions,
     pub culture: Option<&'a stock::research::CultureInputs<'a>>,
+}
+#[derive(Clone, Copy, Debug)]
+pub enum FaithListener {
+    Script,
+    Unsupported(u64),
 }
 pub struct State<'a> {
     origin: ActionStamp,
@@ -367,9 +381,82 @@ impl State<'_> {
                 state.treasury_mut(actor.0).map_err(error)?.gold_balance_q8 = next;
                 backend.deliver_gold_changed(state,actor.0,stock::gold::Scope::StockPlainHeadlessExternalPoliciesNoAddedReportConsumers).map_err(error)?;
             }
-            let p = player(state, actor.0)?;
-            if p.religion.faith_from_dispersal != 0 || p.header.healing_from_dispersal() > 0 {
-                return Err(missing("positive camp faith/healing continuation"));
+            let faith = c6_core::research_acquisition::units::adjust_for_game_speed(
+                player(state, actor.0)?.religion.faith_from_dispersal,
+                defs.speed.ok_or(missing("camp speed multiplier"))?,
+            );
+            if faith > 0 {
+                crate::loaded_actions::pantheon_actions::change_faith_balance(
+                    state,
+                    actor.0,
+                    faith.wrapping_shl(8),
+                    |state, owner, event| {
+                        use crate::loaded_actions::pantheon_actions::Event;
+                        match event {
+                            Event::FaithChanged { balance_q8 } => {
+                                for listener in self
+                                    .inputs
+                                    .faith_changed
+                                    .ok_or(missing("camp FaithChanged registrations"))?
+                                {
+                                    match listener {
+                                        FaithListener::Script => backend
+                                            .script
+                                            .call_empty(
+                                                state,
+                                                "OnFaithEarned",
+                                                &[owner, balance_q8 >> 8],
+                                            )
+                                            .map_err(error)?,
+                                        FaithListener::Unsupported(token) => {
+                                            return Err(error((
+                                                "camp FaithChanged receiver",
+                                                token,
+                                            )))
+                                        }
+                                    }
+                                }
+                            }
+                            Event::ReportFaithChanged { .. } => {
+                                if !self.inputs.faith_report_qualified {
+                                    return Err(missing("camp faith report consumers"));
+                                }
+                                backend.turn_report_records.push(
+                                    stock::turn_reports::Record::Report {
+                                        event: 0xb3495127,
+                                        player: owner,
+                                    },
+                                );
+                                backend
+                                    .reached
+                                    .push("stock faith balance report presentation boundary");
+                            }
+                            _ => return Err(missing("camp faith event")),
+                        }
+                        Ok(())
+                    },
+                )
+                .map_err(error)?;
+            }
+            // This current Player getter follows the faith callbacks. Native
+            // ChangeDamage emits DamageChanged and any reached operation Clear;
+            // it does not emit the end-turn UnitHealed signal.
+            let healing = player(state, actor.0)?.header.healing_from_dispersal();
+            if healing > 0 {
+                let (definitions, queries) = self
+                    .inputs
+                    .healing
+                    .ok_or(missing("camp healing providers"))?;
+                crate::unit_placement_state::change_damage(
+                    state,
+                    definitions,
+                    queries,
+                    sight,
+                    backend,
+                    actor,
+                    healing.wrapping_neg(),
+                )
+                .map_err(error)?;
             }
         }
         self.reports.push(Report::Dispersed {
