@@ -1,0 +1,13 @@
+# First governor trajectory
+
+The bounded Session surface supports the first ordinary Pingala appointment, an explicit assignment to an owned revealed city, and establishment through ordinary player turns. The rules must provide Pingala's ordinary Librarian base ability with unconditional city yield modifiers. Other governors, subsequent appointments, promotions, reassignment/removal, foreign-city assignment and neutralization remain unsupported. This is not complete Civ VI state, actions or turns.
+
+Before a major title-grant callback, bind the initialized player's actual unsaved maximum with `LoadedState::bind_governor_current(owner, governor_lifecycle::Current { maximum_points })`. Saved governor points do not establish this value. Research acquisition uses the ordinary retained modifier owner and updates this same maximum, saved points and title-considered state. A title never selects a governor or a city.
+
+Compile `loaded_actions::governor_actions::Definitions::from_rules` against the current state and rules. At an ordinary player-action boundary, `Session::pending_governor_decision` exposes the supported first appointment or currently legal owned-city assignments. `appoint_governor` and `assign_governor` execute the selected choices; `defer_governor_title` explicitly defers a title. Assignment requires the current loyalty query context and definitions used by the same initialized world. The stock scope omits presentation cache publication; added gameplay consumers need their current effects implementation.
+
+Assignment immediately contributes the governor's identity pressure to loyalty and recalculates conversion trends. Establishment preserves the ordered city/site map and executes during the ordinary governor upkeep position after unit upkeep. On establishment, the existing persistent modifier owner attaches Librarian's rules-defined science and culture yield modifiers. Yield calculations read those canonical city fields on subsequent queries and turns; no independent governor yield model or policy engine is used.
+
+Unsupported inputs or reached effects fail explicitly. A callback failure can retain a partially executed action or turn; the Session retains that failure and refuses further advancement. Inspect the retained state instead of interpreting a partial prefix as completed gameplay.
+
+Focused synthetic checks cover native title/max semantics, recycled identity allocation, the first-site insertion threshold boundary, establishment count retention and old-city map decay. Original Linux comparison for the complete trajectory remains pending; primitive tests and source inspection do not establish native parity. The source target is the Linux XP2 identity documented in [targets.md](targets.md).

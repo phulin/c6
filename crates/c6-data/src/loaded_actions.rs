@@ -33,6 +33,7 @@ pub mod current_city_domains;
 pub mod diplomacy_pending_deals;
 pub mod handlers;
 pub mod government_actions;
+pub mod governor_actions;
 mod fortify;
 pub mod move_to;
 pub mod notifications;

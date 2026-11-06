@@ -3,6 +3,14 @@ use super::Runtime;
 use crate::game_update_state::activation::{cityless_managers as data, maintenance};
 use c6_core::{game_update::Error, loaded_state::LoadedState};
 impl<P> data::Effects for Runtime<'_, P> {
+    fn governor_turn(&mut self, state: &mut LoadedState, definitions: &crate::loaded_actions::governor_actions::Definitions, owner: i32) -> Result<(), Error> {
+        use crate::loaded_actions::governor_actions::{self, stock};
+        governor_actions::do_turn(state, definitions, owner, &mut stock::Current { backend: self, scope: stock::Scope::StockPlainHeadlessExternalPolicies }).map_err(|reason| {
+            self.last_error = Some(format!("{reason:?}"));
+            Error::Unsupported("current Governor turn; inspect backend.last_error")
+        })
+    }
+
     fn idle_trade_paths(
         &mut self,
         state: &mut LoadedState,

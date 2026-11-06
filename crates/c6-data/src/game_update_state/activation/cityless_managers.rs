@@ -32,6 +32,7 @@ fn state_error(_: c6_core::loaded_state::Error) -> Error {
 }
 pub struct Definitions {
     binding: WireBinding,
+    governors: Result<crate::loaded_actions::governor_actions::Definitions, String>,
     units: LinuxDefinitionRegistry,
     traders: Vec<bool>,
     resources: Vec<(u32, bool)>,
@@ -220,6 +221,7 @@ impl Definitions {
                 "WORLD_CONGRESS_MIN_TIME_BETWEEN_SPECIAL_SESSIONS",
             )?,
             binding: state.binding().clone(),
+            governors: crate::loaded_actions::governor_actions::Definitions::from_rules(state, rules).map_err(|e| format!("{e:?}")),
             units,
             traders,
             resources,
@@ -407,6 +409,10 @@ pub struct Queries<'a> {
     pub game_speed_type: u32,
 }
 pub trait Effects {
+    fn governor_turn(&mut self, _state: &mut LoadedState, _definitions: &crate::loaded_actions::governor_actions::Definitions, _owner: i32) -> Result<(), Error> {
+        Err(missing("current Governor lifecycle effects"))
+    }
+
     fn idle_trade_paths(
         &mut self,
         _state: &mut LoadedState,
@@ -750,7 +756,7 @@ pub fn after_units<E: Effects>(
 ) -> Result<(), Error> {
     defs.validate(state)?;
     if !player(state, owner)?.governors.entries.is_empty() {
-        return Err(missing("governor activation countdown"));
+        e.governor_turn(state, defs.governors.as_ref().map_err(|_| missing("governor lifecycle definitions"))?, owner)?;
     }
     let units = state
         .world()
