@@ -180,6 +180,7 @@ pub trait Effects {
 pub struct Definitions {
     binding: WireBinding,
     boost: boost::Rules,
+    acquisition_boosts: Vec<(Kind, i32, usize)>,
     techs: Vec<acquisition::Definition>,
     civics: Vec<acquisition::Definition>,
     costs: [Vec<boost::CostDefinition>; 2],
@@ -353,6 +354,7 @@ impl Definitions {
             civics: all_rules.remove(0),
             boosts: Vec::new(),
         };
+        let mut acquisition_boosts = Vec::new();
         for row in rules
             .gameplay()
             .table("Boosts")
@@ -376,6 +378,36 @@ impl Definitions {
                         }),
                     _ => return Err(Error::Missing("boost reference")),
                 });
+            }
+            for (kind, class, field, definitions) in [
+                (
+                    Kind::Technology,
+                    "BOOST_TRIGGER_RESEARCH_TECH",
+                    "BoostingTechType",
+                    &boost_rules.technologies,
+                ),
+                (
+                    Kind::Civic,
+                    "BOOST_TRIGGER_CULTURVATE_CIVIC",
+                    "BoostingCivicType",
+                    &boost_rules.civics,
+                ),
+            ] {
+                if row.text("BoostClass").map_err(Error::Rules)? != class {
+                    continue;
+                }
+                match row.get(field).map_err(Error::Rules)? {
+                    SqlValue::Null => {}
+                    SqlValue::Text(name) => {
+                        let reference = definitions
+                            .iter()
+                            .flatten()
+                            .rfind(|d| d.hash == linux_type_hash(name))
+                            .ok_or(Error::Missing("acquisition boosting reference"))?;
+                        acquisition_boosts.push((kind, reference.index, boost_rules.boosts.len()));
+                    }
+                    _ => return Err(Error::Missing("acquisition boosting reference")),
+                }
             }
             boost_rules.boosts.push(boost::Definition {
                 technology: refs.remove(0),
@@ -495,6 +527,7 @@ impl Definitions {
                 .map(|d| d.hash)
                 .collect(),
             boost: boost_rules,
+            acquisition_boosts,
             techs: all_acquired.remove(0),
             civics: all_acquired.remove(0),
             costs: [costs.remove(0), costs.remove(0)],
@@ -662,6 +695,65 @@ impl Definitions {
             .get(index as u32 as usize)
             .ok_or(Error::IllegalCivic(index))?;
         Ok(cost.era.and_then(|era| self.eras.type_hash(era as usize)))
+    }
+    /// Resolve a captured matching acquisition callback by its kind/reference.
+    /// Multiple definitions sharing that reference need an explicit identity
+    /// binding; silently choosing one would execute a different callback.
+    pub(crate) fn acquisition_boost(&self, kind: Kind, index: i32) -> Result<usize, &'static str> {
+        let mut matches = self
+            .acquisition_boosts
+            .iter()
+            .filter(|row| row.0 == kind && row.1 == index);
+        let boost = matches
+            .next()
+            .ok_or("missing acquisition boost definition")?
+            .2;
+        if matches.next().is_some() {
+            return Err("ambiguous acquisition boost definition");
+        }
+        Ok(boost)
+    }
+    /// Stats::GetNumCivicsCulturevatedPerEra / GetNumTechnologiesResearchedPerEra
+    /// iterate the era's definition references and read current acquired flags.
+    pub(crate) fn acquired_in_era(
+        &self,
+        state: &LoadedState,
+        player: i32,
+        kind: Kind,
+        era: u32,
+    ) -> Result<i32, Error<std::convert::Infallible>> {
+        if state.binding() != &self.binding {
+            return Err(Error::Binding);
+        }
+        let (techs, culture) = state.research_components(player).map_err(Error::State)?;
+        let (definitions, costs, flags) = match kind {
+            Kind::Technology => (&self.techs, &self.costs[0], &techs.has_tech),
+            Kind::Civic => (&self.civics, &self.costs[1], &culture.has_civic),
+        };
+        let mut count = 0i32;
+        for (definition, cost) in definitions.iter().zip(costs) {
+            if cost.era.and_then(|i| self.eras.type_hash(i as usize)) != Some(era) {
+                continue;
+            }
+            let acquired = flags
+                .pairs
+                .iter()
+                .rfind(|p| p.definition_hash == definition.hash)
+                .ok_or(Error::Missing("current per-era acquired flag"))?
+                .value;
+            count = count.wrapping_add(i32::from(acquired));
+        }
+        Ok(count)
+    }
+    pub(crate) fn era_is_after(&self, era: u32, start: u32) -> Result<bool, &'static str> {
+        let chronology = |hash| {
+            self.eras
+                .find_index(hash)
+                .and_then(|i| self.chronology.get(i))
+                .copied()
+        };
+        Ok(chronology(era).ok_or("research history era")?
+            > chronology(start).ok_or("research history start era")?)
     }
     pub fn binding(&self) -> &c6_core::core_player::initialization::WireBinding { &self.binding }
     pub(crate) fn policy_index(&self, hash: u32) -> Option<i32> {

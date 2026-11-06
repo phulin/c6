@@ -766,7 +766,20 @@ impl<P> Effects<'_, '_, P> {
                 GameSubscriber::EmptyQuests | GameSubscriber::EmptyGossipVisibility => {}
                 GameSubscriber::BoostReference { index: reference } => {
                     if reference == Some(index) {
-                        return Err(failure());
+                        let boost = definitions
+                            .acquisition_boost(kind, index)
+                            .map_err(|e| source_failure(e.into()))?;
+                        let mut context = research::Context {
+                            state,
+                            definitions,
+                            effects: self,
+                        };
+                        c6_core::relic_creation::boost::trigger_boost(
+                            &mut context,
+                            Some(player),
+                            boost,
+                        )
+                        .map_err(|e| source_failure(format!("acquisition boost: {e:?}")))?;
                     }
                 }
                 GameSubscriber::ZeroEraScore { owners } => {
@@ -781,7 +794,28 @@ impl<P> Effects<'_, '_, P> {
                         definitions.technology_era_hash(index)
                     }
                     .map_err(|e| source_failure(format!("{e:?}")))?;
-                    if era != self.runtime.start_era_hash {
+                    let start = self
+                        .runtime
+                        .start_era_hash
+                        .ok_or_else(|| source_failure("current history start era".into()))?;
+                    if let Some(era) = era.filter(|&era| era != start) {
+                        if !definitions
+                            .era_is_after(era, start)
+                            .map_err(|e| source_failure(e.into()))?
+                        {
+                            continue;
+                        }
+                        // Both dispatcher variants emit only on the actor's
+                        // first acquired definition in this era. Other players
+                        // choose the moment subtype but cannot create a moment
+                        // when this actor's count differs from one.
+                        if definitions
+                            .acquired_in_era(state, player, kind, era)
+                            .map_err(|e| source_failure(format!("{e:?}")))?
+                            != 1
+                        {
+                            continue;
+                        }
                         let level = self
                             .runtime
                             .civilization_levels
