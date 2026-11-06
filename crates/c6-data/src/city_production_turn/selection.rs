@@ -18,6 +18,7 @@ struct Building {
     hash: u32,
     internal_only: bool,
     unsupported: bool,
+    prerequisite_technology: Option<usize>,
 }
 pub struct Definitions {
     inputs: InputIdentities,
@@ -49,13 +50,18 @@ fn int(row: crate::Row<'_>, column: &'static str) -> Result<i32, Error> {
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
         let table = |name| rules.gameplay().table(name).ok_or(Error::Unsupported(name));
+        let technologies = crate::unit_initialization_definitions::collection(
+            rules,
+            "Technologies",
+            "TechnologyType",
+        )
+        .map_err(Error::Definitions)?;
         let mut buildings = Vec::new();
         for row in table("Buildings")?.rows() {
             let name = row.text("BuildingType").map_err(Error::Rules)?;
             let hash = linux_type_hash(name.as_bytes());
             let mut unsupported = false;
             for column in [
-                "PrereqTech",
                 "PrereqCivic",
                 "AdjacentDistrict",
                 "CityAdjacentTerrain",
@@ -87,6 +93,11 @@ impl Definitions {
                 hash,
                 internal_only: int(row, "InternalOnly")? != 0,
                 unsupported,
+                prerequisite_technology: match row.get("PrereqTech").map_err(Error::Rules)? {
+                    SqlValue::Text(name) => technologies.find_index(linux_type_hash(name)),
+                    SqlValue::Null => None,
+                    _ => return Err(Error::Unsupported("building prerequisite technology")),
+                },
             });
         }
         Ok(Self {
@@ -159,6 +170,13 @@ pub fn can_construct(
         return Err(Error::Unsupported(
             "additional building selection prerequisites",
         ));
+    }
+    //284e55e..284e59a: a resolved technology reference tests the current
+    // owner's acquired byte. No automatic research or prerequisite policy runs.
+    if let Some(technology) = definition.prerequisite_technology {
+        if !super::unit_selection::acquired(state, owner, technology, false)? {
+            return Ok(false);
+        }
     }
     buildings.start_building_progress(state, hash)?; // Reject unimplemented resource reservation before mutation.
     let location = value

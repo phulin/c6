@@ -197,7 +197,12 @@ fn player(
         .find(|p| p.header.owner == owner)
         .ok_or(Error::Unsupported("current Train Player"))
 }
-fn acquired(state: &LoadedState, owner: i32, index: usize, civic: bool) -> Result<bool, Error> {
+pub(super) fn acquired(
+    state: &LoadedState,
+    owner: i32,
+    index: usize,
+    civic: bool,
+) -> Result<bool, Error> {
     let p = state
         .world()
         .player(owner)
