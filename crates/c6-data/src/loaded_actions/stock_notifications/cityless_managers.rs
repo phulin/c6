@@ -152,7 +152,13 @@ impl<P> data::Effects for Runtime<'_, P> {
     ) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("diplomacy tracker report binding"))?;
-        Err(Error::Unsupported("changed diplomacy tracker logging"))
+        // Blackboard.Update2adbcb0 already updated the canonical tracker in
+        // source map order. LogModifierUpdate2adbe10 only reads turn/name/Q8,
+        // translates/formats and writes the qualified stock logging sink; it
+        // publishes no gameplay callback and consumes no gameplay/libc RNG.
+        // Keep that informational output at this stock headless boundary.
+        self.reached.push("Diplomatic modifier value-change log");
+        Ok(())
     }
     fn congress_points_changed(
         &mut self,
