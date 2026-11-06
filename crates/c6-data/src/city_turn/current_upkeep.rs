@@ -410,8 +410,11 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
             s,
             Some(p),
             defs,
-            &mut WorkerAppeal,
-            &mut |s: &mut LoadedState, _: &mut WorkerAppeal, a: u32| {
+            &mut WorkerAppeal {
+                subscribers: defs.changed_subscribers(s),
+                calls: &mut self.calls,
+            },
+            &mut |s: &mut LoadedState, _: &mut WorkerAppeal<'_>, a: u32| {
                 let p = s
                     .world()
                     .map()
@@ -424,9 +427,11 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
                     .is_some_and(|a| i32::from(a.player) == o && a.owning_city == c))
             },
         );
-        result.map(|_| ()).map_err(|e| {
-            let _ = e;
-            CityError::Unsupported("worker appeal continuation")
+        result.map(|_| ()).map_err(|error| match error {
+            appeal::UpdateError::Query(error) => CityError::Production(error),
+            appeal::UpdateError::Effect(error) => error,
+            appeal::UpdateError::State(error) => CityError::State(error),
+            _ => CityError::Unsupported("worker appeal geometry/plot continuation"),
         })
     }
     fn capacity(
@@ -530,21 +535,36 @@ impl c6_core::city_power_activation::stock_signals::GossipContext for PowerGossi
         Err(Self::Error::Missing("first power gossip report"))
     }
 }
-struct WorkerAppeal;
-impl appeal::Effects for WorkerAppeal {
+struct WorkerAppeal<'a> {
+    subscribers: Option<&'a [u64]>,
+    calls: &'a mut Vec<&'static str>,
+}
+impl appeal::Effects for WorkerAppeal<'_> {
     type Error = CityError;
-    fn appeal_changed(
-        &mut self,
-        _: &mut LoadedState,
-        _: u32,
-        _: i32,
-    ) -> std::result::Result<(), CityError> {
-        Err(CityError::Unsupported("positive worker appeal signal"))
+    fn appeal_changed(&mut self, _: &mut LoadedState, _: u32, _: i32) -> Result<(), CityError> {
+        match self.subscribers {
+            Some([]) => {
+                self.calls
+                    .push("worker PlotAppealChanged empty gameplay signal");
+                Ok(())
+            }
+            Some(_) => Err(CityError::Unsupported(
+                "positive worker appeal signal subscribers",
+            )),
+            None => Err(CityError::Unsupported(
+                "current worker appeal signal registry",
+            )),
+        }
     }
-    fn appeal_report(&mut self, _: &mut LoadedState, _: u32) -> std::result::Result<(), CityError> {
-        Err(CityError::Unsupported("positive worker appeal report"))
+    fn appeal_report(&mut self, _: &mut LoadedState, _: u32) -> Result<(), CityError> {
+        // Stock PlotAppealChanged report/cache work emits presentation only.
+        // The canonical Map write and actual gameplay signal have completed.
+        self.calls
+            .push("worker PlotAppealChanged stock presentation");
+        Ok(())
     }
 }
+
 impl<E: production::Effects> crate::city_power::loaded::Effects for Context<'_, E> {
     fn power_changed(
         &mut self,

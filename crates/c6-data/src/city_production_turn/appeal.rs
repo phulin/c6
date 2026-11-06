@@ -24,6 +24,7 @@ pub struct Definitions {
     improvements: Vec<Definition>,
     districts: Vec<Definition>,
     lake_max: i32,
+    changed_signal: Option<(c6_core::loaded_state::ActionStamp, Vec<u64>)>,
 }
 impl Definitions {
     pub fn from_current_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
@@ -91,7 +92,33 @@ impl Definitions {
             improvements: read("Improvements", "ImprovementType")?,
             districts: read("Districts", "DistrictType")?,
             lake_max: integer(lake, "Value")?,
+            changed_signal: None,
         })
+    }
+    /// Complete current Game.PlotAppealChanged registration order. This is
+    /// callback binding metadata; cached appeal remains canonical Map state.
+    pub fn bind_changed_signal(
+        &mut self,
+        state: &LoadedState,
+        subscribers: Vec<u64>,
+    ) -> Result<(), Error> {
+        if self.inputs != state.binding().inputs || self.changed_signal.is_some() {
+            return Err(Error::Binding);
+        }
+        self.changed_signal = Some((state.action_stamp(), subscribers));
+        Ok(())
+    }
+    /// Call when an external integration changes the signal registration set.
+    /// Supported stock actions do not install appeal listeners; unsupported
+    /// listener-installing requirement branches fail before being admitted.
+    pub fn invalidate_changed_signal(&mut self) {
+        self.changed_signal = None;
+    }
+    pub fn changed_subscribers(&self, state: &LoadedState) -> Option<&[u64]> {
+        self.changed_signal
+            .as_ref()
+            .filter(|(instance, _)| instance.same_instance(state.action_stamp()))
+            .map(|(_, subscribers)| subscribers.as_slice())
     }
 }
 fn find(rows: &[Definition], hash: u32) -> Option<&Definition> {
