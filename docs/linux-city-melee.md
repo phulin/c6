@@ -63,8 +63,9 @@ The human capture queues a semantic disposition at the native callback point,
 then finishes melee cleanup. `Session::pending_city_disposition` exposes the
 external choice after completion; the pending state survives rewrapping and gates
 later Session actions. The accepted case stops at this decision boundary.
-Executing Keep, Raze, Return or Liberate requires its own supported transition and
-native qualification; this comparison does not establish those actions.
+A separate bounded [Keep City transition](linux-city-keep.md) resolves the choice.
+Raze, Return and Liberate still need their own native qualification; this capture
+comparison establishes the pending boundary.
 
 Capture needs current founding/transfer services, complete affected modifier and
 lifetime inputs, and stock City placement/query services. Postcapture queries read
