@@ -105,6 +105,7 @@ impl LoadedState {
             trade_graph: None,
             trade_graph_source: None,
             barbarian_local_food: Vec::new(),
+            governor_current: Vec::new(),
         })
     }
 }

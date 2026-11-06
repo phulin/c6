@@ -141,6 +141,7 @@ mod tests {
             trade_graph: None,
             trade_graph_source: None,
             barbarian_local_food: Vec::new(),
+            governor_current: Vec::new(),
         }
     }
     fn controls(state: &LoadedState) -> ControlInputs {
@@ -3529,6 +3530,7 @@ pub struct LoadedState {
     trade_graph: Option<crate::trade_graph_state::GraphState>,
     trade_graph_source: Option<ComponentSnapshotWitness>,
     barbarian_local_food: Vec<(usize, i32)>,
+    governor_current: Vec<(i32, crate::governor_lifecycle::Current)>,
 }
 /// Exclusive, validated replacement of one actor and its singleton Formation.
 /// Dropping this guard changes nothing. Commit moves only these two records and
@@ -3740,6 +3742,7 @@ impl LoadedState {
             trade_graph: None,
             trade_graph_source: None,
             barbarian_local_food: Vec::new(),
+            governor_current: Vec::new(),
         })
     }
     pub fn world(&self) -> &world::World {

@@ -378,6 +378,7 @@ pub mod unit_operation_aftermath;
 pub mod reporting_dirty_components;
 
 pub mod player_governors;
+pub mod governor_lifecycle;
 
 pub mod player_heroes;
 
