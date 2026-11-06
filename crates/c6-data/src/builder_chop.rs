@@ -36,6 +36,24 @@ impl Definitions {
         ) {
             return Err(Error::Unsupported("Linux forest removal rules"));
         }
+        let builder = rules
+            .gameplay()
+            .table("Units")
+            .ok_or(Error::Missing("Builder definition table"))?
+            .rows()
+            .find(|r| r.text("UnitType").ok() == Some("UNIT_BUILDER"))
+            .ok_or(Error::Missing("Builder definition"))?;
+        for field in ["Combat", "RangedCombat", "Bombard"] {
+            if builder
+                .integer(field)
+                .map_err(|_| Error::Missing("Builder combat definition"))?
+                != 0
+            {
+                return Err(Error::Unsupported(
+                    "ordinary noncombat Builder forest removal",
+                ));
+            }
+        }
         let feature_hash = linux_type_hash(b"FEATURE_FOREST");
         let registry =
             crate::unit_initialization_definitions::collection(rules, "Features", "FeatureType")
@@ -321,6 +339,11 @@ pub fn start<E: Effects>(
         .map_err(|_| Error::Missing("forest actor"))?
         .ok_or(Error::Missing("forest actor"))?
         .record;
+    if u.e_type_index != linux_type_hash(b"UNIT_BUILDER") {
+        return Err(Error::Unsupported(
+            "forest actor changed from ordinary Builder",
+        ));
+    }
     let location = u.k_location;
     let owner = u.e_owner;
     if effects

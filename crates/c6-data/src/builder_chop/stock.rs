@@ -334,7 +334,7 @@ impl<P> super::Effects for Current<'_, '_, '_, '_, P> {
             if let Some(completion) = self.dispatcher.completion {
                 effects = effects.with_completion(completion);
             }
-            crate::city_production_turn::add_progress(
+            let outcome = crate::city_production_turn::add_progress(
                 state,
                 owner,
                 city,
@@ -344,6 +344,17 @@ impl<P> super::Effects for Current<'_, '_, '_, '_, P> {
                 &mut effects,
             )
             .map_err(|e| err("harvest production", e))?;
+            if matches!(
+                outcome,
+                crate::city_production_turn::Outcome::NeedsProduction
+                    | crate::city_production_turn::Outcome::Completed {
+                        needs_production: true
+                    }
+            ) {
+                self.backend
+                    .publish_city_production(state, owner, city)
+                    .map_err(|e| err("harvest production decision", e))?;
+            }
             self.dispatcher.reports.push(Output::Production {
                 owner,
                 city,
