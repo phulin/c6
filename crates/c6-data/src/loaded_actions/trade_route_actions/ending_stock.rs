@@ -1,4 +1,4 @@
-//! Reached ordinary domestic route-end subscribers on the persistent backend.
+//! Reached ordinary domestic and foreign route-end subscribers on the persistent backend.
 //! Unknown subscriptions and positive unimplemented branches retain their prefix.
 use super::{completion, stock::ResourceSubscriber, ComponentId};
 use crate::{loaded_actions::stock_notifications, research};
@@ -93,24 +93,72 @@ impl<P> completion::Effects for Current<'_, '_, '_, P> {
                 .world()
                 .player(receiver)
                 .map_err(|e| format!("{e:?}"))?;
-            if receiver == owner && i32::from(city.owner) != owner {
-                return Err("Trade foreign trading-post free research rewards".into());
+            if receiver != owner
+                || i32::from(city.owner) == owner
+                || !(0..64).contains(&i32::from(city.owner))
+            {
+                continue;
             }
-            // Player.Trade.OnTradePostToBeCreated2b97cc0 returns before reward
-            // fields and callbacks for another receiver or a same-owner city.
+            let foreign = i32::from(city.owner);
+            let level = self
+                .inputs
+                .civilization_levels
+                .iter()
+                .find(|r| r.0 == foreign)
+                .ok_or("Trade post reward city civilization level")?
+                .1;
+            if level == 0xc2577075 {
+                continue;
+            }
+            let trade = &state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.header.owner == owner)
+                .ok_or("Trade post reward current Player.Trade")?
+                .trade;
+            // Native reads each received flag only for a positive reward.
+            // An unsupported random grant stops before its received-bit write.
+            for (count, received, label) in [
+                (
+                    trade.free_tech_boost_first_trading_post_each_civ,
+                    &trade.civ_received_tech_boost_first_trading_post,
+                    "technology",
+                ),
+                (
+                    trade.free_civic_boost_first_trading_post_each_civ,
+                    &trade.civ_received_civic_boost_first_trading_post,
+                    "civic",
+                ),
+            ] {
+                if count > 0
+                    && !*received
+                        .get(foreign as usize)
+                        .ok_or("Trade post reward received flag")?
+                {
+                    return Err(format!(
+                        "Trade foreign first-post random {label} boost reward"
+                    ));
+                }
+            }
         }
         Ok(())
     }
     fn trading_post_changed(
         &mut self,
-        _: &mut LoadedState,
+        state: &mut LoadedState,
         city: ComponentId,
         owner: i32,
     ) -> Result<(), String> {
         for subscriber in self.inputs.post_changed {
             match subscriber {
                 PostChanged::History if i32::from(city.owner) == owner => {}
-                PostChanged::History => return Err("Trade foreign trading-post History".into()),
+                PostChanged::History => self.backend.current_trading_post_history(
+                    state,
+                    city,
+                    owner,
+                    self.inputs.civilization_levels,
+                )?,
                 PostChanged::Achievements { enabled: false } => {}
                 PostChanged::Achievements { enabled: true } => {
                     // OnTradingPostChanged28f1940 can only unlock at count3.

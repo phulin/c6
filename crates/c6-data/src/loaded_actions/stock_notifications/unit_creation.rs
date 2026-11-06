@@ -90,6 +90,50 @@ fn with_research_loan<C, R>(
     result
 }
 impl<'a, P> Runtime<'a, P> {
+    /// Run the foreign TradingPostChanged History subscriber using the same
+    /// live roster and HandleMoment registrations as ordinary unit upkeep.
+    pub fn current_trading_post_history(
+        &mut self,
+        state: &mut LoadedState,
+        city: c6_core::trade::ComponentId,
+        owner: i32,
+        levels: &[(i32, u32)],
+    ) -> Result<(), String> {
+        self.check(state).map_err(|e| format!("{e:?}"))?;
+        let alive = self
+            .player_services
+            .as_ref()
+            .and_then(|p| p.alive_players.as_ref())
+            .ok_or("Trade post History current alive roster")?
+            .values();
+        let Some(moment) = crate::loaded_actions::trade_route_actions::post_history::request(
+            state, city, owner, levels, alive,
+        )?
+        else {
+            return Ok(());
+        };
+        let history = self
+            .unit_creation
+            .as_ref()
+            .and_then(|p| p.history.as_ref())
+            .ok_or("Trade post current History continuation")?;
+        if !history.presentation_qualified {
+            return Err("Trade post History unqualified reports".into());
+        }
+        let mut effects = crate::loaded_actions::government_actions::history::StockEffects {
+            recorded: history.recorded,
+            reports: Vec::new(),
+        };
+        crate::melee_attack::resolve::completion::history::handle_moment(
+            state,
+            history.definitions,
+            history.inputs,
+            moment,
+            &mut effects,
+        )
+        .map(|_| ())
+        .map_err(|e| format!("Trade post History: {e:?}"))
+    }
     /// Loan the existing research owner to synchronous factory callbacks.
     /// The caller's mutable reference stays borrowed for the whole scope. Its
     /// empty identity holder is never exposed to the callback, and every normal
