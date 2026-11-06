@@ -4,6 +4,8 @@
 pub mod acquisition;
 #[path = "stock_research_boosts.rs"]
 pub mod boosts;
+#[path = "stock_research_policy.rs"]
+pub mod policy;
 #[path = "stock_research_units.rs"]
 pub mod units;
 use super::Runtime;
@@ -21,6 +23,7 @@ pub enum Error {
         reason: String,
     },
     Query(research::Query),
+    PolicyObsolescence(String),
     CityYield(crate::city_turn::Error),
     UnitUpdates(crate::research::units::Error<super::movement::Error>),
 }
@@ -223,6 +226,11 @@ impl<P> research::Effects for Effects<'_, '_, P> {
     ) -> Result<(), Error> {
         self.backend.check(state).map_err(Error::Notification)?;
         match effect {
+            research::Effect::PolicyObsoleted {
+                owner,
+                policy,
+                hash,
+            } => self.policy_obsoleted(state, owner, policy, hash),
             research::Effect::BoostSignal {
                 player,
                 kind,
@@ -455,6 +463,20 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                 self.backend
                     .reached
                     .push("stock civic overflow report current yield queries");
+                Ok(())
+            }
+            research::Effect::Report(ref report) if report.event == 0xd127ff37 => {
+                self.obsolete_publication_qualified(state)?;
+                research::Context {
+                    state,
+                    definitions,
+                    effects: self,
+                }
+                .stock_civic_publication_yields(report)
+                .map_err(|_| Error::Effect(effect))?;
+                self.backend
+                    .reached
+                    .push("stock obsolete-policy current publication queries");
                 Ok(())
             }
             research::Effect::Report(ref report)

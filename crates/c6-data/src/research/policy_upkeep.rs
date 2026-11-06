@@ -1,5 +1,5 @@
-//! Rule-driven negative continuation of Culture.ObsoletePolicies. Positive
-//! retraction and age/GreatPeople eligibility continuations remain explicit.
+//! Rule-driven Culture.ObsoletePolicies predicates. Age and GreatPeople
+//! eligibility continuations remain explicit.
 use super::*;
 use c6_core::player_prerequisites::IndexedBools;
 
@@ -57,12 +57,12 @@ impl Definitions {
             restricted,
         })
     }
-    pub(super) fn check<E>(
+    pub(super) fn obsolete<E>(
         &self,
         policy: u32,
         active: bool,
         unlocked: &IndexedBools,
-    ) -> Result<(), Error<E>> {
+    ) -> Result<bool, Error<E>> {
         // IsPolicyObsolete scans ObsoletePolicies in definition order only
         // when IsPolicyActive succeeds. A replacement's *unlocked* flag is
         // used, rather than its active slot or prerequisite civic directly.
@@ -75,7 +75,7 @@ impl Definitions {
                         .rfind(|p| p.definition_hash == replacement)
                         .ok_or(Error::Missing("current replacement-policy unlocked flag"))?;
                     if flag.value {
-                        return Err(Error::Missing("current obsolete-policy removal"));
+                        return Ok(true);
                     }
                 }
                 if row.great_person {
@@ -83,6 +83,9 @@ impl Definitions {
                 }
             }
         }
+        Ok(false)
+    }
+    pub(super) fn check_age<E>(&self, policy: u32) -> Result<(), Error<E>> {
         // Native checks this even if the slot's policy is no longer active.
         if self.restricted.contains(&policy) {
             return Err(Error::Missing("current age-restricted policy upkeep"));
@@ -117,18 +120,20 @@ mod tests {
         }
     }
     #[test]
-    fn retained_policy_reads_replacement_unlock_and_rejects_positive_removal() {
+    fn replacement_unlock_requests_removal_without_selecting_a_card() {
         let rules = rules();
-        assert!(rules.check::<()>(1, true, &flags(&[(2, false)])).is_ok());
+        assert!(!rules
+            .obsolete::<()>(1, true, &flags(&[(2, false)]))
+            .unwrap());
         assert!(matches!(
-            rules.check::<()>(1, true, &flags(&[(2, true)])),
-            Err(Error::Missing("current obsolete-policy removal"))
+            rules.obsolete::<()>(1, true, &flags(&[(2, true)])),
+            Ok(true)
         ));
         assert!(matches!(
-            rules.check::<()>(1, true, &flags(&[])),
+            rules.obsolete::<()>(1, true, &flags(&[])),
             Err(Error::Missing("current replacement-policy unlocked flag"))
         ));
-        assert!(rules.check::<()>(1, false, &flags(&[])).is_ok());
+        assert!(rules.obsolete::<()>(1, false, &flags(&[])).is_ok());
     }
     #[test]
     fn remaining_checks_keep_native_order_and_explicit_boundaries() {
@@ -141,15 +146,15 @@ mod tests {
             restricted: vec![1],
         };
         assert!(matches!(
-            rules.check::<()>(1, true, &flags(&[(2, true)])),
-            Err(Error::Missing("current obsolete-policy removal"))
+            rules.obsolete::<()>(1, true, &flags(&[(2, true)])),
+            Ok(true)
         ));
         assert!(matches!(
-            rules.check::<()>(1, true, &flags(&[(2, false)])),
+            rules.obsolete::<()>(1, true, &flags(&[(2, false)])),
             Err(Error::Missing("current GreatPeople policy obsolescence"))
         ));
         assert!(matches!(
-            rules.check::<()>(1, false, &flags(&[])),
+            rules.check_age::<()>(1),
             Err(Error::Missing("current age-restricted policy upkeep"))
         ));
     }

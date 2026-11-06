@@ -143,6 +143,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub decisions: Vec<Decision>,
     pub notices: Vec<Notice>,
     acquisition_policies: crate::research::policy::AcquisitionPolicies,
+    policy_obsolescence: Option<research::policy::Binding>,
     /// Ordered emitted notification publications; client UI playback is omitted.
     pub publications: Vec<lifecycle::Report>,
     /// Source-ordered changes after the canonical Player blocking store.
@@ -203,6 +204,7 @@ impl<'a, P> Runtime<'a, P> {
             decisions: Vec::new(),
             notices: Vec::new(),
             acquisition_policies: Default::default(),
+            policy_obsolescence: None,
             publications: Vec::new(),
             blocking_changes: Vec::new(),
             turn_report_records: Vec::new(),

@@ -105,6 +105,7 @@ pub enum Effect {
         kind: Kind,
         index: i32,
     },
+    PolicyObsoleted { owner: i32, policy: i32, hash: u32 },
     GovernmentNotifications(i32),
     BoostLog {
         player: i32,
@@ -707,7 +708,7 @@ impl<E: Effects> Context<'_, E> {
         self.check()?;
         let completed = matches!(
             report.event,
-            0xc5613042 | 0xac2769a3 | 0x87667464 | 0x80f1366d | 0x8aba2360
+            0xc5613042 | 0xac2769a3 | 0x87667464 | 0x80f1366d | 0x8aba2360 | 0xd127ff37
         ) && (report.event != 0x8aba2360 || report.index.is_none())
             && report.specialization.is_none()
             && report.old_progress.is_none()

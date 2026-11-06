@@ -1,6 +1,6 @@
 //! Culture.DoCulture in native root order. Current positive city tourism,
-//! contacted-opponent tourism, anarchy-government replacement and active policy
-//! removal remain explicit continuations; missing inputs are queried lazily.
+//! contacted-opponent tourism and anarchy-government replacement remain
+//! explicit continuations; missing inputs are queried lazily.
 use super::*;
 impl<E: Effects> Context<'_, E> {
     fn turn_major(&self, owner: i32) -> Result<bool, Error<E::Error>> {
@@ -168,27 +168,62 @@ impl<E: Effects> Context<'_, E> {
     fn obsolete_policies(&mut self, owner: i32) -> Result<(), Error<E::Error>> {
         let _dark = self.turn_age(owner, false)?;
         let _golden = self.turn_age(owner, true)?;
-        for slot in &self.culture_turn_culture(owner)?.active_policies.entries {
-            if self
-                .definitions
-                .policies
-                .find_index(slot.policy_hash)
-                .is_some()
-            {
+        let mut index = 0;
+        while index
+            < self
+                .culture_turn_culture(owner)?
+                .active_policies
+                .entries
+                .len()
+        {
+            let hash = self.culture_turn_culture(owner)?.active_policies.entries[index].policy_hash;
+            if let Some(policy) = self.definitions.policies.find_index(hash) {
                 let culture = self.culture_turn_culture(owner)?;
                 let active = culture
                     .policy_is_in_place
                     .pairs
                     .iter()
-                    .rfind(|p| p.definition_hash == slot.policy_hash)
+                    .rfind(|p| p.definition_hash == hash)
                     .ok_or(Error::Missing("current policy active flag"))?
                     .value;
-                self.definitions.policy_upkeep.check(
-                    slot.policy_hash,
+                if self.definitions.policy_upkeep.obsolete(
+                    hash,
                     active,
                     &culture.policy_unlocked,
-                )?;
+                )? {
+                    // SetPolicyActive(false) and the slot store precede the
+                    // distinct PolicyObsoleted signal. No policy is selected,
+                    // enacted, or marked as an external policy-change command.
+                    self.culture_turn_culture_mut(owner)?
+                        .policy_is_in_place
+                        .pairs
+                        .iter_mut()
+                        .rfind(|p| p.definition_hash == hash)
+                        .ok_or(Error::Missing("current policy active flag"))?
+                        .value = false;
+                    self.culture_turn_culture_mut(owner)?
+                        .active_policies
+                        .entries[index]
+                        .policy_hash = u32::MAX;
+                    self.emit(Effect::PolicyObsoleted {
+                        owner,
+                        policy: policy as i32,
+                        hash,
+                    })?;
+                    self.emit(Effect::Report(boost::Report {
+                        event: 0xd127ff37,
+                        specialization: None,
+                        player: owner,
+                        index: Some(policy as i32),
+                        old_progress: None,
+                        source: None,
+                    }))?;
+                }
+                // Native still tests the ORIGINAL card's XP1 row after its
+                // obsolete removal and every synchronous consumer completed.
+                self.definitions.policy_upkeep.check_age(hash)?;
             }
+            index += 1;
         }
         Ok(())
     }
