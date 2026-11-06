@@ -136,7 +136,74 @@ pub(super) fn initialize_building(
         },
     ))
 }
+/// Borrowed gameplay identity/lifetime of a live reached research modifier.
+/// Native allocation addresses are intentionally absent from this view.
+#[derive(Clone, Debug)]
+pub struct ResearchTradeCapacityModifier<'a> {
+    pub instance: i32,
+    pub context_instance: i32,
+    pub owner: i32,
+    pub kind: crate::research::Kind,
+    pub hash: u32,
+    pub definition: &'a [u8],
+    pub amount: i32,
+    pub applied: bool,
+    pub owner_destroyed_subscription: bool,
+    pub tracked_destroyed_subscription: bool,
+}
 impl EffectRuntime {
+    pub fn research_trade_capacity_modifiers(
+        &self,
+    ) -> Result<Vec<ResearchTradeCapacityModifier<'_>>, Error> {
+        let creation = self
+            .city_creation
+            .as_ref()
+            .ok_or(Error::Missing("current shared modifier lifecycle"))?;
+        let mut out = Vec::new();
+        for row in &creation.government.flat {
+            let super::super::EffectState::TradeRouteCapacity { context, amount } =
+                *self.effect(row.effect).map_err(Error::Query)?
+            else {
+                continue;
+            };
+            let object = self.object(context).map_err(Error::Query)?;
+            let super::super::ContextObject::Research { owner, kind, hash } = object.kind else {
+                return Err(Error::Missing("research capacity owner"));
+            };
+            let lifecycle = creation
+                .objects
+                .iter()
+                .find(|o| o.handle == context)
+                .ok_or(Error::Missing("research modifier lifecycle"))?;
+            let definition = lifecycle
+                .affected
+                .entries()
+                .iter()
+                .find(|r| r.instance == row.instance)
+                .ok_or(Error::Missing("research affected modifier"))?
+                .definition
+                .as_slice();
+            out.push(ResearchTradeCapacityModifier {
+                instance: row.instance,
+                context_instance: object.instance_id,
+                owner,
+                kind,
+                hash,
+                definition,
+                amount,
+                applied: row.applied,
+                owner_destroyed_subscription: lifecycle
+                    .destroyed
+                    .ordered_subscribers()
+                    .any(|s| matches!(s, DestroyedListener::ModifierOwner(i) if i == row.instance)),
+                tracked_destroyed_subscription: lifecycle
+                    .destroyed
+                    .ordered_subscribers()
+                    .any(|s| matches!(s, DestroyedListener::Modifier(i) if i == row.instance)),
+            });
+        }
+        Ok(out)
+    }
     /// Current Player.Cities replacement arrays, reused by CityHasBuilding.Test.
     /// Call again when a supported transition changes those arrays.
     pub fn install_government_building_maps(
