@@ -272,6 +272,7 @@ fn change_gold<P, E: Effects<P>>(
     }
     Ok(())
 }
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn respond<P, E: Effects<P>>(
     state: &mut LoadedState,
     backend: &mut P,
