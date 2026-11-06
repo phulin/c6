@@ -175,7 +175,19 @@ impl<E: Effects> Context<'_, E> {
                 .find_index(slot.policy_hash)
                 .is_some()
             {
-                return Err(Error::Missing("current active-policy obsolescence"));
+                let culture = self.culture_turn_culture(owner)?;
+                let active = culture
+                    .policy_is_in_place
+                    .pairs
+                    .iter()
+                    .rfind(|p| p.definition_hash == slot.policy_hash)
+                    .ok_or(Error::Missing("current policy active flag"))?
+                    .value;
+                self.definitions.policy_upkeep.check(
+                    slot.policy_hash,
+                    active,
+                    &culture.policy_unlocked,
+                )?;
             }
         }
         Ok(())

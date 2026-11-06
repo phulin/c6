@@ -18,6 +18,7 @@ pub mod attached_modifiers;
 pub mod barbarian;
 mod city_tourism;
 mod culture_turn;
+mod policy_upkeep;
 pub mod diplomacy;
 pub mod districts;
 pub mod policy;
@@ -183,6 +184,7 @@ pub struct Definitions {
     eras: LinuxDefinitionRegistry,
     yields: LinuxDefinitionRegistry,
     policies: LinuxDefinitionRegistry,
+    policy_upkeep: policy_upkeep::Definitions,
     research_alliance: i32,
     culture_alliance: i32,
     technology_hashes: Vec<u32>,
@@ -497,6 +499,7 @@ impl Definitions {
             eras,
             yields,
             policies,
+            policy_upkeep: policy_upkeep::Definitions::from_rules(rules)?,
             research_alliance,
             culture_alliance,
             chronology,
