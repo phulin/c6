@@ -36,14 +36,21 @@ core processors, global religion, GameSync and tracked libc state on the
 [pinned Linux target](targets.md). It also matches the affected unit objects,
 seven modifiers with their effect parameters and tracked/applied memberships,
 ordered callback rings, collection reference counts, logical allocation counters,
-and the affected DefaultDefeat requirement states, IDs and references.
+and the affected DefaultDefeat requirement states, IDs and references. A further
+dev comparison matches all captured own/shared sight-layer fields and count
+arrays for players 0, 1, 62 and 63, reveal masks, hidden-layer hashes, owner order
+and the message flag against the already retained native AFTER observation.
 
 Raw Player comparisons retain differences between imported AI runtime validity
 flags and fields absent from native Save output. Unknown bytes remain retained.
 The reports do not claim complete runtime graph coverage, a complete ordered RNG
-inventory or full action equivalence. The native fixture and exact public/private
-pins, configuration, commands, inputs and actual results are retained in the
-private Linux civilian-capture comparison records.
+inventory or full action equivalence. The local observer remains the actual
+BEFORE observer; its AFTER identity is not independently observed. The gameplay
+checkpoint `0d73558f` passes the dev and optimized comparison with private
+`0b074076`; the additional live-sight comparison passes in dev with private
+`7785607c`. Standalone validation passes 1,759 tests, strict Clippy and the C ABI
+smoke check. The native fixture, configuration, commands, canonical inputs and
+actual results are retained in the private Linux civilian-capture records.
 
 Retreating civilians, other unit types, damaged or embarked Settlers, nonzero
 charges, barbarian captors, captors with cities, nonhuman capture policy and
