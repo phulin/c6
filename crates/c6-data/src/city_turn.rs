@@ -134,6 +134,17 @@ pub const POPULATION_REPORT: u32 = 0x10419f1f;
 /// Services execute against this same canonical state/Effects/Script owner.
 /// Implementations must perform every reached subscriber and RNG effect.
 pub trait PopulationEffects: religion::Effects {
+    /// Informational growth output after the caller's ordered cooldown store.
+    /// The service must qualify its actual factory and reached consumers.
+    fn publish_growth_notification(
+        &mut self,
+        _: &mut LoadedState,
+        _: i32,
+        _: u32,
+        _: u32,
+    ) -> Result<(), Error> {
+        Err(Error::Unsupported("actual growth notification effects"))
+    }
     /// ChangeNumCitizens already added delta to the canonical unassigned count.
     /// `reallocate` selects the native negative-count branch; otherwise calls
     /// TryAssignAllWorkers(true), including its actual plot/yield selection.

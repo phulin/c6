@@ -730,12 +730,17 @@ impl<E: production::Effects> growth::Effects for Context<'_, E> {
     }
     fn growth_notification(
         &mut self,
-        _: &mut c6_core::loaded_state::LoadedState,
-        _: i32,
-        _: u32,
-        _: u32,
+        state: &mut c6_core::loaded_state::LoadedState,
+        owner: i32,
+        city: u32,
+        notification: u32,
     ) -> std::result::Result<(), CityError> {
-        self.missing("actual growth notification effects")
+        self.production
+            .population_services()
+            .ok_or(CityError::Unsupported(
+                "current growth notification services",
+            ))?
+            .publish_growth_notification(state, owner, city, notification)
     }
 }
 impl<E: production::Effects> crate::city_turn::PopulationEffects for Context<'_, E> {

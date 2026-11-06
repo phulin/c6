@@ -99,6 +99,12 @@ pub struct Decision {
 /// Informational gameplay output; it never requests a policy choice.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Notice {
+    CityGrowth {
+        owner: i32,
+        city: u32,
+        type_hash: u32,
+        location: [i32; 2],
+    },
     CivilianCaptured {
         owner: i32,
         captor_owner: i32,
@@ -268,7 +274,8 @@ impl<'a, P> Runtime<'a, P> {
     ) -> Result<(), processing::Error> {
         self.check(state)?;
         let owner = match &notice {
-            Notice::CivilianCaptured { owner, .. }
+            Notice::CityGrowth { owner, .. }
+            | Notice::CivilianCaptured { owner, .. }
             | Notice::RoutesUpgraded { owner, .. }
             | Notice::ResourceDiscovered { owner, .. }
             | Notice::ImprovementPillaged { owner, .. }

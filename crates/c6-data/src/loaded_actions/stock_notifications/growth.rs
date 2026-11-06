@@ -7,6 +7,9 @@ use c6_core::loaded_state::LoadedState;
 
 pub struct Inputs {
     pub rules: GrowthRules,
+    /// Source-qualified default manual ComponentID/text notice types. Unknown
+    /// factories or added gameplay consumers remain unsupported when reached.
+    pub notification_types: Vec<u32>,
     /// Current concrete diplomatic Subject modifier owners reached by growth.
     /// Absence rejects changed requirements after preserving their state write.
     pub requirement_effects:
@@ -82,6 +85,44 @@ impl<P> callbacks::PopulationScript for Script<'_, P> {
     }
 }
 impl<P> city_turn::PopulationEffects for Runtime<'_, P> {
+    fn publish_growth_notification(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        notification: u32,
+    ) -> Result<(), Error> {
+        if !matches!(
+            notification,
+            0xba4af0fb | 0x9b27fd19 | 0x9efbc217 | 0xffad0d16
+        ) || !self
+            .growth
+            .as_ref()
+            .is_some_and(|input| input.notification_types.contains(&notification))
+        {
+            return Err(Error::Unsupported(
+                "current growth notification factory/consumers",
+            ));
+        }
+        let current = state.city(owner, city)?;
+        let location = [current.header.location_x, current.header.location_y];
+        // Native 2d4b510 sets the City ComponentID, message and summary before
+        // pointer Send. Plain setters/localization and default OnAdd have no
+        // gameplay/RNG effects in this qualified scope. Preserve semantic output.
+        self.publish_notice(
+            state,
+            super::Notice::CityGrowth {
+                owner,
+                city,
+                type_hash: notification,
+                location,
+            },
+        )
+        .map_err(|error| {
+            self.last_error = Some(format!("{error:?}"));
+            Error::Unsupported("stock growth notification publication")
+        })
+    }
     fn assign_citizens(
         &mut self,
         _: &mut LoadedState,
