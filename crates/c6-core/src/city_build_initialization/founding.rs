@@ -204,6 +204,46 @@ pub fn on_found_city_external_policy(
     }
     on_found_city(state, owner, city_id, parameters)
 }
+/// Source DoFoundCity's synchronous DoOffTurn suffix. The three immutable
+/// current HasAnalyzed operands are read in Research/Culture/Diplomacy order.
+/// Numeric planner jobs stay unavailable under ExternalPolicyOmitted, while
+/// their completed flag must retain the native state transition.
+pub fn found_city_off_turn_external_policy(
+    state: &mut LoadedState,
+    owner: i32,
+    city_id: u32,
+    analyzed: [bool; 3],
+) -> Result<(), Error> {
+    if state.player_slot_status(owner).map_err(Error::State)? != 3 {
+        return Err(Error::UnsupportedPlanningOwner);
+    }
+    let city_ai = state
+        .city(owner, city_id)
+        .map_err(Error::State)?
+        .header
+        .city_ai_id;
+    let manager = state
+        .city_build_manager_mut(owner)
+        .map_err(|_| Error::MissingCityBuild)?;
+    let entry = manager
+        .city_ais
+        .entries
+        .iter_mut()
+        .find(|e| e.city_build.city_ai_id == city_ai)
+        .ok_or(Error::MissingCityBuild)?;
+    if entry.city_build.city_id != city_id || entry.city_build.player_owner != owner {
+        return Err(Error::Binding);
+    }
+    if entry.city_build.planning_data
+        != crate::player_ai_city_manager::PlanningData::ExternalPolicyOmitted
+    {
+        return Err(Error::PlanningDataRequired);
+    }
+    if analyzed.into_iter().all(|ready| ready) {
+        entry.city_build.done_off_turn.0 = 1;
+    }
+    Ok(())
+}
 #[cfg(test)]
 mod tests {
     use super::*;

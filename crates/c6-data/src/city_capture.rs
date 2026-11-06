@@ -669,6 +669,25 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
                     &parameters
                 )
             );
+            let analyzed = self
+                .current
+                .city_build_off_turn_readiness
+                .iter()
+                .find(|r| r.0 == new_owner)
+                .ok_or_else(|| {
+                    Self::error(
+                        Stage::Religion,
+                        replacement,
+                        "current CityBuild off-turn readiness",
+                    )
+                })?
+                .1;
+            step!(
+                Religion,
+                c6_core::city_build_initialization::founding::found_city_off_turn_external_policy(
+                    self.state, new_owner, fresh.id, analyzed
+                )
+            );
         }
         step!(
             Monopolies,

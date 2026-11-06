@@ -44,6 +44,8 @@ pub struct Current {
     pub local_observer: i32,
     pub naming: Vec<Naming>,
     pub city_build_managers: Vec<(i32, bool)>,
+    /// Actual Research/Culture/Diplomacy HasAnalyzed operands, in that order.
+    pub city_build_off_turn_readiness: Vec<(i32, [bool; 3])>,
     pub settled_on_continent_owners: Vec<i32>,
     pub free_cities_level: u32,
 }
