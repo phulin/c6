@@ -23,6 +23,9 @@ pub(crate) enum TurnMessage {
 /// The bound service borrows current rule/query owners. It receives the same
 /// backend and update runtime for every call, including later rounds.
 pub trait Services<P> {
+    fn random_events(&self) -> Option<&crate::game_update_state::round_random_events::Runtime> {
+        None
+    }
     fn advance(
         &mut self,
         state: &mut LoadedState,
@@ -34,6 +37,14 @@ pub trait Services<P> {
     ) -> Result<Progress, Error>;
 }
 impl<'a, P> Runtime<'a, P> {
+    /// Current persistent RandomEvents manager, unavailable while its round service is executing.
+    pub fn round_random_events(
+        &self,
+    ) -> Option<&crate::game_update_state::round_random_events::Runtime> {
+        self.round_services
+            .as_ref()
+            .and_then(|service| service.random_events())
+    }
     /// Player.Processor.EndTurn broadcasts this message. Its Execute is drained
     /// only after the current parent message returns, using the same FIFO as
     /// externally queued NPC completions.
