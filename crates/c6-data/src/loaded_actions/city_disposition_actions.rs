@@ -14,6 +14,7 @@ use c6_core::{
 };
 
 pub mod keep;
+pub mod raze;
 pub mod requirements;
 
 pub const DESTROY_COMMAND: u32 = 0x7b72_d9ea;
@@ -304,6 +305,8 @@ mod tests {
         };
         let phases = PhaseDefinitions::from_native_slots(vec![phase(1), phase(2), None]);
         assert!(allow_strategic(&phases, 0).unwrap());
+        assert!(!phases.allow_tactical_commands(0, 0).unwrap());
+        assert!(phases.allow_tactical_commands(1, 0).unwrap());
         assert!(!allow_strategic(&phases, 1).unwrap());
         assert!(allow_strategic(&phases, 2).unwrap());
         assert!(allow_strategic(&phases, -1).unwrap());

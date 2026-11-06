@@ -1,4 +1,4 @@
-//! Ordered transfer=true destruction. Services borrow the ongoing gameplay
+//! Ordered City destruction with transfer-specific branches. Services borrow the ongoing gameplay
 //! owners; none has a successful default. Failure retains the applied prefix.
 use super::{canonical_city, mark_district_for_delete, remove_all_queue};
 use crate::city_capture::retired_district::RetiredDistrictScalars;
@@ -14,6 +14,20 @@ pub trait Context {
     fn state(&self) -> &LoadedState;
     fn state_mut(&mut self) -> &mut LoadedState;
     fn city_destroyed(&mut self, city: ComponentId) -> Result<(), String>;
+    /// Non-transfer destruction displaces spies immediately after CityDestroyed.
+    /// Transfer callers never reach this branch. No unsupported service succeeds.
+    fn displace_spies(&mut self, _city: ComponentId) -> Result<(), String> {
+        Err("non-transfer City spy displacement unavailable".into())
+    }
+    /// RemoveParks precedes placement teardown and reads the current park owner.
+    fn remove_parks(&mut self, _city: ComponentId) -> Result<(), String> {
+        Err("non-transfer City park removal unavailable".into())
+    }
+    /// Runs after the City destructor/registry removal. The saved plot location
+    /// survives the City; services use current Units, placement and gameplay RNG.
+    fn relocate_units(&mut self, _location: PlotCoord) -> Result<(), String> {
+        Err("non-transfer City unit relocation unavailable".into())
+    }
     fn world_builder_active(&self) -> Result<bool, String>;
     fn mark_name_unused(&mut self, city: ComponentId) -> Result<(), String>;
     fn alive_major_ids(&self) -> Result<&[i32], String>;
@@ -106,8 +120,24 @@ pub fn destroy_for_transfer(
     context: &mut impl Context,
     city: ComponentId,
 ) -> Result<Outcome, Error> {
+    destroy_with_mode(context, city, true)
+}
+
+/// City.Manager.Destroy(city,false), used by Raze. Shares every common teardown
+/// operation with capture and executes all three non-transfer continuations.
+pub fn destroy_without_transfer(
+    context: &mut impl Context,
+    city: ComponentId,
+) -> Result<Outcome, Error> {
+    destroy_with_mode(context, city, false)
+}
+fn destroy_with_mode(
+    context: &mut impl Context,
+    city: ComponentId,
+    transferring: bool,
+) -> Result<Outcome, Error> {
     let mut retired = Vec::new();
-    let result = destroy(context, city, &mut retired);
+    let result = destroy(context, city, &mut retired, transferring);
     match result {
         Ok(()) => Ok(Outcome {
             retired_districts: retired,
@@ -122,10 +152,11 @@ fn destroy(
     context: &mut impl Context,
     city: ComponentId,
     retired: &mut Vec<(ComponentId, RetiredDistrictScalars)>,
+    transferring: bool,
 ) -> Result<(), Error> {
     canonical_city(context.state(), city).map_err(|e| err("City identity", e))?;
     let owner = i32::from(city.owner);
-    let _original = {
+    let original = {
         let h = &context
             .state()
             .city(owner, city.id)
@@ -143,9 +174,12 @@ fn destroy(
             .map_err(|e| err("mark delayed death", e))?
             .header;
         h.delayed_death = true;
-        h.transferring = true;
+        h.transferring = transferring;
     }
     call("CityDestroyed", context.city_destroyed(city))?;
+    if !transferring {
+        call("displace City spies", context.displace_spies(city))?;
+    }
     if call("WorldBuilder active", context.world_builder_active())? {
         call("mark name unused", context.mark_name_unused(city))?;
     }
@@ -183,6 +217,9 @@ fn destroy(
                 context.remove_improvement_placement(plot),
             )?;
         }
+    }
+    if !transferring {
+        call("remove City parks", context.remove_parks(city))?;
     }
     // City.Placement.Remove snapshots location again after preceding callbacks.
     let location = {
@@ -330,7 +367,6 @@ fn destroy(
             call("coastal domains", context.update_coastal_domains(location))?;
         }
     }
-    // transfer=true skips the post-removal unit relocation loop.
     call("City destructor", context.destroy_city_lifetime(city))?;
     let records = &mut context
         .state_mut()
@@ -340,5 +376,11 @@ fn destroy(
     c6_core::city_initialization::release_slot(records, city.id & 0xffff)
         .map_err(|e| err("City slot removal", e))?
         .ok_or_else(|| err("City slot removal", "missing"))?;
+    if !transferring {
+        call(
+            "relocate destroyed City Units",
+            context.relocate_units(original),
+        )?;
+    }
     Ok(())
 }

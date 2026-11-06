@@ -51,6 +51,8 @@ pub mod declare_war;
 pub mod pantheon;
 #[path = "session_citizens.rs"]
 pub mod citizens;
+#[path = "session_city_raze.rs"]
+pub mod city_raze;
 #[path = "session_city_disposition.rs"]
 pub mod city_disposition;
 
