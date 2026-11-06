@@ -51,6 +51,8 @@ pub mod declare_war;
 pub mod pantheon;
 #[path = "session_citizens.rs"]
 pub mod citizens;
+#[path = "session_city_disposition.rs"]
+pub mod city_disposition;
 
 #[derive(Debug)]
 pub enum Error<E> {
@@ -59,6 +61,9 @@ pub enum Error<E> {
     Failed(String),
     /// Resolve the pending research choice before issuing a unit order.
     PendingResearch,
+    /// Finish the captured city's external disposition decision before any
+    /// further action or turn progression. The completed melee is retained.
+    PendingCityDisposition(c6_core::unit::ComponentId),
     /// This request does not belong to the current ordinary player-action site.
     DecisionBoundary(&'static str),
     Action(E),
@@ -130,7 +135,10 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
     fn check<E>(&self) -> Result<(), Error<E>> {
         match &self.failed {
             Some(failure) => Err(Error::Failed(failure.clone())),
-            None => Ok(()),
+            None => match self.pending_city_disposition() {
+                Some(choice) => Err(Error::PendingCityDisposition(choice.city)),
+                None => Ok(()),
+            },
         }
     }
     fn retain<T, E: std::fmt::Debug>(
