@@ -66,10 +66,13 @@ district, action, RNG or turn parity.
 The accepted [ordinary Farm Repair](linux-builder-repair.md) restores a pillaged,
 resource-free Farm through the Session and action aftermath without spending a
 Builder charge. The accepted ordinary owned, resource-free forest
-[Chop](../crates/c6-data/src/loaded_actions/session_chop.rs) adds 21 production
-and reduces Builder charges from 3 to 2 in its native comparison; production
-completion and last-charge removal were not exercised natively. These are
-bounded action results, not complete builder coverage.
+[Chop](linux-builder-chop.md) adds 21 production in its native comparisons.
+The surviving Builder case spends charge 3→2. A second case spends its final
+charge and synchronously completes a queued Monument, including its modifier
+and requirement effects, then removes Builder placement and sight. The native
+Builder remains rostered with delayed death and a queued operation at that
+boundary; later physical retirement is outside this case. These are bounded
+action results, not complete builder coverage.
 
 Use [`Session::managed_city_plots` and `Session::manage_city_citizen`](../crates/c6-data/src/loaded_actions/session_citizens.rs)
 to query current managed tiles and request the native citizen lock cycle at the
