@@ -228,7 +228,7 @@ where
         .unit_runtime(unit.e_owner, unit.id)
         .map_err(|e| error("actor", e))?
         .domain
-        != 0
+        != 2
         || crate::unit_movement_state::unit_is_embarked(unit)
     {
         return Err(error("scope", "ordinary unembarked land melee required"));
