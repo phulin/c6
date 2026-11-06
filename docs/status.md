@@ -20,7 +20,7 @@ does not initialize a new Civ VI game. See the
 | Founding and unit orders | FoundCity; MoveTo including bounded ordinary Warrior embarkation/disembarkation, SkipTurn, Fortify and healing | Supported initialized states, movement rules and callbacks; actual civilian capture in ordinary MoveTo and arbitrary terrain, units or effect branches remain unsupported |
 | Development and economy | Farm/Mine construction, ordinary resource-free Farm Repair and forest Chop, and builder charges; city yields and growth; ordinary city tile worker locks; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported; citizen unlock/clamp and noncanonical wrapped requests lack separate native cases |
 | Production and districts | Natural Scout, Warrior, Monument and Campus completion; ordinary [Granary selection, completion and growth](linux-granary-growth.md); ordinary [Settler completion](linux-settler-production.md) with population consumption; Campus placement | Representative Linux cases through supported turn progression and externally supplied production choices; not arbitrary production or district branches |
-| Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and first physical step | Representative Linux cases; not district/building pillage or complete trade-route lifecycle coverage |
+| Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and [normal route lifetime](linux-trade-route-lifecycle.md) through return/completion and the next external Trader decision | Representative Linux cases; foreign routes, live cancellation and arbitrary route/production/effect branches remain unsupported |
 | Research and government | Technology/civic selection, progress and bounded completion; unowned-resource revelation and bounded owned Iron extraction/accumulation with discovery boost; explicit government and policy choices | Representative Linux cases; unknown acquisition subscribers and other positive resource modifier branches remain unsupported |
 | Religion | Human and bounded nonhuman major Initiation Rites pantheon choice and founding | Representative initialized Linux cases, including stored modifiers, owned-city propagation, reached callbacks and NPC continuation on the same controller; other belief effects remain unsupported |
 | Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; city-center melee without walls, including bounded noncapital capture and explicit [Keep City](linux-city-keep.md) and [Raze City](linux-city-raze.md); promotions and upgrades | Representative Linux cases through the persistent Session; Return/Liberate, other combat types, modifiers and aftermath branches remain outside the qualified profiles |
@@ -51,8 +51,16 @@ cases do not establish complete research, resource or turn coverage.
 
 The accepted [Farm Pillage](linux-unit-pillage.md) case completes the request
 through `HeadlessMessagesProcessed`, preserving genuine pending player decisions.
-The domestic trade first-step and natural Campus turn-completion comparisons are
-also bounded accepted cases; they do not establish complete subsystem coverage.
+The domestic [trade-route lifetime](linux-trade-route-lifecycle.md) comparison
+advances 24 ordinary rounds on one Session, returns the Trader to its origin,
+completes the route and leaves the next Trader choice external. All 25 represented
+trajectory checkpoints and the final route, stored storm/history, affected
+modifiers, logical IDs, core processors and known RNG match. Raw property-wire
+and source-qualified human defender-planning differences remain recorded;
+intermediate unsaved district appeal/delete fields are not observed, while the
+final appeal state is independently compared. Native AI-owned fields and complete
+runtime/RNG coverage remain outside this claim. The natural Campus completion
+case is also bounded; neither establishes complete subsystem or turn coverage.
 
 Current [dynamic district adjacency](../crates/c6-data/src/city_turn/district_yields.rs)
 feeds the production district and city yield queries used by Session. A positive
