@@ -11,6 +11,9 @@ pub struct Inputs {
     /// Absence rejects changed requirements after preserving their state write.
     pub requirement_effects:
         Option<crate::loaded_actions::declare_war::requirement_modifiers::Modifiers>,
+    /// Actual stock report subscribers and null synchronous host hooks, with
+    /// the existing source-qualified warm domestic query closure.
+    pub population_active_trade_report: bool,
     pub population: Vec<callbacks::PopulationListener>,
     pub religion: Vec<callbacks::CityListener>,
     pub quests: Vec<callbacks::CurrentQuest>,
@@ -120,7 +123,7 @@ impl<P> city_turn::PopulationEffects for Runtime<'_, P> {
     fn report_population(
         &mut self,
         state: &mut LoadedState,
-        _: i32,
+        owner: i32,
         _: u32,
         event: u32,
         _: i32,
@@ -132,8 +135,8 @@ impl<P> city_turn::PopulationEffects for Runtime<'_, P> {
             return Err(Error::Unsupported("unknown population report"));
         }
         // Stock City/Culture/Religion/Tech/Treasury consumers publish current
-        // snapshots. The already-qualified no-route branch has no retained
-        // gameplay or RNG work; route-query branches remain explicit.
+        // snapshots. Qualified warm domestic branches execute current numerical
+        // guards; unknown consumers and unsupported route queries remain errors.
         if !state
             .trade_graph()
             .map_err(|_| Error::Unsupported("current growth trade graph"))?
@@ -141,7 +144,18 @@ impl<P> city_turn::PopulationEffects for Runtime<'_, P> {
             .origins()
             .is_empty()
         {
-            return Err(Error::Unsupported("population report route queries"));
+            if !self
+                .growth
+                .as_ref()
+                .is_some_and(|input| input.population_active_trade_report)
+            {
+                return Err(Error::Unsupported("population report route queries"));
+            }
+            self.population_trade_queries(state, owner)
+                .map_err(|error| {
+                    self.last_error = Some(error);
+                    Error::Unsupported("population current active trade query")
+                })?;
         }
         Ok(())
     }

@@ -12,6 +12,13 @@ use c6_core::{
 };
 
 pub trait Services<P> {
+    fn population_trade_queries(
+        &mut self,
+        _state: &LoadedState,
+        _owner: i32,
+    ) -> Result<(), String> {
+        Err("current population trade query services".into())
+    }
     fn idle_trade_paths(
         &mut self,
         _state: &mut LoadedState,
@@ -103,6 +110,16 @@ impl<'a, P> Runtime<'a, P> {
         self.queued_operations = Some(services);
         Ok(())
     }
+    pub(crate) fn population_trade_queries(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+    ) -> Result<(), String> {
+        self.queued_operations
+            .as_mut()
+            .ok_or("current population trade query services")?
+            .population_trade_queries(state, owner)
+    }
     pub(crate) fn refresh_idle_trade_paths(
         &mut self,
         state: &mut LoadedState,
@@ -139,6 +156,7 @@ pub struct Trade<'s, 'a, 'r> {
     pub current: Current<'s, 'a, 'r>,
     pub definitions: &'s actions::trade_route_actions::Definitions,
     pub path_definitions: &'s actions::trade_route_actions::path::Definitions,
+    pub yield_definitions: actions::trade_route_actions::yields::Definitions,
     pub lifetime: &'s actions::trade_route_actions::lifetime::Definitions,
     pub roads: &'s actions::trade_route_actions::stock::RoadInputs<'a>,
     pub ending: Option<&'s actions::trade_route_actions::ending_stock::Inputs<'a>>,
@@ -148,6 +166,39 @@ pub struct Trade<'s, 'a, 'r> {
     pub trade_search: &'s std::cell::RefCell<c6_core::pathfinder::TwoLayer>,
 }
 impl Services<OperationParameters> for Trade<'_, '_, '_> {
+    fn population_trade_queries(&mut self, state: &LoadedState, owner: i32) -> Result<(), String> {
+        let graph = state
+            .trade_graph()
+            .map_err(|e| format!("population trade graph: {e:?}"))?;
+        for origin in graph.graph().origins() {
+            for destination in &origin.destinations {
+                if !destination.edge.has_active_route
+                    || (origin.vertex.data1 != owner && destination.vertex.data1 != owner)
+                {
+                    continue;
+                }
+                if origin.vertex.kind != 0 || destination.vertex.kind != 0 {
+                    return Err("population trade City route vertices".into());
+                }
+                let city = |v: c6_core::trade::Vertex| c6_core::trade::ComponentId {
+                    owner: v.data1 as i16,
+                    component_type: 2,
+                    id: v.data2 as u32,
+                };
+                // Same current warm-route numerical/effect guards used by the
+                // qualified stock City/Treasury report closure. Only discarded
+                // reflection output is omitted; unsupported queries still fail.
+                actions::trade_route_actions::yields::active_domestic_with_definitions(
+                    state,
+                    &self.yield_definitions,
+                    city(origin.vertex),
+                    city(destination.vertex),
+                )
+                .map_err(|e| format!("population active trade query: {e:?}"))?;
+            }
+        }
+        Ok(())
+    }
     fn idle_trade_paths(
         &mut self,
         state: &mut LoadedState,
