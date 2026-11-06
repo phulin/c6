@@ -209,6 +209,14 @@ impl Runtime {
             .find(|r| r.label == label)
             .map(|r| r.references)
     }
+    /// Current external set-listener order after pruning and unsubscription.
+    /// A retired requirement has no live callbacks; tombstones stay diagnostic.
+    pub fn requirement_subscribers(&self, label: u64) -> Option<Vec<u64>> {
+        self.requirements
+            .iter()
+            .find(|r| r.label == label)
+            .map(|r| r.changed.ordered_subscribers().collect())
+    }
     /// A retired set remains inspectable as a zero-reference logical record.
     pub fn set_reference_count(&self, label: u64) -> Option<u32> {
         self.sets
