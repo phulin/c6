@@ -12,11 +12,18 @@ use c6_core::{
     unit_moved_signal::modifiers::{self, TrackedSubject},
 };
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Collection {
+    MajorPlayers,
+    AllPlayers,
+    Unsupported(u64),
+}
 #[derive(Debug)]
 pub struct Metadata {
     pub label: u64,
     pub definition: Vec<u8>,
     pub context_instance: i32,
+    pub collection: Collection,
     pub subject_requirements: Vec<u8>,
     pub run_once: bool,
     pub has_activated: bool,
@@ -38,6 +45,7 @@ pub trait Services {
         state: &mut LoadedState,
         canonical: &mut Modifiers,
         receiver: u64,
+        collection: Collection,
     ) -> Result<Vec<u64>, &'static str>;
     fn create_subject_set(
         &mut self,
@@ -274,7 +282,7 @@ impl Runtime {
         }
         m.control.enabled = true;
         row.effect.current_update_instance = m.instance;
-        let mut collection = services.collection(state, canonical, receiver)?;
+        let mut collection = services.collection(state, canonical, receiver, row.collection)?;
         for &object in &collection {
             key(canonical, object)?;
         }
@@ -593,6 +601,8 @@ impl modifiers::EffectContext for Apply<'_> {
 #[derive(Debug)]
 pub struct KnownMajor {
     pub players: Vec<(i32, u64)>,
+    pub all_players: Vec<(i32, u64)>,
+    pub civilization_levels: Vec<(i32, u32)>,
     pub contexts: Vec<(i32, i32)>,
     pub relationship_factories: Vec<(Vec<u8>, relationship::Kind)>,
     signals: Vec<(
@@ -617,6 +627,8 @@ pub struct SignalRegistration {
 impl KnownMajor {
     pub fn new(players: Vec<(i32, u64)>, contexts: Vec<(i32, i32)>) -> Self {
         Self {
+            all_players: players.clone(),
+            civilization_levels: Vec::new(),
             players,
             contexts,
             meeting_receivers: Vec::new(),
@@ -690,8 +702,10 @@ impl Services for RelationshipServices<'_> {
         state: &mut LoadedState,
         canonical: &mut Modifiers,
         receiver: u64,
+        collection: Collection,
     ) -> Result<Vec<u64>, &'static str> {
-        self.profile.collection(state, canonical, receiver)
+        self.profile
+            .collection(state, canonical, receiver, collection)
     }
     fn create_subject_set(
         &mut self,
@@ -758,9 +772,15 @@ impl Services for KnownMajor {
         state: &mut LoadedState,
         canonical: &mut Modifiers,
         _: u64,
+        collection: Collection,
     ) -> Result<Vec<u64>, &'static str> {
+        let players = match collection {
+            Collection::MajorPlayers => &self.players,
+            Collection::AllPlayers => &self.all_players,
+            Collection::Unsupported(_) => return Err("unsupported reached opinion collection"),
+        };
         let mut result = Vec::new();
-        for &(owner, object) in &self.players {
+        for &(owner, object) in players {
             if state
                 .player_alive(owner)
                 .map_err(|_| "opinion MajorPlayers alive")?
@@ -842,15 +862,26 @@ impl sets::SubjectContext for KnownMajorFactory<'_> {
             .ok_or(sets::Error::Context("opinion context Player"))?;
         let other = self
             .profile
-            .players
+            .all_players
             .iter()
             .find(|p| p.1 == object)
             .map(|p| p.0)
             .ok_or(sets::Error::Context("opinion subject Player"))?;
         let value = if definition.id == b"REQUIRES_MAJOR_CIV_OPPONENT" {
-            // CivilizationLevel2377c60 compares the configured SubjectType;
-            // this profile's collection consists solely of actual full civs.
-            2
+            let actual = self
+                .profile
+                .civilization_levels
+                .iter()
+                .find(|p| p.0 == other)
+                .map(|p| p.1)
+                .ok_or(sets::Error::Context(
+                    "opinion actual subject civilization level",
+                ))?;
+            if actual == crate::registry::linux_type_hash(b"CIVILIZATION_LEVEL_FULL_CIV") {
+                2
+            } else {
+                3
+            }
         } else if definition.id == b"REQUIRES_PLAYERS_HAVE_MET" {
             let receiver = Receiver {
                 label,
