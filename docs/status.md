@@ -20,7 +20,7 @@ does not initialize a new Civ VI game. See the
 | Founding and unit orders | FoundCity; MoveTo including bounded ordinary Warrior embarkation/disembarkation and [hostile Settler capture](linux-civilian-capture.md), SkipTurn, Fortify and healing | Supported initialized states, movement rules and callbacks; capture is qualified for a human cityless Warrior captor and an undamaged, unembarked, zero-charge Settler; arbitrary terrain, units or effect branches remain unsupported |
 | Development and economy | Farm/Mine construction, ordinary resource-free Farm Repair and forest Chop, and builder charges; city yields and growth; ordinary city tile worker locks; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported; citizen unlock/clamp and noncanonical wrapped requests lack separate native cases |
 | Production and districts | Natural Scout, Warrior, Monument and Campus completion; ordinary [Granary selection, completion and growth](linux-granary-growth.md); ordinary [Settler completion](linux-settler-production.md) with population consumption; Campus placement | Representative Linux cases through supported turn progression and externally supplied production choices; not arbitrary production or district branches |
-| Pillage and trade | Enemy city-owned Farm Pillage; domestic initiation and [normal route lifetime](linux-trade-route-lifecycle.md) through the next Trader decision; [peaceful major-to-major foreign initiation and four ordinary rounds](linux-international-trade.md) | Representative Linux cases; foreign completion, live cancellation and arbitrary route/production/effect branches remain unsupported |
+| Pillage and trade | Enemy city-owned Farm Pillage; domestic initiation and [normal route lifetime](linux-trade-route-lifecycle.md) through the next Trader decision; [peaceful major-to-major foreign routes through normal completion and the next Trader decision](linux-international-trade.md) | Representative Linux cases; live cancellation, positive unreceived random first-post boosts and arbitrary route/production/effect branches remain unsupported |
 | Research and government | Technology/civic selection, progress and bounded completion; unowned-resource revelation and bounded owned Iron extraction/accumulation with discovery boost; explicit government and policy choices | Representative Linux cases; unknown acquisition subscribers and other positive resource modifier branches remain unsupported |
 | Religion | Human and bounded nonhuman major Initiation Rites pantheon choice and founding | Representative initialized Linux cases, including stored modifiers, owned-city propagation, reached callbacks and NPC continuation on the same controller; other belief effects remain unsupported |
 | Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; city-center melee without walls, including bounded noncapital capture and explicit [Keep City](linux-city-keep.md) and [Raze City](linux-city-raze.md); promotions and upgrades | Representative Linux cases through the persistent Session; Return/Liberate, other combat types, modifiers and aftermath branches remain outside the qualified profiles |
@@ -58,8 +58,11 @@ trajectory checkpoints and the final route, stored storm/history, affected
 modifiers, logical IDs, core processors and known RNG match. Raw property-wire
 and source-qualified human defender-planning differences remain recorded;
 intermediate unsaved district appeal/delete fields are not observed, while the
-final appeal state is independently compared. Native AI-owned fields and complete
-runtime/RNG coverage remain outside this claim. The natural Campus completion
+final appeal state is independently compared. A peaceful foreign route also
+completes 24 rounds, constructs both posts and records the reached world-first
+moment with five era-score points before the next external Trader decision.
+Its full History/Eras, live opinion graph and observed RNG comparisons match.
+Native AI-owned fields and complete runtime/RNG coverage remain outside this claim. The natural Campus completion
 case is also bounded; neither establishes complete subsystem or turn coverage.
 
 Current [dynamic district adjacency](../crates/c6-data/src/city_turn/district_yields.rs)

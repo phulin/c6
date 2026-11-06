@@ -43,9 +43,10 @@ retaining their raw differences. Intermediate wire exports do not observe
 unsaved district appeal/delete fields. Native AI-owned fields, full runtime state
 and the complete RNG inventory are not established by this case.
 
-Foreign initiation and four rounds of peaceful major-to-major upkeep have
-[separate bounded coverage](linux-international-trade.md). Foreign completion,
-live route cancellation, new idle-path edge allocation and other unimplemented
-production, modifier or event branches return explicit errors.
+Peaceful major-to-major foreign routes have [separate bounded coverage](linux-international-trade.md)
+through 24 rounds, normal completion, both trading posts, the reached foreign
+historic moment and the next external Trader decision. Positive unreceived random
+first-post boost rewards, live cancellation, new idle-path edge allocation and
+other unimplemented production, modifier or event branches return explicit errors.
 Completed mutations remain visible after an unsupported continuation. These
 limits do not turn unsupported work into a successful empty action.
