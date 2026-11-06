@@ -419,14 +419,14 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
             inputs, handlers, runtime, movement, budget)
     }
     /// Execute an explicit MoveTo using the existing computed path/placement
-    /// implementation and this session's stock callbacks and aftermath.
+    /// composition (including joined civilian capture), stock callbacks and aftermath.
     ///
     /// The caller retains search and visibility owners between requests. Stock
     /// movement services must already be bound on the supplied backend. Missing
     /// movement/combat branches return their actual partial error; this method
     /// does not establish complete MoveTo parity beyond compared profiles.
     #[allow(clippy::too_many_arguments)]
-    pub fn move_to(
+    pub fn move_to<M>(
         &mut self,
         issuer: i32,
         actor: (i32, u32),
@@ -434,9 +434,15 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
         inputs: &Inputs<'_, '_>,
         handlers: &handlers::BoundHandlers<'_>,
         runtime: &mut super::move_to::Runtime<'_>,
-        movement: &mut super::move_to::ComputedMovement<'_, '_>,
+        movement: &mut M,
         budget: &mut usize,
-    ) -> Result<super::move_to::ActionOutcome, Error<MoveToError>> {
+    ) -> Result<super::move_to::ActionOutcome, Error<MoveToError>>
+    where
+        M: super::move_to::Movement<
+            stock_notifications::Runtime<'a>,
+            Error = super::move_to::ComputedError<stock_notifications::movement::Error>,
+        >,
+    {
         self.check()?;
         if matches!(
             self.pending_choice().map(|choice| choice.kind),
