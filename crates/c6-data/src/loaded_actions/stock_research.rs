@@ -21,6 +21,7 @@ pub enum Error {
         reason: String,
     },
     Query(research::Query),
+    CityYield(crate::city_turn::Error),
     UnitUpdates(crate::research::units::Error<super::movement::Error>),
 }
 impl std::fmt::Display for Error {
@@ -446,7 +447,7 @@ impl<P> research::Effects for Effects<'_, '_, P> {
             return self
                 .backend
                 .current_city_yield(state, i32::from(city.owner), city.id, yield_index, 0)
-                .map_err(|_| Error::Query(query));
+                .map_err(Error::CityYield);
         }
         if matches!(query, research::Query::PlayerAge { owner: -1, .. }) {
             return Ok(0);

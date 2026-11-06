@@ -21,6 +21,7 @@ pub struct Definitions {
     districts: LinuxDefinitionRegistry,
     district: Vec<DistrictDefinition>,
     adjacency: adjacency::RulesCache,
+    replacements: Vec<(u32, u32)>,
 }
 impl Definitions {
     pub fn from_rules(rules: &Rules) -> Result<Self, Error> {
@@ -64,11 +65,21 @@ impl Definitions {
                 adjacency_yields,
             });
         }
+        let replacements = table("DistrictReplaces")?
+            .rows()
+            .map(|row| {
+                Ok((
+                    hash(row, "ReplacesDistrictType")?,
+                    hash(row, "CivUniqueDistrictType")?,
+                ))
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
             yields,
             districts,
             district,
             adjacency: adjacency::RulesCache::from_rules(rules)?,
+            replacements,
         })
     }
     /// Bind actual current configuration identities used by native trait exclusions.
@@ -178,7 +189,20 @@ impl Current<'_> {
                         .find(|e| e.value.header.id == attributes.owning_city)
                 })
                 .map(|e| &e.value);
-            if city.is_some_and(|city| !city.header.dynamic_bonuses.is_empty()) {
+            // City.GetDynamicAdjacencyBonuses2898c80 filters the retained
+            // list by same/replacement district, then requested yield. A
+            // nonempty list for OTHER districts/yields does not reach spatial
+            // calculation2a3ebd0. Matching rows remain explicit dependencies.
+            if city.is_some_and(|city| {
+                city.header.dynamic_bonuses.iter().any(|bonus| {
+                    dynamic_matches(
+                        &self.definitions.replacements,
+                        bonus,
+                        district.district_hash,
+                        hash,
+                    )
+                })
+            }) {
                 return Err(Error::Unsupported(
                     "current dynamic district adjacency bonuses",
                 ));
@@ -224,6 +248,19 @@ impl Current<'_> {
             self.adjacency(district, index)
         })
     }
+}
+fn dynamic_matches(
+    replacements: &[(u32, u32)],
+    bonus: &c6_core::city_wire::DynamicAdjacencyBonus,
+    district: u32,
+    yield_hash: u32,
+) -> bool {
+    (bonus.district_hash == district
+        || replacements.iter().any(|&(a, b)| {
+            (a == bonus.district_hash && b == district)
+                || (b == bonus.district_hash && a == district)
+        }))
+        && bonus.yield_hash == yield_hash
 }
 fn appeal_yield(
     rows: Option<&[c6_core::player_districts::AppealYieldChange]>,
@@ -430,6 +467,34 @@ mod tests {
             combine(&district, 1, |_| panic!("pillaged adjacency")).unwrap(),
             0
         );
+    }
+    #[test]
+    fn dynamic_rows_filter_both_district_replacements_and_requested_yield() {
+        let bonus = c6_core::city_wire::DynamicAdjacencyBonus {
+            district_hash: 11,
+            feature_hash: u32::MAX,
+            terrain_hash: u32::MAX,
+            improvement_hash: None,
+            river: false,
+            adjacent_district: true,
+            appeal: -1,
+            yield_hash: 23,
+            tiles_required: 1,
+            amount: 1,
+            description: vec![],
+        };
+        let replacements = [(11, 17), (31, 37)];
+        // Japan's specialty bonus must not reject an unrelated CityCenter.
+        assert!(!dynamic_matches(&replacements, &bonus, 41, 23));
+        assert!(!dynamic_matches(&replacements, &bonus, 11, 29));
+        assert!(dynamic_matches(&replacements, &bonus, 11, 23));
+        assert!(dynamic_matches(&replacements, &bonus, 17, 23));
+        let reverse = c6_core::city_wire::DynamicAdjacencyBonus {
+            district_hash: 17,
+            ..bonus
+        };
+        assert!(dynamic_matches(&replacements, &reverse, 11, 23));
+        assert!(!dynamic_matches(&replacements, &reverse, 37, 23));
     }
     #[test]
     fn source_hash_overlay_and_wrapping_percent_before_q8() {

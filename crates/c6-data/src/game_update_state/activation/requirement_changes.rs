@@ -281,8 +281,9 @@ fn no_opinion_statement(state: &LoadedState, row: &OwnerModifier) -> Result<bool
             let relations = state
                 .game_relations()
                 .map_err(|_| "current opinion relations")?;
-            for subject in state.world().players() {
-                let other = subject.owner();
+            // Manager validity is independent of which player records the
+            // bounded importer retained. Visit every native relation slot.
+            for other in 0..relations.player_count() {
                 if other == row.owner
                     || !state
                         .world()
