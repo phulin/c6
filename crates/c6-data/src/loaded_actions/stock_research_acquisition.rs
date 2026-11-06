@@ -57,6 +57,15 @@ pub struct ResourceUnlocks {
     definitions: Vec<ResourceUnlockDefinition>,
     subscribers: Vec<u64>,
     pub dispatches: Vec<(i32, i32)>,
+    discovered: Option<Vec<ResourceDiscoveredSubscriber>>,
+    pub discovered_dispatches: Vec<(i32, i32, u32)>,
+}
+/// The actual Boost.Manager PlayerResourceCheck subscriber. Its definition
+/// guards and unowned-plot branch perform no mutation or RNG draw; an owned
+/// plot still requires the positive improvement/boost continuation.
+#[derive(Clone, Copy, Debug)]
+pub enum ResourceDiscoveredSubscriber {
+    PlayerResourceCheck,
 }
 #[derive(Clone, Debug)]
 struct ResourceUnlockDefinition {
@@ -119,8 +128,37 @@ impl<P> Runtime<'_, P> {
             definitions,
             subscribers,
             dispatches: Vec::new(),
+            discovered: None,
+            discovered_dispatches: Vec::new(),
         });
         Ok(())
+    }
+    /// Complete current Game.ResourceDiscovered registration order, distinct
+    /// from ResourceUnlocked and ResourceRevealed. Unknown subscribers must be
+    /// rejected by the runtime importer rather than silently dropped.
+    pub fn bind_research_resource_discovery(
+        &mut self,
+        state: &LoadedState,
+        subscribers: Vec<ResourceDiscoveredSubscriber>,
+    ) -> Result<(), String> {
+        self.check(state).map_err(|e| e.to_string())?;
+        let inputs = self
+            .research_acquisition
+            .as_mut()
+            .filter(|binding| binding.binding == *state.binding())
+            .and_then(|binding| binding.resource_unlocks.as_mut())
+            .ok_or("research resource unlock binding")?;
+        if inputs.discovered.is_some() {
+            return Err("research resource discovery already bound".into());
+        }
+        inputs.discovered = Some(subscribers);
+        Ok(())
+    }
+    pub fn research_resource_discovery_dispatches(&self) -> &[(i32, i32, u32)] {
+        self.research_acquisition
+            .as_ref()
+            .and_then(|binding| binding.resource_unlocks.as_ref())
+            .map_or(&[], |inputs| inputs.discovered_dispatches.as_slice())
     }
     pub fn research_resource_unlock_dispatches(&self) -> &[(i32, i32)] {
         self.research_acquisition
@@ -156,7 +194,7 @@ impl<P> Runtime<'_, P> {
 impl<P> Effects<'_, '_, P> {
     fn technology_resource_unlock(
         &mut self,
-        state: &LoadedState,
+        state: &mut LoadedState,
         player: i32,
         index: i32,
     ) -> Result<(), String> {
@@ -164,16 +202,19 @@ impl<P> Effects<'_, '_, P> {
         let binding = self
             .backend
             .research_acquisition
-            .as_mut()
+            .as_ref()
             .ok_or("research acquisition binding")?;
         if binding.binding != *state.binding() {
             return Err("research acquisition binding differs".into());
         }
-        let inputs = binding
+        // Immutable rule identities only; mutable runtime owners remain shared.
+        let definitions = binding
             .resource_unlocks
-            .as_mut()
-            .ok_or("current resource unlock definitions and signal")?;
-        for resource in &inputs.definitions {
+            .as_ref()
+            .ok_or("current resource unlock definitions and signal")?
+            .definitions
+            .clone();
+        for resource in &definitions {
             if resource.technology != Some(index) {
                 continue;
             }
@@ -191,6 +232,14 @@ impl<P> Effects<'_, '_, P> {
                     continue;
                 }
             }
+            let inputs = self
+                .backend
+                .research_acquisition
+                .as_mut()
+                .unwrap()
+                .resource_unlocks
+                .as_mut()
+                .unwrap();
             // OnPlayerTechResearched dispatches this before iterating plots.
             inputs.dispatches.push((player, resource.index));
             if let Some(listener) = inputs.subscribers.first() {
@@ -199,10 +248,16 @@ impl<P> Effects<'_, '_, P> {
                     resource.index
                 ));
             }
-            for (plot_index, plot) in state.world().map().plots.iter().enumerate() {
-                if plot.resource_hash != resource.hash {
-                    continue;
-                }
+            let plots: Vec<u32> = state
+                .world()
+                .map()
+                .plots
+                .iter()
+                .enumerate()
+                .filter(|(_, plot)| plot.resource_hash == resource.hash)
+                .map(|(index, _)| index as u32)
+                .collect();
+            for plot in plots {
                 let shared = if self.sight.is_none() {
                     self.backend
                         .research_queries
@@ -216,6 +271,11 @@ impl<P> Effects<'_, '_, P> {
                     .sight
                     .or(shared.as_deref())
                     .ok_or("current research shared visibility")?;
+                // Native UpdateRevealedAt always precedes the caller's own
+                // GetRevealedState and mask4 refresh, even for hidden plots.
+                self.backend
+                    .update_revealed_resource(state, sight, player, plot)
+                    .map_err(|e| e.to_string())?;
                 let normal = sight
                     .shared(player)?
                     .0
@@ -224,34 +284,89 @@ impl<P> Effects<'_, '_, P> {
                     .ok_or("current research normal shared layer")?;
                 let visible = *normal
                     .values
-                    .get(plot_index)
+                    .get(plot as usize)
                     .ok_or("research shared visibility cell")?
                     > 0;
-                let own = state
+                let revealed = *state
                     .world()
                     .visibility(player)
-                    .ok_or("research retained visibility")?;
-                let revealed = *own
+                    .ok_or("research retained visibility")?
                     .revealed
-                    .get(plot_index)
+                    .get(plot as usize)
                     .ok_or("research revealed cell")?;
                 if revealed > 1 {
                     return Err("noncanonical resource reveal byte".into());
                 }
-                // UpdateRevealedAt and its caller both return for state zero.
-                // No resource amounts, layers, caches, signals or RNG are
-                // changed by either source method on this branch.
-                if visible || revealed != 0 {
-                    return Err(format!(
-                        "positive resource reveal continuation resource {} plot {}",
-                        resource.index, plot_index
-                    ));
+                let revealed_state = if visible { 2 } else { i32::from(revealed) };
+                if revealed_state == 0 {
+                    continue;
                 }
+                if sight.local_observer.ok_or("research local observer")? == player
+                    && !sight.messages_disabled
+                {
+                    self.backend
+                        .propagate_sight(
+                            state,
+                            c6_core::visibility_change::Propagation {
+                                player,
+                                plot,
+                                revealed_state,
+                                mask: 4,
+                                first_reveal: false,
+                                origin: -1,
+                                sight_range: 1,
+                                source: c6_core::unit::ComponentId {
+                                    owner: -1,
+                                    component_type: 0,
+                                    id: u32::MAX,
+                                },
+                            },
+                        )
+                        .map_err(|e| e.to_string())?;
+                }
+                let owner = crate::movement_placement_state::plot_owner(
+                    state
+                        .world()
+                        .map()
+                        .plot_by_index(plot)
+                        .ok_or("research resource plot")?,
+                )
+                .map_err(|e| format!("{e:?}"))?;
+                // GetResourceExtractableAt returns NO_RESOURCE for another
+                // owner's plot before resource visibility/improvement checks.
+                if owner == player {
+                    return Err("owned resource extraction and discovery continuation".into());
+                }
+                let inputs = self
+                    .backend
+                    .research_acquisition
+                    .as_mut()
+                    .unwrap()
+                    .resource_unlocks
+                    .as_mut()
+                    .unwrap();
+                let subscribers = inputs
+                    .discovered
+                    .as_ref()
+                    .ok_or("current Game.ResourceDiscovered registry")?;
+                inputs
+                    .discovered_dispatches
+                    .push((player, resource.index, plot));
+                for subscriber in subscribers {
+                    match subscriber {
+                        ResourceDiscoveredSubscriber::PlayerResourceCheck => {
+                            // Source2844a40 returns at either immutable rule
+                            // guards or the owner comparison; neither draws RNG.
+                        }
+                    }
+                }
+                // Native ResourceDiscovered notification also requires owner
+                // equality, already false on this supported branch.
             }
         }
         self.backend
             .reached
-            .push("stock technology resource unlock signal and unrevealed plot guards");
+            .push("stock technology resource unlock and unowned plot revelation");
         Ok(())
     }
     pub(super) fn game_acquired(
