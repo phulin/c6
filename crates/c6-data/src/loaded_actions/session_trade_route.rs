@@ -1,4 +1,4 @@
-//! Explicit domestic Trader order on the persistent Session state/RNG owners.
+//! Explicit domestic and major international Trader orders on the persistent Session state/RNG owners.
 use super::{Error, Session};
 use crate::{
     game_update_state::{round_quests, round_trade},
@@ -24,6 +24,49 @@ impl<'a> Session<'_, 'a, OperationParameters> {
     /// the same current owners. Errors retain their prefix and block reuse.
     #[allow(clippy::too_many_arguments)]
     pub fn domestic_trade_route(
+        &mut self,
+        issuer: i32,
+        actor: (i32, u32),
+        destination: PlotCoord,
+        inputs: &actions::Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>,
+        queued: &mut move_to::Runtime<'_>,
+        movement: &mut move_to::ComputedMovement<'_, '_>,
+        definitions: &trade::Definitions,
+        path_definitions: &trade::path::Definitions,
+        search: &mut TwoLayer,
+        manager: &mut round_trade::Runtime,
+        callbacks: &stock::Inputs<'_>,
+        research_definitions: &research::Definitions,
+        choices: &actions::choose_tech::Definitions,
+        culture: Option<&stock_notifications::research::CultureInputs<'_>>,
+        quests: &std::cell::RefCell<round_quests::Runtime>,
+        reports: &mut dyn stock::Reports<OperationParameters>,
+        budget: &mut usize,
+    ) -> Result<move_to::ActionOutcome, Error<TradeRouteError>> {
+        self.trade_route(
+            issuer,
+            actor,
+            destination,
+            inputs,
+            handlers,
+            queued,
+            movement,
+            definitions,
+            path_definitions,
+            search,
+            manager,
+            callbacks,
+            research_definitions,
+            choices,
+            culture,
+            quests,
+            reports,
+            budget,
+        )
+    }
+    #[allow(clippy::too_many_arguments)]
+    pub fn trade_route(
         &mut self,
         issuer: i32,
         actor: (i32, u32),

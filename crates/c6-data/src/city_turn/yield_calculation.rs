@@ -139,7 +139,7 @@ fn route_yields(
                 {
                     return Err(Error::Unsupported("current route keyed endpoint identity"));
                 }
-                let amounts = trade_yields::active_domestic_on_graph(
+                let amounts = trade_yields::active_on_graph(
                     state,
                     definitions,
                     current.trade,

@@ -215,6 +215,8 @@ where
             .city_domain_masks()
             .ok_or(Failure::Missing("Trade computed city domains"))?;
         let mut pathfinder = Pathfinder {
+            civilization_levels: self.movement.queries.civilization_levels
+                .ok_or(Failure::Missing("Trade civilization levels"))?,
             search: self.search,
             definitions: self.path_definitions,
             inputs: path::Inputs {
@@ -279,6 +281,8 @@ where
             .to_vec();
         drop(placement);
         let mut pathfinder = Pathfinder {
+            civilization_levels: self.movement.queries.civilization_levels
+                .ok_or(Failure::Missing("Trade civilization levels"))?,
             search: self.search,
             definitions: self.path_definitions,
             inputs: path::Inputs {

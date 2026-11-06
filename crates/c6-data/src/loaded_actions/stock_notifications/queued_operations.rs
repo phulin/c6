@@ -250,7 +250,7 @@ impl Services<OperationParameters> for Trade<'_, '_, '_> {
                 // Same current warm-route numerical/effect guards used by the
                 // qualified stock City/Treasury report closure. Only discarded
                 // reflection output is omitted; unsupported queries still fail.
-                actions::trade_route_actions::yields::active_domestic_with_definitions(
+                actions::trade_route_actions::yields::active_with_definitions(
                     state,
                     &self.yield_definitions,
                     city(origin.vertex),

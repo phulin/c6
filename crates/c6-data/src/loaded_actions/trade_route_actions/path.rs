@@ -458,7 +458,19 @@ pub fn find(
     let range = definitions
         .range
         .wrapping_add(player.trade.extra_route_range);
-    let land_allowed = player.trade.forbid_land_route_domestic <= 0;
+    // PathInitialize calls IsLandRouteAllowed with the destination coordinates.
+    // That getter chooses the domestic mask only for an owned destination plot.
+    let (_, destination_plot) = c6_core::movement_world::plot_at(state.world().map(), destination)
+        .map_err(|_| Error::Missing("Trade path destination plot"))?;
+    let destination_owner = destination_plot
+        .city_attributes
+        .as_ref()
+        .map_or(-1, |attributes| i32::from(attributes.player));
+    let land_allowed = if destination_owner == inputs.owner {
+        player.trade.forbid_land_route_domestic <= 0
+    } else {
+        player.trade.forbid_land_route_international <= 0
+    };
     let mut context = Context {
         state,
         definitions,

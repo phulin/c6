@@ -157,32 +157,11 @@ impl<P> completion::Effects for Current<'_, '_, '_, P> {
         origin: ComponentId,
         destination: ComponentId,
     ) -> Result<(), String> {
-        // Native UpdateCitiesAlongPath(-1) visits every current city center in
-        // path order. Domestic own-center branches have no counter change.
-        let path = state
-            .trade_graph()
-            .map_err(|e| format!("{e:?}"))?
-            .city_path(origin, destination)
-            .map(<[i32]>::to_vec);
-        if let Some(path) = path {
-            let width = state.world().map().header.width;
-            for index in path {
-                if index < 0 || width <= 0 || index as usize >= state.world().map().plots.len() {
-                    return Err("Trade route-end path plot".into());
-                }
-                if super::city::<()>(
-                    state,
-                    c6_core::unit::PlotCoord {
-                        x: index % width,
-                        y: index / width,
-                    },
-                )
-                .map_err(|e| format!("{e:?}"))?
-                .is_some_and(|c| c.owner != origin.owner)
-                {
-                    return Err("Trade route-end foreign city passing counter".into());
-                }
-            }
+        if state.trade_graph().map_err(|e| format!("{e:?}"))?
+            .city_path(origin, destination).is_some()
+        {
+            super::update_cities_along_path::<()>(state, origin, destination, -1)
+                .map_err(|e| format!("{e:?}"))?;
         }
         self.reports.report(
             state,

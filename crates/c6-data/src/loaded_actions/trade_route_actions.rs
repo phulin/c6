@@ -1,4 +1,4 @@
-//! Linux XP2 domestic Trade.Manager.StartRoute on the canonical current graph.
+//! Linux XP2 major-player Trade.Manager.StartRoute on the canonical current graph.
 //!
 //! The queued operation owns admission, activity and subsequent trader movement.
 //! This module owns the manager's route allocation and ordered gameplay signals.
@@ -38,7 +38,7 @@ pub enum Error<E = ()> {
 }
 impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "domestic trade route: {self:?}")
+        write!(f, "trade route: {self:?}")
     }
 }
 impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
@@ -176,7 +176,24 @@ pub fn is_domestic_route_allowed<E>(
         return Ok(false);
     }
     if origin.owner != destination.owner {
-        return Err(Error::Requires("international trade"));
+        return Err(Error::Requires(
+            "international destination civilization level",
+        ));
+    }
+    is_route_allowed(state, origin, destination, major, major)
+}
+
+/// Current major-player route admission. Civilization levels are immutable
+/// configuration facts supplied by the same current placement owner.
+pub fn is_route_allowed<E>(
+    state: &LoadedState,
+    origin: ComponentId,
+    destination: ComponentId,
+    major: bool,
+    destination_major: bool,
+) -> Result<bool, Error<E>> {
+    if origin == destination {
+        return Ok(false);
     }
     if state.city(i32::from(origin.owner), origin.id).is_err()
         || state
@@ -192,8 +209,39 @@ pub fn is_domestic_route_allowed<E>(
         .iter()
         .find(|p| p.header.owner == owner)
         .ok_or(Error::Missing("Trade player"))?;
-    if player.trade.domestic_trade_disabled_count > 0 {
-        return Ok(false);
+    if origin.owner == destination.owner {
+        if player.trade.domestic_trade_disabled_count > 0 {
+            return Ok(false);
+        }
+    } else {
+        if !major || !destination_major {
+            return Err(Error::Requires("major-player international trade"));
+        }
+        let other = i32::from(destination.owner);
+        let relations = state.game_relations().map_err(Error::State)?;
+        if !relations
+            .has_met(owner, other)
+            .map_err(|_| Error::Missing("Trade contact relationship"))?
+            || relations
+                .is_at_war(owner, other)
+                .map_err(|_| Error::Missing("Trade war relationship"))?
+        {
+            return Ok(false);
+        }
+        let destination_player = state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == other)
+            .ok_or(Error::Missing("Trade destination player"))?;
+        if player.trade.international_majors_trade_disabled_count > 0
+            || destination_player
+                .trade
+                .international_majors_trade_disabled_count
+                > 0
+        {
+            return Ok(false);
+        }
     }
     if !revealed(state, owner, origin)? || (major && !revealed(state, owner, destination)?) {
         return Ok(false);
@@ -237,6 +285,7 @@ pub struct Pathfinder<'a> {
     pub search: &'a mut c6_core::pathfinder::TwoLayer,
     pub definitions: &'a path::Definitions,
     pub inputs: path::Inputs<'a>,
+    pub civilization_levels: &'a [(i32, u32)],
 }
 impl Pathfinder<'_> {
     fn find(
@@ -310,6 +359,43 @@ pub fn can_start_domestic<E>(
         .map_err(|e| Error::Path(Box::new(e)))
 }
 
+/// Domestic and peaceful major international admission on current inputs.
+pub fn can_start<E>(
+    state: &LoadedState,
+    origin: ComponentId,
+    destination: ComponentId,
+    major: bool,
+    mut pathfinder: Option<&mut Pathfinder<'_>>,
+) -> Result<bool, Error<E>> {
+    if origin.owner == destination.owner {
+        return can_start_domestic(state, origin, destination, major, pathfinder);
+    }
+    let finder = pathfinder
+        .as_deref_mut()
+        .ok_or(Error::Missing("Trade destination civilization level"))?;
+    let destination_major = finder
+        .civilization_levels
+        .iter()
+        .find(|row| row.0 == i32::from(destination.owner))
+        .map(|row| row.1 == linux_type_hash(b"CIVILIZATION_LEVEL_FULL_CIV"))
+        .ok_or(Error::Missing("Trade destination civilization level"))?;
+    if !is_route_allowed(state, origin, destination, major, destination_major)? {
+        return Ok(false);
+    }
+    if state
+        .trade_graph()
+        .map_err(Error::State)?
+        .city_path(origin, destination)
+        .is_some()
+    {
+        return Ok(true);
+    }
+    finder
+        .find(state, origin, destination, false)
+        .map(|path| path.is_some())
+        .map_err(|e| Error::Path(Box::new(e)))
+}
+
 /// The specified-destination branch of MakeTradeRoute.CanStart. Visible-only
 /// returns after Trader/queue/movement checks, just as the original handler.
 /// Complete Manager script tests and interruption checks precede this handler.
@@ -364,7 +450,7 @@ pub fn handler_can_start<E>(
     let (Some(origin), Some(destination)) = (origin, destination) else {
         return Ok(false);
     };
-    if !can_start_domestic(state, origin, destination, major, pathfinder)? {
+    if !can_start(state, origin, destination, major, pathfinder)? {
         return Ok(false);
     }
     // XP2 resource method first performs CanStartRoute, then accepts only NONE.
@@ -441,7 +527,7 @@ pub fn start<E: Effects>(
     let (Some(origin), Some(destination)) = (origin, destination) else {
         return Ok(None);
     };
-    if !can_start_domestic(state, origin, destination, major, pathfinder.as_deref_mut())? {
+    if !can_start(state, origin, destination, major, pathfinder.as_deref_mut())? {
         return Ok(None);
     }
     if state
@@ -520,31 +606,7 @@ pub fn start<E: Effects>(
             "temporary route finalizing signal and destruction",
         ));
     }
-    // UpdateCitiesAlongPath only writes foreign city centers. This supported
-    // domain checks every node before omitting that branch; owned city centers
-    // still participate in the path and are retained in the graph.
-    let path = state
-        .trade_graph()
-        .map_err(Error::State)?
-        .city_path(origin, destination)
-        .ok_or(Error::Missing("current route path"))?;
-    for &index in path {
-        let width = state.world().map().header.width;
-        if index < 0 || width <= 0 || index as usize >= state.world().map().plots.len() {
-            return Err(Error::Missing("route path plot"));
-        }
-        if let Some(city) = city(
-            state,
-            PlotCoord {
-                x: index % width,
-                y: index / width,
-            },
-        )? {
-            if city.owner != origin.owner {
-                return Err(Error::Requires("foreign city route-passing update"));
-            }
-        }
-    }
+    update_cities_along_path(state, origin, destination, 1)?;
     let player = state
         .retained()
         .players
@@ -563,4 +625,46 @@ pub fn start<E: Effects>(
         .route_reports(state, actor, origin, destination)
         .map_err(Error::Effect)?;
     Ok(Some(id))
+}
+
+/// Linux UpdateCitiesAlongPath visits every path occurrence in order. The
+/// foreign-city counter setter clamps its wrapping signed result at zero.
+pub(crate) fn update_cities_along_path<E>(
+    state: &mut LoadedState,
+    origin: ComponentId,
+    destination: ComponentId,
+    change: i32,
+) -> Result<(), Error<E>> {
+    let path = state
+        .trade_graph()
+        .map_err(Error::State)?
+        .city_path(origin, destination)
+        .ok_or(Error::Missing("current route path"))?
+        .to_vec();
+    let change = change.clamp(-1, 1);
+    for index in path {
+        let width = state.world().map().header.width;
+        if index < 0 || width <= 0 || index as usize >= state.world().map().plots.len() {
+            return Err(Error::Missing("route path plot"));
+        }
+        if let Some(city) = city(
+            state,
+            PlotCoord {
+                x: index % width,
+                y: index / width,
+            },
+        )? {
+            if city.owner != origin.owner {
+                let trade = &mut state
+                    .city_mut(i32::from(city.owner), city.id)
+                    .map_err(Error::State)?
+                    .trade;
+                trade.num_foreign_routes_passing_through = trade
+                    .num_foreign_routes_passing_through
+                    .wrapping_add(change)
+                    .max(0);
+            }
+        }
+    }
+    Ok(())
 }
