@@ -868,6 +868,7 @@ impl modifiers::EffectContext for Apply<'_> {
             .map_err(Error::State)?
             .blackboard;
         if let Some(parameters) = random {
+            values.name = crate::loaded_actions::stock_notifications::first_contact::random_modifier::EFFECT_NAME.to_vec();
             if let Some(extra) =
                 crate::loaded_actions::stock_notifications::first_contact::random_modifier::prepare(
                     board,

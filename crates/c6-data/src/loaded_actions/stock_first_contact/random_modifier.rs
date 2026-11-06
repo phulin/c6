@@ -6,6 +6,10 @@
 use super::Error;
 use c6_core::player_diplomacy_blackboard::{Blackboard, LongArray};
 
+/// RandomEffect's virtual GetEffectNameTextKey returns this key directly;
+/// its inherited configurable text field is not used for tracker activation.
+pub const EFFECT_NAME: &[u8] = b"LOC_TOOLTIP_SAMPLE_DIPLOMACY_RANDOM";
+
 /// Concrete initialized effect fields, not a policy-selected opinion.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Parameters {
