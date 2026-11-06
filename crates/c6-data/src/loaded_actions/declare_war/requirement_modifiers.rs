@@ -132,6 +132,67 @@ impl Modifiers {
         let o = self.object(label)?;
         Ok((o.owner, o.first, o.second))
     }
+    /// Dispatch a concrete predicate's state-change signal over the canonical
+    /// current set rings. No requirement, set or modifier state is copied.
+    pub fn requirement_changed(
+        &mut self,
+        state: &mut LoadedState,
+        requirements: &mut sets::Runtime,
+        label: u64,
+        old: i32,
+        new: i32,
+    ) -> Result<(), sets::Error<Error>> {
+        if requirements
+            .simple_requirement(label)
+            .is_none_or(|r| r.state != new)
+        {
+            return Err(sets::Error::Context(Error::Missing(
+                "changed diplomacy requirement state",
+            )));
+        }
+        sets::changes::dispatch_requirement_changed(
+            &mut RequirementChange {
+                state,
+                requirements,
+                modifiers: self,
+            },
+            label,
+            old,
+            new,
+        )
+    }
+    fn modifier_changed_with_sets(
+        &mut self,
+        state: &mut LoadedState,
+        requirements: &mut sets::Runtime,
+        listener: sets::SetListener,
+        set: u64,
+    ) -> Result<(), Error> {
+        if !self.stamp.same_instance(state.action_stamp()) {
+            return Err(Error::Missing("diplomacy modifier World identity"));
+        }
+        let sets::SetListener::Subject(label) = listener else {
+            return Err(Error::Missing("diplomacy non-subject modifier listener"));
+        };
+        let modifier = self
+            .modifiers
+            .iter()
+            .position(|m| m.label == label)
+            .ok_or(Error::Missing("current diplomacy modifier receiver"))?;
+        let subject = self.modifiers[modifier]
+            .tracked
+            .iter()
+            .position(|s| s.control.requirement_set == Some(set))
+            .ok_or(Error::Missing("current diplomacy tracked requirement set"))?;
+        modifiers::check_apply_effects(&mut Apply {
+            state,
+            requirements,
+            owner: self,
+            modifier,
+            subject,
+        })
+        .map(|_| ())
+    }
     pub fn activations(&self) -> &[Activation] {
         &self.activations
     }
@@ -142,9 +203,52 @@ impl Modifiers {
         &self.objects
     }
 }
+struct RequirementChange<'a> {
+    state: &'a mut LoadedState,
+    requirements: &'a mut sets::Runtime,
+    modifiers: &'a mut Modifiers,
+}
+impl sets::changes::Context for RequirementChange<'_> {
+    type Error = Error;
+    fn subject_sets(&self) -> Result<&sets::Runtime, Error> {
+        Ok(self.requirements)
+    }
+    fn subject_sets_mut(&mut self) -> Result<&mut sets::Runtime, Error> {
+        Ok(self.requirements)
+    }
+    fn test_requirement(&mut self, _: u64) -> Result<i32, sets::Error<Error>> {
+        Err(sets::Error::Context(Error::Missing(
+            "diplomacy unexpected predicate retest",
+        )))
+    }
+    fn modifier_changed(
+        &mut self,
+        listener: sets::SetListener,
+        set: u64,
+        _: i32,
+        _: i32,
+    ) -> Result<(), sets::Error<Error>> {
+        self.modifiers
+            .modifier_changed_with_sets(self.state, self.requirements, listener, set)
+            .map_err(sets::Error::Context)
+    }
+    fn destroy_requirement(&mut self, _: u64) -> Result<(), sets::Error<Error>> {
+        Err(sets::Error::Context(Error::Missing(
+            "diplomacy requirement destruction",
+        )))
+    }
+    fn destroy_set(&mut self, _: u64) -> Result<(), sets::Error<Error>> {
+        Err(sets::Error::Context(Error::Missing(
+            "diplomacy set destruction",
+        )))
+    }
+    fn reset_trigger(&mut self, set: u64) -> Result<(), sets::Error<Error>> {
+        sets::changes::reset_trigger_state(self.requirements, set)
+    }
+}
 struct Apply<'a> {
     state: &'a mut LoadedState,
-    requirements: &'a mut Runtime,
+    requirements: &'a mut sets::Runtime,
     owner: &'a mut Modifiers,
     modifier: usize,
     subject: usize,
@@ -162,7 +266,6 @@ impl modifiers::Context for Apply<'_> {
     }
     fn requirement_set_state(&self, id: u64) -> Result<i32, Error> {
         self.requirements
-            .sets()
             .state(id)
             .ok_or(Error::Missing("current diplomacy subject set"))
     }
@@ -445,30 +548,7 @@ impl Continuations for Modifiers {
         _old: i32,
         _new: i32,
     ) -> Result<(), Error> {
-        if !self.stamp.same_instance(state.action_stamp()) {
-            return Err(Error::Missing("diplomacy modifier World identity"));
-        }
-        let sets::SetListener::Subject(label) = listener else {
-            return Err(Error::Missing("diplomacy non-subject modifier listener"));
-        };
-        let modifier = self
-            .modifiers
-            .iter()
-            .position(|m| m.label == label)
-            .ok_or(Error::Missing("current diplomacy modifier receiver"))?;
-        let subject = self.modifiers[modifier]
-            .tracked
-            .iter()
-            .position(|s| s.control.requirement_set == Some(set))
-            .ok_or(Error::Missing("current diplomacy tracked requirement set"))?;
-        modifiers::check_apply_effects(&mut Apply {
-            state,
-            requirements,
-            owner: self,
-            modifier,
-            subject,
-        })
-        .map(|_| ())
+        self.modifier_changed_with_sets(state, requirements.sets_mut(), listener, set)
     }
     fn destroy_requirement(
         &mut self,

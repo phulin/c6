@@ -7,6 +7,10 @@ use c6_core::loaded_state::LoadedState;
 
 pub struct Inputs {
     pub rules: GrowthRules,
+    /// Current concrete diplomatic Subject modifier owners reached by growth.
+    /// Absence rejects changed requirements after preserving their state write.
+    pub requirement_effects:
+        Option<crate::loaded_actions::declare_war::requirement_modifiers::Modifiers>,
     pub population: Vec<callbacks::PopulationListener>,
     pub religion: Vec<callbacks::CityListener>,
     pub quests: Vec<callbacks::CurrentQuest>,
@@ -18,6 +22,13 @@ pub enum Scope {
     StockPlainHeadlessNoAddedConsumers,
 }
 impl<P> Runtime<'_, P> {
+    /// Current lifecycle state for the concrete growth requirement effects.
+    pub fn growth_requirement_effects(
+        &self,
+    ) -> Option<&crate::loaded_actions::declare_war::requirement_modifiers::Modifiers> {
+        self.growth.as_ref()?.requirement_effects.as_ref()
+    }
+
     pub fn bind_growth(&mut self, state: &LoadedState, inputs: Inputs) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("growth runtime binding"))?;
@@ -26,6 +37,27 @@ impl<P> Runtime<'_, P> {
         }
         self.growth = Some(inputs);
         Ok(())
+    }
+}
+struct RequirementEffects<'a>(
+    Option<&'a mut crate::loaded_actions::declare_war::requirement_modifiers::Modifiers>,
+);
+impl callbacks::RequirementEffects for RequirementEffects<'_> {
+    fn changed(
+        &mut self,
+        state: &mut LoadedState,
+        requirements: &mut c6_core::melee_attack::proposals::subject_sets::Runtime,
+        label: u64,
+        old: i32,
+        new: i32,
+    ) -> Result<(), callbacks::Error> {
+        let effects = self
+            .0
+            .as_mut()
+            .ok_or(callbacks::Error::ChangedRequirement { label, old, new })?;
+        effects
+            .requirement_changed(state, requirements, label, old, new)
+            .map_err(|e| callbacks::Error::RequirementContinuation(format!("{e:?}")))
     }
 }
 struct Script<'a, P>(&'a mut crate::loaded_actions::stock_script::Runtime<P>);
@@ -67,7 +99,7 @@ impl<P> city_turn::PopulationEffects for Runtime<'_, P> {
     ) -> Result<(), Error> {
         let inputs = self
             .growth
-            .as_ref()
+            .as_mut()
             .ok_or(Error::Unsupported("current growth registrations"))?;
         let owners = self
             .modifier_owners
@@ -81,6 +113,7 @@ impl<P> city_turn::PopulationEffects for Runtime<'_, P> {
             &inputs.population,
             owners.requirements.sets_mut(),
             &mut Script(&mut self.script),
+            &mut RequirementEffects(inputs.requirement_effects.as_mut()),
         )
         .map_err(Error::ReligionCallback)
     }
@@ -136,7 +169,7 @@ impl<P> religion::Effects for Runtime<'_, P> {
     ) -> Result<(), Error> {
         let inputs = self
             .growth
-            .as_ref()
+            .as_mut()
             .ok_or(Error::Unsupported("current growth religion registrations"))?;
         let owners = self
             .modifier_owners
@@ -152,6 +185,7 @@ impl<P> religion::Effects for Runtime<'_, P> {
             &inputs.quests,
             &inputs.rules,
             owners.requirements.sets_mut(),
+            &mut RequirementEffects(inputs.requirement_effects.as_mut()),
         )
         .map_err(Error::ReligionCallback)
     }

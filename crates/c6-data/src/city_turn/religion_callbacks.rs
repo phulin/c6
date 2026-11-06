@@ -44,6 +44,7 @@ pub enum Error {
     MissingRequirement(u64),
     ChangedRequirement { label: u64, old: i32, new: i32 },
     Unsupported(&'static str),
+    RequirementContinuation(String),
 }
 impl From<c6_core::loaded_state::Error> for Error {
     fn from(e: c6_core::loaded_state::Error) -> Self {
@@ -83,51 +84,78 @@ fn player_exists(state: &LoadedState, owner: i32) -> bool {
         .iter()
         .any(|p| p.header.owner == owner)
 }
-struct Invalidation<'a> {
+/// Synchronous continuation over the same canonical requirement/set store.
+/// The callback runs after the SimpleRequirement write and before the next
+/// signal recipient; it must dispatch actual set and modifier subscriptions.
+pub trait RequirementEffects {
+    fn changed(
+        &mut self,
+        state: &mut LoadedState,
+        requirements: &mut subject_sets::Runtime,
+        label: u64,
+        old: i32,
+        new: i32,
+    ) -> Result<(), Error>;
+}
+struct Invalidation<'a, E> {
     label: u64,
-    value: &'a mut simple_requirement::Requirement,
+    runtime: &'a mut subject_sets::Runtime,
+    changed: E,
     tested: i32,
 }
-impl simple_requirement::Context for Invalidation<'_> {
+impl<E> simple_requirement::Context for Invalidation<'_, E>
+where
+    E: FnMut(&mut subject_sets::Runtime, u64, i32, i32) -> Result<(), Error>,
+{
     type Error = Error;
     fn active(&mut self) -> Result<bool, Error> {
-        Ok(self.value.active)
+        Ok(self
+            .runtime
+            .simple_requirement(self.label)
+            .ok_or(Error::MissingRequirement(self.label))?
+            .active)
     }
     fn requirement(&mut self) -> Result<&mut simple_requirement::Requirement, Error> {
-        Ok(self.value)
+        self.runtime
+            .simple_requirement_mut(self.label)
+            .ok_or(Error::MissingRequirement(self.label))
     }
     fn changed(&mut self, old: i32, new: i32) -> Result<(), Error> {
-        Err(Error::ChangedRequirement {
-            label: self.label,
-            old,
-            new,
-        })
+        (self.changed)(self.runtime, self.label, old, new)
     }
 }
-impl simple_requirement::TestContext for Invalidation<'_> {
+impl<E> simple_requirement::TestContext for Invalidation<'_, E>
+where
+    E: FnMut(&mut subject_sets::Runtime, u64, i32, i32) -> Result<(), Error>,
+{
     fn test(&mut self) -> Result<i32, Error> {
         Ok(self.tested)
     }
 }
-fn invalidate(runtime: &mut subject_sets::Runtime, label: u64, tested: i32) -> Result<(), Error> {
-    let value = runtime
-        .simple_requirement_mut(label)
-        .ok_or(Error::MissingRequirement(label))?;
+fn invalidate<E: RequirementEffects>(
+    state: &mut LoadedState,
+    runtime: &mut subject_sets::Runtime,
+    effects: &mut E,
+    label: u64,
+    tested: i32,
+) -> Result<(), Error> {
     simple_requirement::invalidate(&mut Invalidation {
         label,
-        value,
+        runtime,
         tested,
+        changed: |runtime: &mut subject_sets::Runtime, label, old, new| {
+            effects.changed(state, runtime, label, old, new)
+        },
     })
 }
 /// Execute the actual source-qualified ordered recipients for the first
 /// NO_RELIGION(-1)→NO_RELIGION(-1) follower update. Lists/quests are CURRENT
 /// owners, including any modeled subscription changes during CityCreated.
-/// Requirement changes use the same mutable backend store. A newly reached
-/// state-change subscriber remains an error after its canonical state write;
-/// it is never replaced by a successful no-op.
+/// Requirement changes dispatch synchronously over the same mutable backend
+/// store. Unsupported subscribers preserve their completed mutation prefix.
 #[allow(clippy::too_many_arguments)]
-pub fn city_changed(
-    state: &LoadedState,
+pub fn city_changed<E: RequirementEffects>(
+    state: &mut LoadedState,
     owner: i32,
     city: u32,
     old: i32,
@@ -136,11 +164,12 @@ pub fn city_changed(
     current_quests: &[CurrentQuest],
     rules: &GrowthRules,
     requirements: &mut subject_sets::Runtime,
+    effects: &mut E,
 ) -> Result<(), Error> {
     if old != -1 || new != -1 {
         return Err(Error::Unsupported("positive religion-change recipients"));
     }
-    let city = state.city(owner, city)?;
+    let capital = state.city(owner, city)?.header.capital;
     for listener in listeners {
         match *listener {
             // Source guards: Gossip/Emergency reject new==-1; Eras/Boost get
@@ -155,7 +184,7 @@ pub fn city_changed(
             | CityListener::GrandStrategic
             | CityListener::Achievements => {}
             CityListener::QuestConvertCapital { quest_type } => {
-                if city.header.capital
+                if capital
                     && current_quests.iter().any(|q| {
                         q.quest_type_index == quest_type
                             && q.client == owner
@@ -184,7 +213,7 @@ pub fn city_changed(
                 let founded = created_religion(state, subject, rules)?;
                 if founded == old || founded == new {
                     // Source237f060 returns state1 when subject founded none.
-                    invalidate(requirements, requirement, 1)?;
+                    invalidate(state, requirements, effects, requirement, 1)?;
                 }
             }
             CityListener::PlayerMajorityReligionIsOwner {
@@ -213,7 +242,7 @@ pub fn city_changed(
                 }
                 // All current cities follow none, so GetReligionInMajorityOfCities
                 // has no real religion and Test2387530 returns state1.
-                invalidate(requirements, requirement, 1)?;
+                invalidate(state, requirements, effects, requirement, 1)?;
             }
         }
     }
@@ -307,7 +336,7 @@ pub fn population_lead_test(context: i32, subject: i32, minimum: i32, percent: f
 /// canonical City and shared requirement store. Reached positive boost/history/
 /// achievement paths remain explicit until their owning gameplay effects exist.
 #[allow(clippy::too_many_arguments)]
-pub fn population_changed<S: PopulationScript>(
+pub fn population_changed<S: PopulationScript, E: RequirementEffects>(
     state: &mut LoadedState,
     owner: i32,
     city: u32,
@@ -315,6 +344,7 @@ pub fn population_changed<S: PopulationScript>(
     listeners: &[PopulationListener],
     requirements: &mut subject_sets::Runtime,
     script: &mut S,
+    effects: &mut E,
 ) -> Result<(), Error> {
     for listener in listeners {
         let current = state.city(owner, city)?.header.population;
@@ -372,7 +402,7 @@ pub fn population_changed<S: PopulationScript>(
                     minimum_lead,
                     f32::from_bits(percent_bits),
                 );
-                invalidate(requirements, requirement, tested)?;
+                invalidate(state, requirements, effects, requirement, tested)?;
             }
             PopulationListener::Achievements => {
                 if current >= 30 {
@@ -387,30 +417,95 @@ pub fn population_changed<S: PopulationScript>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn real_invalidation_preserves_equal_false_state_and_inactive_guard() {
-        let mut value = simple_requirement::Requirement {
+    fn current(value: simple_requirement::Requirement) -> subject_sets::Runtime {
+        let mut runtime = subject_sets::Runtime::from_initial(1, vec![], vec![]).unwrap();
+        runtime
+            .import_current::<()>(
+                vec![subject_sets::changes::CurrentRequirement {
+                    label: 7,
+                    native_id: 2,
+                    context: 0,
+                    subject: subject_sets::Subject::ModifierObject(3),
+                    definition: subject_sets::RequirementDefinition {
+                        id: b"population".to_vec(),
+                        predicate: subject_sets::Predicate::Unsupported(0),
+                        inverse: value.inverse,
+                        persistent: value.persistent,
+                    },
+                    value: subject_sets::InitializedRequirement::Simple(value),
+                    references: 1,
+                    subscribers: vec![],
+                }],
+                vec![],
+            )
+            .unwrap();
+        runtime
+    }
+    fn value() -> simple_requirement::Requirement {
+        simple_requirement::Requirement {
             active: true,
             state: 1,
             inverse: false,
             persistent: false,
             triggered: false,
-        };
-        simple_requirement::invalidate(&mut Invalidation {
+        }
+    }
+    #[test]
+    fn change_dispatch_reads_canonical_write_and_preserves_failure_prefix() {
+        let mut runtime = current(value());
+        let mut called = false;
+        let result = simple_requirement::invalidate(&mut Invalidation {
             label: 7,
-            value: &mut value,
-            tested: 1,
-        })
-        .unwrap();
-        assert_eq!(value.state, 1);
-        value.active = false;
-        simple_requirement::invalidate(&mut Invalidation {
-            label: 7,
-            value: &mut value,
+            runtime: &mut runtime,
             tested: 0,
+            changed: |runtime: &mut subject_sets::Runtime, label, old, new| {
+                assert_eq!((label, old, new), (7, 1, 0));
+                assert_eq!(runtime.simple_requirement(label).unwrap().state, 0);
+                called = true;
+                Err(Error::Unsupported("actual reached subscriber"))
+            },
+        });
+        assert!(called);
+        assert!(matches!(
+            result,
+            Err(Error::Unsupported("actual reached subscriber"))
+        ));
+        assert_eq!(runtime.requirement_state(7), Some(0));
+    }
+    #[test]
+    fn equal_and_inactive_requirements_do_not_dispatch_but_trigger_four_does() {
+        let mut runtime = current(value());
+        for tested in [1, 0] {
+            if tested == 0 {
+                runtime.simple_requirement_mut(7).unwrap().active = false;
+            }
+            simple_requirement::invalidate(&mut Invalidation {
+                label: 7,
+                runtime: &mut runtime,
+                tested,
+                changed: |_: &mut subject_sets::Runtime, _, _, _| panic!("unexpected change"),
+            })
+            .unwrap();
+        }
+        let r = runtime.simple_requirement_mut(7).unwrap();
+        r.active = true;
+        r.state = 4;
+        r.inverse = true;
+        r.triggered = true;
+        let mut count = 0;
+        simple_requirement::invalidate(&mut Invalidation {
+            label: 7,
+            runtime: &mut runtime,
+            tested: 1,
+            changed: |runtime: &mut subject_sets::Runtime, label, old, new| {
+                assert_eq!((old, new), (4, 4));
+                assert_eq!(runtime.requirement_state(label), Some(4));
+                count += 1;
+                Ok(())
+            },
         })
         .unwrap();
-        assert_eq!(value.state, 1);
+        assert_eq!(count, 1);
     }
     #[test]
     fn population_lead_preserves_minimum_float_sign_and_wrapping_edges() {
@@ -421,28 +516,5 @@ mod tests {
         assert_eq!(population_lead_test(13, 10, 3, -1.1), 0);
         assert_eq!(population_lead_test(i32::MIN, 0, 0, 1.1), 1);
         assert_eq!(population_lead_test(10, 13, 0, f32::NAN), 1);
-    }
-    #[test]
-    fn repeated_triggered_state_requires_real_subscriber_continuation() {
-        let mut value = simple_requirement::Requirement {
-            active: true,
-            state: 4,
-            inverse: true,
-            persistent: false,
-            triggered: true,
-        };
-        assert!(matches!(
-            simple_requirement::invalidate(&mut Invalidation {
-                label: 9,
-                value: &mut value,
-                tested: 1
-            }),
-            Err(Error::ChangedRequirement {
-                label: 9,
-                old: 4,
-                new: 4
-            })
-        ));
-        assert_eq!(value.state, 4);
     }
 }
