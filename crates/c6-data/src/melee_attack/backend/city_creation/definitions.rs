@@ -272,6 +272,94 @@ fn compile_building(db: &Database, building: &[u8]) -> Result<Compiled> {
     Ok((attachments, set_rows, requirements))
 }
 
+/// Compile the same typed parameters for an observed current modifier and for
+/// fresh attachments. Runtime application still requires the shared tracker.
+pub fn compile_effect(db: &Database, id: &[u8], effect_type: &[u8]) -> Result<CityEffect> {
+    Ok(match effect_type {
+        b"EFFECT_ADJUST_CITY_INNER_DEFENSE" => CityEffect::InnerDefense {
+            amount: whole_amount(argument(db, id, b"Amount")?)?,
+        },
+        b"EFFECT_ADJUST_CITY_IDENTITY_PER_TURN" => CityEffect::IdentityPerTurn {
+            amount: whole_amount(argument(db, id, b"Amount")?)?,
+        },
+        b"EFFECT_ADJUST_CITY_YIELD_CHANGE" => {
+            let yields = match argument(db, id, b"YieldType")? {
+                None => vec![],
+                Some(name) => {
+                    if find(db, "Yields", "YieldType", name)?.is_none() {
+                        return Err("current City effect YieldType".into());
+                    }
+                    vec![linux_type_hash(name)]
+                }
+            };
+            let amounts = argument(db, id, b"Amount")?
+                .map(|value| whole_amount(Some(value)))
+                .transpose()?
+                .into_iter()
+                .collect();
+            CityEffect::YieldChanges { yields, amounts }
+        }
+        b"EFFECT_ADJUST_DISTRICT_PRODUCTION" => CityEffect::DistrictProduction {
+            district: definition_argument(db, id, b"DistrictType", "Districts", "DistrictType")?,
+            percent: whole_amount(argument(db, id, b"Amount")?)?,
+        },
+        b"EFFECT_DISTRICT_ADJACENCY" => CityEffect::DistrictAdjacency {
+            district: definition_argument(db, id, b"DistrictType", "Districts", "DistrictType")?
+                .unwrap_or(u32::MAX),
+            yield_hash: definition_argument(db, id, b"YieldType", "Yields", "YieldType")?
+                .unwrap_or(u32::MAX),
+            amount: whole_amount(argument(db, id, b"Amount")?)?,
+            tiles_required: argument(db, id, b"TilesRequired")?
+                .map(|v| whole_amount(Some(v)))
+                .transpose()?
+                .unwrap_or(1),
+            description: argument(db, id, b"Description")?
+                .unwrap_or_default()
+                .to_vec(),
+        },
+        b"EFFECT_ADJUST_DISTRICT_ADJACENT_NATURAL_WONDER_PRODUCTION"
+        | b"EFFECT_ADJUST_WONDER_ADJACENT_NATURAL_WONDER_PRODUCTION" => {
+            let feature = argument(db, id, b"FeatureType")?;
+            let native_feature = match feature {
+                None => -1,
+                Some(name) => {
+                    let mut rows = table(db, "Features")?.rows().collect::<Vec<_>>();
+                    rows.sort_by_key(|row| row.row_id());
+                    rows.iter()
+                        .position(|row| text(*row, "FeatureType").ok().flatten() == Some(name))
+                        .map(|i| i as i32)
+                        .unwrap_or(-1)
+                }
+            };
+            CityEffect::FeatureProduction(c6_core::found_city::feature_production::Effect {
+                target: if effect_type
+                    == b"EFFECT_ADJUST_DISTRICT_ADJACENT_NATURAL_WONDER_PRODUCTION"
+                {
+                    c6_core::found_city::feature_production::Target::District
+                } else {
+                    c6_core::found_city::feature_production::Target::Wonder
+                },
+                native_feature,
+                percent: whole_amount(argument(db, id, b"Amount")?)?,
+            })
+        }
+        _ => return Err("unsupported Building City effect".into()),
+    })
+}
+
+fn definition_argument(
+    db: &Database,
+    id: &[u8],
+    argument_name: &[u8],
+    table_name: &str,
+    type_column: &str,
+) -> Result<Option<u32>> {
+    let Some(name) = argument(db, id, argument_name)? else {
+        return Ok(None);
+    };
+    Ok(find(db, table_name, type_column, name)?.map(|_| linux_type_hash(name)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -395,92 +483,4 @@ mod tests {
         assert_eq!(sets.len(), 1);
         assert!(sets[0].1.is_none());
     }
-}
-
-/// Compile the same typed parameters for an observed current modifier and for
-/// fresh attachments. Runtime application still requires the shared tracker.
-pub fn compile_effect(db: &Database, id: &[u8], effect_type: &[u8]) -> Result<CityEffect> {
-    Ok(match effect_type {
-        b"EFFECT_ADJUST_CITY_INNER_DEFENSE" => CityEffect::InnerDefense {
-            amount: whole_amount(argument(db, id, b"Amount")?)?,
-        },
-        b"EFFECT_ADJUST_CITY_IDENTITY_PER_TURN" => CityEffect::IdentityPerTurn {
-            amount: whole_amount(argument(db, id, b"Amount")?)?,
-        },
-        b"EFFECT_ADJUST_CITY_YIELD_CHANGE" => {
-            let yields = match argument(db, id, b"YieldType")? {
-                None => vec![],
-                Some(name) => {
-                    if find(db, "Yields", "YieldType", name)?.is_none() {
-                        return Err("current City effect YieldType".into());
-                    }
-                    vec![linux_type_hash(name)]
-                }
-            };
-            let amounts = argument(db, id, b"Amount")?
-                .map(|value| whole_amount(Some(value)))
-                .transpose()?
-                .into_iter()
-                .collect();
-            CityEffect::YieldChanges { yields, amounts }
-        }
-        b"EFFECT_ADJUST_DISTRICT_PRODUCTION" => CityEffect::DistrictProduction {
-            district: definition_argument(db, id, b"DistrictType", "Districts", "DistrictType")?,
-            percent: whole_amount(argument(db, id, b"Amount")?)?,
-        },
-        b"EFFECT_DISTRICT_ADJACENCY" => CityEffect::DistrictAdjacency {
-            district: definition_argument(db, id, b"DistrictType", "Districts", "DistrictType")?
-                .unwrap_or(u32::MAX),
-            yield_hash: definition_argument(db, id, b"YieldType", "Yields", "YieldType")?
-                .unwrap_or(u32::MAX),
-            amount: whole_amount(argument(db, id, b"Amount")?)?,
-            tiles_required: argument(db, id, b"TilesRequired")?
-                .map(|v| whole_amount(Some(v)))
-                .transpose()?
-                .unwrap_or(1),
-            description: argument(db, id, b"Description")?
-                .unwrap_or_default()
-                .to_vec(),
-        },
-        b"EFFECT_ADJUST_DISTRICT_ADJACENT_NATURAL_WONDER_PRODUCTION"
-        | b"EFFECT_ADJUST_WONDER_ADJACENT_NATURAL_WONDER_PRODUCTION" => {
-            let feature = argument(db, id, b"FeatureType")?;
-            let native_feature = match feature {
-                None => -1,
-                Some(name) => {
-                    let mut rows = table(db, "Features")?.rows().collect::<Vec<_>>();
-                    rows.sort_by_key(|row| row.row_id());
-                    rows.iter()
-                        .position(|row| text(*row, "FeatureType").ok().flatten() == Some(name))
-                        .map(|i| i as i32)
-                        .unwrap_or(-1)
-                }
-            };
-            CityEffect::FeatureProduction(c6_core::found_city::feature_production::Effect {
-                target: if effect_type
-                    == b"EFFECT_ADJUST_DISTRICT_ADJACENT_NATURAL_WONDER_PRODUCTION"
-                {
-                    c6_core::found_city::feature_production::Target::District
-                } else {
-                    c6_core::found_city::feature_production::Target::Wonder
-                },
-                native_feature,
-                percent: whole_amount(argument(db, id, b"Amount")?)?,
-            })
-        }
-        _ => return Err("unsupported Building City effect".into()),
-    })
-}
-
-fn definition_argument(
-    db: &Database,
-    id: &[u8],
-    argument_name: &[u8],
-    table_name: &str,
-    type_column: &str,
-) -> Result<Option<u32>> {
-    let Some(name) = argument(db, id, argument_name)? else {
-        return Ok(None);
-    };
-    Ok(find(db, table_name, type_column, name)?.map(|_| linux_type_hash(name)))
 }
