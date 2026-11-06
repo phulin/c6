@@ -1,6 +1,7 @@
 //! Explicit Linux XP2 pantheon founding. Policies supply the belief; callbacks
 //! remain synchronous and source ordered. Only Initiation Rites effects are
 //! implemented; other legal beliefs are reported with unsupported effects.
+pub mod history;
 pub mod modifiers;
 pub mod stock;
 use crate::{
