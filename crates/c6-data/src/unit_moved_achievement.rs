@@ -1,9 +1,11 @@
-//! Bounded stock Achievements.OnUnitMoved early return (Linux XP2 0x2901a00).
+//! Bounded stock Achievements.OnUnitMoved early returns (Linux XP2 0x2901a00).
 //!
 //! The stock integrity/configuration/map lookups before the owner comparison
 //! are read-only and do not draw RNG. Null sentinel plots and equal current Plot owners return before
 //! diplomacy, distance, or platform achievement unlocking. This does not omit
-//! the cross-owner path or authorize arbitrary achievement subscribers.
+//! other cross-owner paths or authorize arbitrary achievement subscribers.
+//! A NO_PLAYER destination reaches IsAtWarWith(-1), whose invalid-player
+//! guard returns false before distance/UnlockAchievement; it also has no RNG.
 use crate::movement_placement_state;
 use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
 
@@ -23,6 +25,9 @@ impl std::error::Error for Error {}
 /// Use only for the source-qualified stock `StartupGame::$_60` listener, with
 /// stock read-only preamble getters. Read owners now, after preceding listeners;
 /// initial owners or the moved Unit's owner cannot replace these current reads.
+/// The historical entrypoint also supports a current NO_PLAYER destination:
+/// IsAtWarWith(-1) -> GetValidPlayer -> IsValidRange returns false, before any
+/// diplomacy matrix, distance, achievement unlock or RNG is reached.
 /// The exact native -9999 sentinel resolves to null before wrapping; either
 /// null plot returns before owner reads. Other missing/wrapped coordinates stay
 /// outside this bounded canonical-coordinate profile.
@@ -48,7 +53,7 @@ fn null_sentinel(point: PlotCoord) -> bool {
     point.x == -9999 || point.y == -9999
 }
 fn equal_owner(old: i32, new: i32) -> Result<(), Error> {
-    if old == new {
+    if old == new || new == -1 {
         Ok(())
     } else {
         Err(Error::UnsupportedCrossOwner { old, new })
@@ -73,8 +78,14 @@ mod tests {
         }
     }
     #[test]
-    fn cross_owner_path_stays_unsupported_in_either_direction() {
-        for (old, new) in [(0, 7), (7, 0), (-1, 0), (0, -1)] {
+    fn no_player_destination_returns_before_distance_or_unlock() {
+        for old in [-1, 0, 7, 63] {
+            assert!(equal_owner(old, -1).is_ok());
+        }
+    }
+    #[test]
+    fn other_cross_owner_paths_stay_unsupported() {
+        for (old, new) in [(0, 7), (7, 0), (-1, 0)] {
             assert!(
                 matches!(equal_owner(old,new),Err(Error::UnsupportedCrossOwner {old:a,new:b})if(a,b)==(old,new))
             );
