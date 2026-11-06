@@ -78,8 +78,11 @@ These comparisons use public gameplay commit `feb669a8` and private adapter
 commit `54aa169b`. Private receipt
 `evidence/linux/unit-siege-dev-session-final.json` records both canonical input
 sets, actual source pins, target/rules/configuration identities, commands and
-results. The earlier lethal failure is retained separately: gameplay and RNG
-matched, while an owned combat effect incorrectly survived its modifier's death.
+results. The optimized lethal sample also passes, recorded in
+`evidence/linux/unit-siege-lethal-release-session.json` with the same gameplay
+and adapter pins. The earlier lethal failure is retained separately: gameplay
+and RNG matched, while an owned combat effect incorrectly survived its
+modifier's death.
 
 Embarked, naval and air bombard remain explicit unsupported execution branches.
 Unqualified callback, promotion, capture and joint-war branches retain their
