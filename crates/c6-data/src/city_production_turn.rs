@@ -66,6 +66,10 @@ pub enum Outcome {
     },
 }
 
+/// Reentrant worker assignment borrowed from the ongoing city upkeep domain.
+pub type PopulationAssignment<'a> =
+    dyn FnMut(&mut LoadedState, i32, u32, bool) -> Result<(), crate::city_turn::Error> + 'a;
+
 /// All methods are mandatory: production cannot silently omit legality,
 /// strategic-resource consumption, completion effects or synchronous reports.
 pub trait Effects {
@@ -117,6 +121,18 @@ pub trait Effects {
         city: u32,
         entry: &QueueEntry,
     ) -> Result<bool, Error>;
+    /// Complete production with the current worker assignment services. Ordinary
+    /// adapters need no extra services; Train population consumption uses them.
+    fn finish_with_assignment(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        entry: &QueueEntry,
+        _assignment: &mut PopulationAssignment<'_>,
+    ) -> Result<bool, Error> {
+        self.finish(state, owner, city, entry)
+    }
     /// Native DoNewFrontCheck after successful completion; recheck the next
     /// externally chosen entry without selecting native AI production.
     fn new_front(&mut self, state: &mut LoadedState, owner: i32, city: u32) -> Result<(), Error>;

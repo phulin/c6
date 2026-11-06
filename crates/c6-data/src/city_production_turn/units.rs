@@ -14,6 +14,7 @@ pub enum Error<E> {
     Rules(crate::Error),
     Missing(&'static str),
     Effect(E),
+    Population(Box<crate::city_turn::Error>),
 }
 /// Static definition facts; no captured CanTrain or completion answer is stored.
 struct UnitDefinition {
@@ -63,6 +64,15 @@ impl Definitions {
     }
 }
 pub trait Effects: creation::FactoryEffects {
+    fn change_population(
+        &mut self,
+        _state: &mut LoadedState,
+        _city: ComponentId,
+        _delta: i32,
+        _assignment: &mut super::PopulationAssignment<'_>,
+    ) -> Result<(), Error<<Self as creation::Effects>::Error>> {
+        Err(Error::Missing("Train population callback services"))
+    }
     fn production_unit_created(
         &mut self,
         state: &mut LoadedState,
@@ -107,13 +117,35 @@ fn copies<E>(state: &LoadedState, owner: i32, city: u32, hash: u32) -> Result<i3
 }
 /// Called by production::Effects::finish after current cost/progress have been
 /// computed. `required_cost` is that current-build calculation, in whole units.
-/// Factory-supported ordinary classes share this kernel; positive population/yield branches remain explicit.
+/// Factory-supported ordinary classes share this kernel and canonical population callbacks.
 pub fn finish_current<E: Effects>(
     factory: &mut creation::Context<'_, '_, '_, E>,
     definitions: &Definitions,
     entry: &QueueEntry,
     required_cost: i32,
     city: ComponentId,
+) -> Result<bool, Error<<E as creation::Effects>::Error>> {
+    finish_current_with_assignment(
+        factory,
+        definitions,
+        entry,
+        required_cost,
+        city,
+        &mut |_, _, _, _| {
+            Err(crate::city_turn::Error::Unsupported(
+                "Train current worker assignment",
+            ))
+        },
+    )
+}
+/// Same completion kernel with the ongoing city upkeep's assignment services.
+pub fn finish_current_with_assignment<E: Effects>(
+    factory: &mut creation::Context<'_, '_, '_, E>,
+    definitions: &Definitions,
+    entry: &QueueEntry,
+    required_cost: i32,
+    city: ComponentId,
+    assignment: &mut super::PopulationAssignment<'_>,
 ) -> Result<bool, Error<<E as creation::Effects>::Error>> {
     if factory.state.binding().inputs != definitions.inputs {
         return Err(Error::Missing("Train definitions binding"));
@@ -194,8 +226,20 @@ pub fn finish_current<E: Effects>(
             }
         }
     }
-    if definition.population_cost.is_some() {
-        return Err(Error::Missing("Train population consumption"));
+    // 2858d04: consume once after every created copy and its signals. The
+    // switch applies to every populated PopulationCost, not a unit-name test.
+    let value = factory.state.city(owner, city.id).map_err(Error::State)?;
+    if let Some(cost) = definition
+        .population_cost
+        .filter(|_| value.header.settler_consume_pop)
+    {
+        let consumed = cost.min(value.header.population.wrapping_sub(1));
+        factory.effects.change_population(
+            factory.state,
+            city,
+            consumed.wrapping_neg(),
+            assignment,
+        )?;
     }
     let value = factory.state.city(owner, city.id).map_err(Error::State)?;
     let delta = *value
@@ -203,7 +247,9 @@ pub fn finish_current<E: Effects>(
         .get(definition.unit_index)
         .ok_or(Error::Missing("current population-on-unit array"))?;
     if value.header.population.wrapping_add(delta) >= 2 {
-        return Err(Error::Missing("Train ChangePopulation callbacks"));
+        factory
+            .effects
+            .change_population(factory.state, city, delta, assignment)?;
     }
     let queue = &mut factory
         .state

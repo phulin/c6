@@ -9,6 +9,7 @@ use crate::{
 use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
 #[path = "territory_view.rs"]
 pub mod territory_view;
+mod workers;
 /// The fixed stock output consumers publish derived snapshots only. Added
 /// synchronous consumers require a separate implementation of upkeep::Effects.
 pub enum Scope {
@@ -97,6 +98,16 @@ impl<E: production::Effects> Context<'_, E> {
         upkeep::do_turn_activate(state, owner, city, &definitions.growth, self)
     }
 
+    fn worker_context(&mut self) -> workers::Context<'_> {
+        workers::Context {
+            definitions: self.definitions,
+            current: self.current,
+            workers: self.workers,
+            appeal: self.appeal,
+            fallout: &self.fallout,
+            calls: &mut self.calls,
+        }
+    }
     fn missing<T>(&mut self, name: &'static str) -> std::result::Result<T, CityError> {
         self.calls.push(name);
         Err(CityError::Unsupported(name))
@@ -130,17 +141,6 @@ impl<E: production::Effects> Context<'_, E> {
             .definitions
             .economy
             .happiness_from_surplus(amenities.wrapping_sub(needed)))
-    }
-    fn citizen_current<'q>(
-        &'q self,
-        territory: &'q crate::city_territory::Runtime,
-    ) -> upkeep::citizens::Current<'q> {
-        upkeep::citizens::Current {
-            definitions: self.definitions,
-            territory,
-            drought_ids: self.current.drought_ids,
-            fallout_turns: &self.fallout,
-        }
     }
     fn qualify_report(&self, event: u64, expected: &[u64]) -> std::result::Result<(), CityError> {
         // Fixed stock cache consumers below only publish derived city/player
@@ -199,7 +199,28 @@ impl<E: production::Effects> production::Effects for Context<'_, E> {
         c: u32,
         e: &c6_core::city_production::QueueEntry,
     ) -> std::result::Result<bool, production::Error> {
-        production::Effects::finish(&mut *self.production, s, o, c, e)
+        let mut workers = workers::Context {
+            definitions: self.definitions,
+            current: self.current,
+            workers: self.workers,
+            appeal: self.appeal,
+            fallout: &self.fallout,
+            calls: &mut self.calls,
+        };
+        production::Effects::finish_with_assignment(
+            &mut *self.production,
+            s,
+            o,
+            c,
+            e,
+            &mut |state, owner, city, reallocate| {
+                if reallocate {
+                    upkeep::citizens::reallocate(state, owner, city, &mut workers)
+                } else {
+                    upkeep::citizens::try_assign_all(state, owner, city, true, &mut workers)
+                }
+            },
+        )
     }
     fn new_front(
         &mut self,
@@ -396,7 +417,7 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
         o: i32,
         c: u32,
     ) -> std::result::Result<i32, CityError> {
-        crate::found_city::cultural_identity::Context::food_surplus_q8(self, s, o, c)
+        upkeep::citizens::Effects::food_surplus_q8(&mut self.worker_context(), s, o, c)
     }
     fn visit_plot(
         &mut self,
@@ -405,35 +426,7 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
         c: u32,
         p: usize,
     ) -> std::result::Result<(), CityError> {
-        let defs = self.appeal;
-        // Release the immutable field borrow across the reentrant service call.
-        let result = appeal::update_and_test_adjacent(
-            s,
-            Some(p),
-            defs,
-            &mut WorkerAppeal {
-                subscribers: defs.changed_subscribers(s),
-                calls: &mut self.calls,
-            },
-            &mut |s: &mut LoadedState, _: &mut WorkerAppeal<'_>, a: u32| {
-                let p = s
-                    .world()
-                    .map()
-                    .plots
-                    .get(a as usize)
-                    .ok_or(CityError::Unsupported("adjacent worker plot"))?;
-                Ok(!p
-                    .city_attributes
-                    .as_ref()
-                    .is_some_and(|a| i32::from(a.player) == o && a.owning_city == c))
-            },
-        );
-        result.map(|_| ()).map_err(|error| match error {
-            appeal::UpdateError::Query(error) => CityError::Production(error),
-            appeal::UpdateError::Effect(error) => error,
-            appeal::UpdateError::State(error) => CityError::State(error),
-            _ => CityError::Unsupported("worker appeal geometry/plot continuation"),
-        })
+        upkeep::citizens::Effects::visit_plot(&mut self.worker_context(), s, o, c, p)
     }
     fn capacity(
         &mut self,
@@ -442,8 +435,7 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
         c: u32,
         p: PlotCoord,
     ) -> std::result::Result<i32, CityError> {
-        let territory = self.current.territory.read()?;
-        upkeep::citizens::capacity(s, o, c, p, self.workers, &self.citizen_current(&territory))
+        upkeep::citizens::Effects::capacity(&mut self.worker_context(), s, o, c, p)
     }
     fn plot_yields(
         &mut self,
@@ -452,8 +444,7 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
         c: u32,
         p: usize,
     ) -> std::result::Result<Vec<c6_core::city_citizen_assignment::Yield>, CityError> {
-        let territory = self.current.territory.read()?;
-        upkeep::citizens::plot_yields(s, o, c, p, &self.citizen_current(&territory))
+        upkeep::citizens::Effects::plot_yields(&mut self.worker_context(), s, o, c, p)
     }
     fn food_and_gold_indices(&self) -> std::result::Result<(i32, i32), CityError> {
         Ok((
@@ -473,58 +464,7 @@ impl<E: production::Effects> upkeep::citizens::Effects for Context<'_, E> {
         i: i32,
         old: i32,
     ) -> std::result::Result<(), CityError> {
-        let city = s.city(o, c)?;
-        let at = i as usize;
-        let current = city
-            .citizens
-            .working_plot
-            .get(at)
-            .ok_or(CityError::Unsupported("worker index"))?
-            .wrapping_add(
-                *city
-                    .citizens
-                    .forced_working_plot
-                    .get(at)
-                    .ok_or(CityError::Unsupported("forced worker index"))?,
-            );
-        if current == old {
-            return Ok(());
-        }
-        self.qualify_report(0x67001fe1, &[0x2710a10, 0x27bcd80])?;
-        self.calls.push("worker output report");
-        let center = PlotCoord {
-            x: city.header.location_x,
-            y: city.header.location_y,
-        };
-        if let Some(p) = c6_core::city_citizen_assignment::plot_location(s.world().map(), center, i)
-            .map_err(|_| CityError::Unsupported("worker report location"))?
-        {
-            let (plot, p) = c6_core::movement_world::plot_at(s.world().map(), p)
-                .map_err(|_| CityError::Unsupported("worker report plot"))?;
-            if p.improvement_hash != u32::MAX
-                && i32::from(p.improvement_owner) == o
-                && (current == 0 || old == 0)
-            {
-                self.qualify_report(0x30ae2a3d, &[0x2716f80, 0x27bcc60])?;
-                // The generic ImprovementChanged report's Map recipient performs
-                // real temporary contribution queries even for activity subtypes.
-                // Preserve their canonical IDs/callbacks before omitting DTOs.
-                let mut territory = self.current.territory.write()?;
-                crate::loaded_actions::pillage::reporting::improvement_changed_with_registry(
-                    s,
-                    &mut territory,
-                    self.workers.improvement_registry(),
-                    plot,
-                )
-                .map_err(CityError::Unsupported)?;
-                self.calls.push(if current != 0 {
-                    "worker improvement activated output"
-                } else {
-                    "worker improvement deactivated output"
-                });
-            }
-        }
-        Ok(())
+        upkeep::citizens::Effects::workers_changed(&mut self.worker_context(), s, o, c, i, old)
     }
 }
 struct PowerGossip;

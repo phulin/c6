@@ -290,6 +290,20 @@ impl<P> production::Effects for Effects<'_, '_, '_, '_, P> {
         c: u32,
         e: &QueueEntry,
     ) -> Result<bool, production::Error> {
+        self.finish_with_assignment(s, o, c, e, &mut |_, _, _, _| {
+            Err(crate::city_turn::Error::Unsupported(
+                "Train current worker assignment",
+            ))
+        })
+    }
+    fn finish_with_assignment(
+        &mut self,
+        s: &mut LoadedState,
+        o: i32,
+        c: u32,
+        e: &QueueEntry,
+        assignment: &mut production::PopulationAssignment<'_>,
+    ) -> Result<bool, production::Error> {
         if !matches!(e.order, Order::Train { .. }) {
             return Err(production::Error::Unsupported(
                 "non-Train stock unit completion",
@@ -311,7 +325,7 @@ impl<P> production::Effects for Effects<'_, '_, '_, '_, P> {
             sight: f.sight,
             effects: self.selection.runtime,
         };
-        let result = units::finish_current(
+        let result = units::finish_current_with_assignment(
             &mut factory,
             f.finish,
             e,
@@ -321,6 +335,7 @@ impl<P> production::Effects for Effects<'_, '_, '_, '_, P> {
                 component_type: 2,
                 id: c,
             },
+            assignment,
         );
         if let Err(error) = &result {
             self.selection.runtime.last_error = Some(format!("Train completion: {error:?}"));
@@ -332,6 +347,31 @@ impl<P> production::Effects for Effects<'_, '_, '_, '_, P> {
     }
 }
 impl<P> units::Effects for Runtime<'_, P> {
+    fn change_population(
+        &mut self,
+        state: &mut LoadedState,
+        city: ComponentId,
+        delta: i32,
+        assignment: &mut production::PopulationAssignment<'_>,
+    ) -> Result<(), units::Error<movement::Error>> {
+        let rules = self
+            .growth
+            .as_ref()
+            .ok_or(units::Error::Missing("Train population rules"))?
+            .rules
+            .clone();
+        let owner = i32::from(city.owner);
+        crate::city_turn::change_population_with_assignment(
+            state,
+            owner,
+            city.id,
+            delta,
+            &rules,
+            self,
+            |state, _, reallocate| assignment(state, owner, city.id, reallocate),
+        )
+        .map_err(|error| units::Error::Population(Box::new(error)))
+    }
     fn production_unit_created(
         &mut self,
         s: &mut LoadedState,

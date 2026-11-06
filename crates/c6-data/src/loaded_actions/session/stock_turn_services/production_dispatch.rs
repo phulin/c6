@@ -72,6 +72,16 @@ impl<P> production::Effects for Effects<'_, '_, '_, '_, '_, P> {
     ) -> Result<bool, production::Error> {
         dispatch!(self, finish(s, o, c, e))
     }
+    fn finish_with_assignment(
+        &mut self,
+        s: &mut LoadedState,
+        o: i32,
+        c: u32,
+        e: &QueueEntry,
+        assignment: &mut production::PopulationAssignment<'_>,
+    ) -> Result<bool, production::Error> {
+        dispatch!(self, finish_with_assignment(s, o, c, e, assignment))
+    }
     fn new_front(&mut self, s: &mut LoadedState, o: i32, c: u32) -> Result<(), production::Error> {
         dispatch!(self, new_front(s, o, c))
     }
