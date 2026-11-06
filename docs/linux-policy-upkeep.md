@@ -21,8 +21,17 @@ along with compared typed gameplay components, core processors, represented
 requirements, canonical Game sync RNG and matched libc state. The next genuine
 player decision remains external.
 
-Positive policy obsolescence/removal, GreatPeople-dependent obsolescence and XP1
-age-restricted upkeep remain explicit unsupported continuations. Other unknown
+A second checked scenario completes Enlightenment through ordinary culture
+progression while Urban Planning is active. Its Rationalism replacement unlocks,
+Urban Planning is removed, and its production modifier is detached: city
+production returns from 1280 to 1024 Q8, with Monument progress at 4096 Q8.
+Culture, city build queue/yields, newly attached research modifiers, represented
+requirements and typed gameplay components match the Linux reference. Rationalism
+remains inactive; the pending policy-slot decision exposes its legal slot to the
+external policy. The simulator does not select the replacement.
+
+GreatPeople-dependent obsolescence and XP1 age-restricted upkeep remain explicit
+unsupported continuations. Other unknown
 branches retain completed mutations and return partial-transition errors.
 Complete modifier/runtime coverage and the complete RNG inventory remain
 unestablished; raw native AI policy snapshots differ. This bounded result does
