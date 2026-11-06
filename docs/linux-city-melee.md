@@ -2,9 +2,10 @@
 
 The persistent `Session::melee_attack` supports an ordinary unembarked land
 melee attack against a major-owned city-center District when the attacker and
-city survive, or the supported noncapital capture branch is reached. The city
-has no outer defenses. The external policy supplies the MoveTo request. Complete Civ VI state, arbitrary combat and complete turns
-remain unimplemented.
+city survive, or the supported noncapital capture branch is reached. The
+survivor path includes the bounded Ancient Walls profile below; the compared
+capture profile is unwalled. The external policy supplies the MoveTo request.
+Complete Civ VI state, arbitrary combat and complete turns remain unimplemented.
 
 Use the shared [melee setup](linux-melee-combat.md), provide
 `melee_attack::city::Definitions` in `execution::GenerateRules::city`, and retain
@@ -19,8 +20,8 @@ Resolution runs the ordered temporary combat proposal and its callbacks, three
 GameSync damage draws, Unit and District damage, experience, formation movement,
 attack budget, war weariness, combat callbacks, history and notification upkeep.
 The third damage draw occurs even without walls. Failures retain their executed
-prefix and freeze the Session. Walls, attacker death and other unsupported
-branches return explicit errors.
+prefix and freeze the Session. Attacker death, special wall prevention modifiers
+and other unsupported branches return explicit errors.
 
 The retained Linux comparison attacks a noncapital Japanese city while its
 owner retains another city. The attacker receives 18 damage, the city receives
@@ -84,7 +85,7 @@ The capture comparison used public commit
 Private receipt `evidence/linux/city-melee-capture-session.json` retains the closed
 native fixture, complete input/result hashes, exact source identities, commands,
 profiles and earlier failures. This is one supported capture profile; arbitrary
-cities, walls, capitals, effects, disposition execution and a complete gameplay
+cities, capture through walls, capitals, effects, disposition execution and a complete gameplay
 RNG inventory remain outside its acceptance.
 
 One Cargo release measurement for the capture request was **11.877 ms**
@@ -92,3 +93,53 @@ One Cargo release measurement for the capture request was **11.877 ms**
 callbacks and notification aftermath. Initialization, rules/fixture import,
 service construction, postaction diagnostic queries and comparison are outside
 the timer. It is not a full-turn throughput or native speedup measurement.
+
+The ordinary Ancient Walls survivor profile now follows the same persistent
+Session path. Two retained Linux Warrior attacks match the compared gameplay
+state, callback-qualified effects, history, visibility and ordered GameSync
+state:
+
+| Initial outer damage | Final outer damage | Garrison damage | Attacker damage | XP |
+| --- | --- | --- | --- | --- |
+| 0 / 100 | 6 / 100 | 1 | 20 | 3 |
+| 99 / 100 | 100 / 100 | 44 | 20 | 3 |
+
+Both requests reach `HeadlessMessagesProcessed`, exhaust movement and the attack,
+and clear the operation queue. The three GameSync draws retain bounds 12/12/12,
+values 4/7/8, and final call count 607 with seed 3059301340. The same external
+policy omission for `CityAttacked` targeting tallies applies; raw differences
+remain in the private comparison.
+
+Damage generation uses the precombat wall fraction. Resolution applies attacker
+retaliation, then positive outer damage and its synchronous publication, then
+garrison damage and its publication. The exhausting hit generates outer damage
+6 and an unclamped total of 105; the District clamps it to 100 without adding
+that excess to garrison damage. The generated defense type remains the
+precombat `OUTER_DEFENSES` value (`0x6da56a3d`) on that hit. This enum is qualified
+against the pinned Linux source; these captures do not directly transport the
+native Results scalar.
+
+These cases cover an ordinary Warrior, Ancient Walls, a surviving attacker and
+city, and the reached stock callbacks. Attacker death, special wall prevention
+modifiers, religion-dependent wall attack and new siege-support mechanics remain
+unsupported or outside this comparison. Capture through walls, arbitrary combat
+and complete state/action/turn equivalence are not established.
+
+The optimized comparisons used public commit
+`4454ef4c1e653cbe946762f04de881d329f606a8` and private commit
+`8e5758dd9ffbadc7c116d4840c14e78d37d649aa`, reusing the same executable for both
+fixtures. Private receipts `evidence/linux/city-walls-melee-session.json` and
+`evidence/linux/city-walls-exhaust-melee-session.json` retain exact source pins,
+canonical input hashes, build profile, commands and actual results. Native
+capture receipts separately bind the producer pins and pinned Linux target.
+Configuration SHA-256 values were
+`f9a14e0d90bfa7da8c9b3145c7251b5c6e4b84c428283d1ba25dc560eeae409a` and
+`44e14452f052a7525821b5be93c47454fd6353a939e234799a77381aac9bb48b`;
+both used gameplay database SHA-256
+`c880adaedcfd6da7808302b3b76bb9cad7d3188b35ae78e780cff7b56e04477e`.
+
+Single Cargo release action measurements were **7.007 ms** and **7.188 ms** for
+intact and exhausting walls. These cover request execution, reached combat
+callbacks and notification aftermath, excluding import, service construction and
+comparison. They are bounded action samples, not full-turn throughput or native
+speedup measurements.
