@@ -1047,6 +1047,34 @@ pub fn annexed_improvement_reapply(
     }))
 }
 
+impl<E: Effects> Context<'_, E> {
+    /// Map.CityPlots.Clear(CityID)2a42400. This context represents the current
+    /// initialized GameEffects instance: RemovePlotYields2a424a0 dispatches
+    /// destruction before zeroing the attribute ID, then SetOwner performs
+    /// visibility/report/signal effects. Reacquire current ownership after each
+    /// callback; the native scan visits all map plots in descending index order.
+    /// The old City remains canonical until its enclosing destructor finishes.
+    pub fn clear_city_plots(&mut self) -> Result<(), Error<E::Error>> {
+        self.validate()?;
+        let count = self.state.world().map().plots.len();
+        if count > i32::MAX as usize {
+            return Err(Error::Missing("CityPlots.Clear native plot count"));
+        }
+        for index in (0..count as u32).rev() {
+            if kernel::OwnerContext::owning_city(self, index)? != self.city {
+                continue;
+            }
+            let effect = kernel::PurchasedContext::plot_yield_effect(self, index)?;
+            if effect != 0 {
+                kernel::PurchasedContext::remove_plot_yields(self, effect)?;
+                kernel::PurchasedContext::set_plot_yield_effect(self, index, 0)?;
+            }
+            kernel::set_owner(self, index, -1, u32::MAX)?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod lookup_tests {
     use super::*;
@@ -1079,33 +1107,5 @@ mod lookup_tests {
         r.attributes[0].yield_effect = 8;
         assert!(r.plot_yield_data(4).is_err());
         assert!(r.plot_yield_data(9).is_err());
-    }
-}
-
-impl<E: Effects> Context<'_, E> {
-    /// Map.CityPlots.Clear(CityID)2a42400. This context represents the current
-    /// initialized GameEffects instance: RemovePlotYields2a424a0 dispatches
-    /// destruction before zeroing the attribute ID, then SetOwner performs
-    /// visibility/report/signal effects. Reacquire current ownership after each
-    /// callback; the native scan visits all map plots in descending index order.
-    /// The old City remains canonical until its enclosing destructor finishes.
-    pub fn clear_city_plots(&mut self) -> Result<(), Error<E::Error>> {
-        self.validate()?;
-        let count = self.state.world().map().plots.len();
-        if count > i32::MAX as usize {
-            return Err(Error::Missing("CityPlots.Clear native plot count"));
-        }
-        for index in (0..count as u32).rev() {
-            if kernel::OwnerContext::owning_city(self, index)? != self.city {
-                continue;
-            }
-            let effect = kernel::PurchasedContext::plot_yield_effect(self, index)?;
-            if effect != 0 {
-                kernel::PurchasedContext::remove_plot_yields(self, effect)?;
-                kernel::PurchasedContext::set_plot_yield_effect(self, index, 0)?;
-            }
-            kernel::set_owner(self, index, -1, u32::MAX)?;
-        }
-        Ok(())
     }
 }

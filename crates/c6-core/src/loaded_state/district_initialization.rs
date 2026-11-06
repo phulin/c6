@@ -13,6 +13,42 @@ impl std::fmt::Display for DistrictError {
 }
 impl std::error::Error for DistrictError {}
 impl LoadedState {
+    /// Bind an unsaved District+b0 field from the same initial native state.
+    /// This is fixture initialization, not a gameplay mutation; preserve the
+    /// pristine revision needed by the other initial runtime projections.
+    pub fn initialize_district_marked_for_delete(
+        &mut self,
+        binding: &crate::core_player::initialization::WireBinding,
+        owner: i32,
+        id: u32,
+        value: bool,
+    ) -> Result<(), DistrictError> {
+        if binding != &self.binding {
+            return Err(DistrictError::State(Error::Binding));
+        }
+        if !self.is_pristine() {
+            return Err(DistrictError::State(Error::NotPristine));
+        }
+        self.district(owner, id)?;
+        let record = self
+            .retained
+            .players
+            .iter_mut()
+            .find(|p| p.header.owner == owner)
+            .and_then(|p| {
+                p.districts
+                    .records
+                    .entries
+                    .iter_mut()
+                    .find(|e| e.value.id == id)
+            })
+            .ok_or(DistrictError::MissingDistrict { owner, id })?;
+        if record.value.marked_for_delete.is_some() {
+            return Err(DistrictError::State(Error::AlreadyInitialized));
+        }
+        record.value.marked_for_delete = Some(value);
+        Ok(())
+    }
     pub fn player_districts_mut(&mut self, owner: i32) -> Result<&mut Districts, Error> {
         self.world.player(owner).map_err(Error::World)?;
         let player = self
