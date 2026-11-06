@@ -287,6 +287,30 @@ fn pledge_guard(count: i32) -> Result<Preparation, &'static str> {
         Err("opinion positive pledge accumulation")
     }
 }
+fn bushido_value(
+    total: i32,
+    military_rank: i32,
+    culture_rank: i32,
+    military_fraction: f32,
+    culture_fraction: f32,
+    positive: i32,
+    negative: i32,
+) -> i32 {
+    let count = total as f32;
+    let military_qualifies = military_fraction * count >= military_rank as f32;
+    if !military_qualifies {
+        return 0;
+    }
+    if culture_fraction * count >= culture_rank as f32 {
+        return positive;
+    }
+    if culture_fraction * count >= 1i32.wrapping_sub(culture_rank).wrapping_add(total) as f32 {
+        negative
+    } else {
+        0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -315,29 +339,5 @@ mod tests {
         assert_eq!(clamp_third_party(0, 10), 0);
         assert_eq!(clamp_third_party(0, -3), -3);
         assert_eq!(clamp_third_party(0, i32::MIN), i32::MIN);
-    }
-}
-
-fn bushido_value(
-    total: i32,
-    military_rank: i32,
-    culture_rank: i32,
-    military_fraction: f32,
-    culture_fraction: f32,
-    positive: i32,
-    negative: i32,
-) -> i32 {
-    let count = total as f32;
-    let military_qualifies = military_fraction * count >= military_rank as f32;
-    if !military_qualifies {
-        return 0;
-    }
-    if culture_fraction * count >= culture_rank as f32 {
-        return positive;
-    }
-    if culture_fraction * count >= 1i32.wrapping_sub(culture_rank).wrapping_add(total) as f32 {
-        negative
-    } else {
-        0
     }
 }
