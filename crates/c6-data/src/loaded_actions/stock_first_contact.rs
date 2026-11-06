@@ -65,6 +65,19 @@ pub trait Effects<P> {
         backend: &mut Runtime<'_, P>,
         report: Report,
     ) -> Result<(), Error>;
+    fn preflight_choice(
+        &self,
+        state: &LoadedState,
+        backend: &Runtime<'_, P>,
+        decision: c6_core::diplomacy_first_meeting::PendingDecision,
+        choice: c6_core::diplomacy_first_meeting::Choice,
+    ) -> Result<(), Error>;
+    fn session_closed(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+        session_id: u32,
+    ) -> Result<(), Error>;
     fn first_meeting_report(
         &mut self,
         state: &mut LoadedState,
@@ -175,6 +188,159 @@ impl<'a, P> Runtime<'a, P> {
     }
     pub fn unconsumed_first_meetings(&self) -> &[(StatementHandle, FirstMeetingRequest)] {
         self.first_contact.as_ref().map_or(&[], |s| &s.unconsumed)
+    }
+    pub fn respond_first_meeting(
+        &mut self,
+        state: &mut LoadedState,
+        issuer: i32,
+        choice: c6_core::diplomacy_first_meeting::Choice,
+    ) -> Result<c6_core::diplomacy_first_meeting::ChoiceOutcome, Error> {
+        use c6_core::diplomacy_first_meeting::{ChoiceContext, ChoiceEffect, ChoiceOutcome};
+        let mut current = self
+            .first_contact
+            .take()
+            .ok_or(Error::Missing("first-contact current response consumers"))?;
+        let result = (|| {
+            let decision = *current
+                .pending
+                .first()
+                .ok_or(Error::Missing("first-contact pending response"))?;
+            if decision.player != issuer {
+                return Err(Error::Missing("first-contact response player"));
+            }
+            current
+                .input
+                .effects
+                .preflight_choice(state, self, decision, choice)?;
+            let player = |owner| -> Result<diplomacy_request::Player, Error> {
+                let level = current
+                    .input
+                    .civilization_levels
+                    .iter()
+                    .find(|p| p.0 == owner)
+                    .ok_or(Error::Missing("first-contact response civilization level"))?
+                    .1;
+                Ok(diplomacy_request::Player {
+                    owner,
+                    major: level == meeting::MAJOR_LEVEL,
+                    human: state.player_slot_status(owner).map_err(Error::State)? == 3,
+                })
+            };
+            let services = self
+                .player_services
+                .as_ref()
+                .ok_or(Error::Missing("first-contact response live players"))?;
+            let alive = services
+                .alive_players
+                .as_ref()
+                .ok_or(Error::Missing("first-contact response alive roster"))?;
+            let mut active_human_count = 0u32;
+            for &owner in alive.values() {
+                if state.player_slot_status(owner).map_err(Error::State)? == 3 {
+                    let active = state
+                        .partial_player_controls(owner)
+                        .map_err(Error::State)?
+                        .turn_active
+                        .ok_or(Error::Missing("first-contact current human turn-active"))?;
+                    active_human_count = active_human_count.wrapping_add(u32::from(active));
+                }
+            }
+            let has_capital = |owner| -> Result<bool, Error> {
+                Ok(state
+                    .retained()
+                    .players
+                    .iter()
+                    .find(|p| p.header.owner == owner)
+                    .ok_or(Error::Missing("first-contact response city parent"))?
+                    .cities
+                    .records
+                    .entries
+                    .iter()
+                    .any(|c| c.value.header.capital))
+            };
+            let manager = state.diplomacy_manager().map_err(Error::State)?;
+            let (game_mode, logging) = manager
+                .execution_profile()
+                .ok_or(Error::Missing("first-contact response execution profile"))?;
+            let statement = c6_core::diplomacy_statement::Context {
+                local_player: current.input.local_player,
+                game_mode,
+                active_session: manager.active_session().map_err(|e| {
+                    Error::Requirement(format!("first-contact response active session: {e:?}"))
+                })?,
+                logging,
+            };
+            let start = manager
+                .statement_inventory()
+                .ok_or(Error::Missing("first-contact response inventory"))?
+                .iter()
+                .map(|s| s.handle.0)
+                .max()
+                .unwrap_or(0)
+                .checked_add(1)
+                .ok_or(Error::Missing("first-contact response identity exhausted"))?
+                .max(current.next_statement);
+            let handles = [
+                StatementHandle(start),
+                StatementHandle(
+                    start
+                        .checked_add(1)
+                        .ok_or(Error::Missing("first-contact response identity exhausted"))?,
+                ),
+                StatementHandle(
+                    start
+                        .checked_add(2)
+                        .ok_or(Error::Missing("first-contact response identity exhausted"))?,
+                ),
+            ];
+            let next = start
+                .checked_add(3)
+                .ok_or(Error::Missing("first-contact response identity exhausted"))?;
+            let context = ChoiceContext {
+                statement,
+                ai: player(decision.session.from)?,
+                human: player(decision.session.to)?,
+                ai_has_capital: has_capital(decision.session.from)?,
+                human_has_capital: has_capital(decision.session.to)?,
+                active_human_count,
+            };
+            let plan = manager
+                .plan_first_meeting_choice(decision, choice, context, handles)
+                .map_err(|e| Error::Requirement(format!("first-contact response plan: {e:?}")))?;
+            current.pending.remove(0);
+            current.next_statement = next;
+            let outcome = state
+                .apply_first_meeting_choice(plan, |state, effect| match effect {
+                    ChoiceEffect::Statement(report) => current
+                        .input
+                        .effects
+                        .first_meeting_report(state, self, report),
+                    ChoiceEffect::FriendlyMeeting { player, other } => {
+                        let index = usize::try_from(other)
+                            .map_err(|_| Error::Missing("first-contact friendly index"))?;
+                        *state
+                            .war_diplomacy_mut(player)
+                            .map_err(Error::State)?
+                            .had_friendly_meeting
+                            .get_mut(index)
+                            .ok_or(Error::Missing("first-contact friendly cell"))? = true;
+                        Ok(())
+                    }
+                    ChoiceEffect::SessionClosed { session_id } => current
+                        .input
+                        .effects
+                        .session_closed(state, self, session_id),
+                })
+                .map_err(|e| {
+                    Error::Requirement(format!("first-contact response continuation: {e:?}"))
+                })?;
+            if let ChoiceOutcome::Pending(decision) = outcome {
+                current.pending.push(decision);
+            }
+            Ok(outcome)
+        })();
+        self.first_contact = Some(current);
+        result
     }
     pub(super) fn process_initial_first_meeting(
         &mut self,

@@ -127,6 +127,37 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
     pub fn pending_first_meetings(&self) -> &[c6_core::diplomacy_first_meeting::PendingDecision] {
         self.context.notifications.backend.pending_first_meetings()
     }
+    /// Apply one externally selected legal response and resume this retained
+    /// Session. Positive may yield a second explicit information-exchange choice.
+    pub fn respond_first_meeting(
+        &mut self,
+        issuer: i32,
+        choice: c6_core::diplomacy_first_meeting::Choice,
+    ) -> Result<
+        c6_core::diplomacy_first_meeting::ChoiceOutcome,
+        Error<stock_notifications::movement::Error>,
+    > {
+        if let Some(failure) = &self.failed {
+            return Err(Error::Failed(failure.clone()));
+        }
+        if self
+            .pending_first_meetings()
+            .first()
+            .is_none_or(|d| d.player != issuer)
+        {
+            return Err(Error::DecisionBoundary("first-contact response owner"));
+        }
+        let before = self.state().action_stamp();
+        let before_decision = self.pending_first_meetings().first().copied();
+        let result = self.context.notifications.backend.respond_first_meeting(
+            self.context.notifications.state,
+            issuer,
+            choice,
+        );
+        let partial_failure = self.state().action_stamp() != before
+            || self.pending_first_meetings().first().copied() != before_decision;
+        self.retain(result, partial_failure)
+    }
     pub fn failure(&self) -> Option<&str> {
         self.failed.as_deref()
     }
