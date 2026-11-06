@@ -183,6 +183,7 @@ pub struct Inputs<'a, 'd, 'r> {
     pub history: &'a history::Definitions,
     pub start_era_hash: Option<u32>,
     pub barbarian_owner: i32,
+    pub tribe_death: &'a stock_guards::Definitions,
 }
 /// Callers forward these operations to their SAME persistent Script, research,
 /// notification and operation providers. Only reached continuations execute.
@@ -445,6 +446,7 @@ impl<E: Effects> Dispatch<'_, '_, '_, '_, E> {
                 self.state,
                 self.inputs.placement,
                 self.inputs.barbarian_owner,
+                self.inputs.tribe_death,
                 members,
             )
             .map_err(Error::Guard)?,

@@ -1,5 +1,5 @@
 //! Current stock guards for ordinary Unit/Unit combat subscribers.
-//! Positive Emergency/tribe paths remain required continuations.
+//! Positive Emergency and unsupported tribe death branches remain explicit.
 use super::super::GeneratedMembers;
 use crate::{melee_attack::actor, unit_placement_state};
 use c6_core::{loaded_state::LoadedState, map::UnitReference};
@@ -10,6 +10,39 @@ pub enum Error {
     Maximum(crate::formation_movement_cost::Error),
     EmergencyKilledEnemy,
     BarbarianTribeUnitDied { tribe: i32, victim: UnitReference },
+    Missing(&'static str),
+    State(c6_core::loaded_state::Error),
+}
+
+pub struct Definitions {
+    scout_lost: i32,
+}
+impl Definitions {
+    pub fn from_rules(rules: &crate::Rules) -> Result<Self, Error> {
+        let table = rules
+            .gameplay()
+            .table("GlobalParameters")
+            .ok_or(Error::Missing("GlobalParameters"))?;
+        let mut rows = table
+            .rows()
+            .filter(|r| r.text("Name").ok() == Some("BARBARIAN_BOLDNESS_PER_SCOUT_LOST"));
+        let row = rows
+            .next()
+            .ok_or(Error::Missing("BARBARIAN_BOLDNESS_PER_SCOUT_LOST"))?;
+        if rows.next().is_some() {
+            return Err(Error::Missing("duplicate scout lost parameter"));
+        }
+        let value = row
+            .get("Value")
+            .map_err(|_| Error::Missing("scout lost value"))?;
+        let scout_lost = match value {
+            crate::SqlValue::Integer(n) => i32::try_from(*n).ok(),
+            crate::SqlValue::Text(b) => std::str::from_utf8(b).ok().and_then(|s| s.parse().ok()),
+            _ => None,
+        }
+        .ok_or(Error::Missing("scout lost integer"))?;
+        Ok(Self { scout_lost })
+    }
 }
 
 /// ScoreOnAttackedEnemyCity first requires a District defender. This typed
@@ -79,9 +112,10 @@ fn tribe_and_victim(
 /// barbarian participant's tribe index. Original-created unassigned Units have
 /// index -1; a real tribe requires its OnUnitDied continuation.
 pub fn barbarian(
-    state: &LoadedState,
+    state: &mut LoadedState,
     definitions: &unit_placement_state::Definitions<'_, '_>,
     barbarian_owner: i32,
+    parameters: &Definitions,
     members: &GeneratedMembers,
 ) -> Result<(), Error> {
     let a = members.damage.attacker;
@@ -107,10 +141,21 @@ pub fn barbarian(
         .map_err(Error::Actor)?
         .i_barbarian_tribe_index;
     if tribe != -1 {
-        return Err(Error::BarbarianTribeUnitDied {
-            tribe,
-            victim: if attacker_victim { a } else { d },
-        });
+        let victim = if attacker_victim { a } else { d };
+        let unit = actor(state, victim).map_err(Error::Actor)?;
+        if unit.e_owner != barbarian_owner || unit.e_ai_type != 2 {
+            return Err(Error::BarbarianTribeUnitDied { tribe, victim });
+        }
+        let instance = state
+            .barbarian_manager_mut()
+            .map_err(Error::State)?
+            .instances
+            .iter_mut()
+            .find(|t| t.tribe_index == tribe)
+            .ok_or(Error::Missing("combat tribe instance"))?;
+        instance.cur_num_scouts = instance.cur_num_scouts.wrapping_sub(1);
+        instance.turns_since_scout_death = 0;
+        instance.boldness = instance.boldness.wrapping_add(parameters.scout_lost);
     }
     Ok(())
 }
