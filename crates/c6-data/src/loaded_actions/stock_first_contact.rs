@@ -707,7 +707,19 @@ impl<P> meeting::Context for Context<'_, '_, P> {
             .effects
             .report(self.state, self.backend, report)
     }
-    fn closest_city(&mut self, _: i32, _: u32) -> Result<Option<(i32, u32)>, Error> {
+    fn closest_city(&mut self, owner: i32, _: u32) -> Result<Option<(i32, u32)>, Error> {
+        let player = self
+            .state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Missing("first-contact current hospitality player"))?;
+        if !player.cities.records.entries.is_empty() {
+            return Err(Error::Missing(
+                "first-contact city hospitality after callbacks",
+            ));
+        }
         Ok(None)
     }
     fn city_distance(&mut self, _: (i32, u32), _: u32) -> Result<i32, Error> {
