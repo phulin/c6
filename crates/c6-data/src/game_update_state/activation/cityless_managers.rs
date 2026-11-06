@@ -852,8 +852,26 @@ pub fn after_cities(
     let old = p.trade.notified_outgoing_route_capacity;
     if capacity != old {
         if capacity > 0 && capacity > old {
-            // The live graph must answer CountOutgoingRoutes before Send.
-            return Err(missing("positive trade-capacity outgoing route count"));
+            // CheckCapacityNotification 2b95d30 queries the live graph even
+            // when all capacity is occupied. Manager.CountOutgoingRoutes
+            // 2c08190 sums active directed edges for each current owned City.
+            let graph = state.trade_graph().map_err(state_error)?;
+            let mut outgoing = 0i32;
+            for city in &p.cities.records.entries {
+                let vertex = c6_core::trade_graph_state::city_vertex(c6_core::trade::ComponentId {
+                    owner: owner as i16,
+                    component_type: 2,
+                    id: city.value.header.id,
+                });
+                if let Some(origin) = graph.graph().origins().iter().find(|r| r.vertex == vertex) {
+                    for edge in &origin.destinations {
+                        outgoing = outgoing.wrapping_add(i32::from(edge.edge.has_active_route));
+                    }
+                }
+            }
+            if outgoing < capacity {
+                return Err(missing("available trade-capacity notification"));
+            }
         }
         // Native rereads capacity after the optional synchronous notification.
         let capacity = player(state, owner)?.trade.outgoing_route_capacity;
