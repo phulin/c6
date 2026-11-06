@@ -3,6 +3,7 @@
 //! Positive unsupported components fail before silently discarding gameplay.
 pub mod effects;
 pub mod requirements;
+pub mod transition;
 use c6_core::{loaded_state::LoadedState, unit::ComponentId};
 
 #[derive(Debug)]
@@ -216,6 +217,36 @@ pub fn targets_city_destroyed(
             targets.observed_city_identities.remove(at);
         }
         break;
+    }
+    Ok(())
+}
+
+/// Rules.Placement.ExecuteForcedUnitRebase2bef910 copies the actual current
+/// ObjectPairing children, then2bef760 only processes live Unit children.
+/// Empty/non-Unit/missing-Unit branches return before gameplay or RNG; a live
+/// Unit requires the concrete forced-rebase action rather than silent removal.
+pub fn forced_unit_rebase(state: &LoadedState, parent: ComponentId) -> Result<(), Error> {
+    let children = state
+        .object_pairing()
+        .map_err(Error::State)?
+        .get_children(parent)
+        .to_vec();
+    for child in children {
+        if child.component_type != 1 {
+            continue;
+        }
+        let owner = state
+            .world()
+            .player(i32::from(child.owner))
+            .map_err(|_| Error::Missing("forced rebase Unit owner"))?;
+        if owner
+            .unit_records()
+            .map_err(|_| Error::Missing("forced rebase Unit roster"))?
+            .iter()
+            .any(|entry| entry.value.id == child.id)
+        {
+            return Err(Error::Missing("live child Unit forced rebase"));
+        }
     }
     Ok(())
 }
