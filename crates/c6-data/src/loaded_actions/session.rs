@@ -119,6 +119,10 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
     pub fn state(&self) -> &LoadedState {
         self.context.notifications.state
     }
+    /// Inspect the same current update owner without extracting or replacing it.
+    pub fn update_runtime(&self) -> &loaded::Runtime {
+        &self.update
+    }
     pub fn context(&self) -> &current_aftermath::Context<'s, stock_notifications::Runtime<'a, P>> {
         &self.context
     }
