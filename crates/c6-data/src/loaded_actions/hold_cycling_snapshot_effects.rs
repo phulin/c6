@@ -64,6 +64,7 @@ pub struct Definitions {
     units: LinuxDefinitionRegistry,
     techs: LinuxDefinitionRegistry,
     civics: LinuxDefinitionRegistry,
+    abilities: LinuxDefinitionRegistry,
     airlift_building: Option<u32>,
     water_terrains: Vec<u32>,
     warrior_properties: Option<c6_core::unit::variants::TypedVariantMap>,
@@ -197,6 +198,8 @@ impl Definitions {
                 .map_err(|_| "snapshot Technologies")?,
             civics: defs::collection(rules, "Civics", "CivicType")
                 .map_err(|_| "snapshot Civics")?,
+            abilities: defs::collection(rules, "UnitAbilities", "UnitAbilityType")
+                .map_err(|_| "snapshot UnitAbilities")?,
             airlift_building,
         })
     }
@@ -273,7 +276,7 @@ impl Inputs<'_> {
             || unit.k_combat_modifers.b_conduct_raid
             || unit.k_combat_modifers.i_ranged_strength_modifier > 0
             || unit.k_combat_modifers.i_bombard_strength_modifier > 0
-            || unit.ai_abilities_possessed.iter().any(|a| a.value > 0)
+            || queried_ability_present(&d.abilities, &runtime.abilities)
         {
             return Err("snapshot positive specialized Warrior effects");
         }
@@ -389,6 +392,20 @@ impl Inputs<'_> {
         }
         Ok(())
     }
+}
+
+// HasAbility (0x2c293b0) resolves the queried enum/hash through the actual
+// ability collection, then checks that native-index count >0. Unrelated live
+// abilities never enter these two rejected subtype prefixes.
+fn queried_ability_present(registry: &LinuxDefinitionRegistry, counts: &[i32]) -> bool {
+    [0x14a05859, hash(b"ABILITY_SPREAD_DISSENT")]
+        .into_iter()
+        .any(|key| {
+            registry
+                .find_index(key)
+                .and_then(|index| counts.get(index))
+                .is_some_and(|&count| count > 0)
+        })
 }
 
 const COMMANDS: &[&str] = &[
@@ -509,6 +526,24 @@ mod tests {
             },
         )
         .unwrap()
+    }
+    #[test]
+    fn subtype_ability_guards_read_only_their_actual_native_indices() {
+        use crate::{registry::DefinitionEntry, RulesRowId};
+        let registry = LinuxDefinitionRegistry::from_native_order(vec![
+            DefinitionEntry {
+                database_rowid: RulesRowId(1),
+                type_name: b"UNRELATED_ABILITY".to_vec(),
+            },
+            DefinitionEntry {
+                database_rowid: RulesRowId(2),
+                type_name: b"ABILITY_SPREAD_DISSENT".to_vec(),
+            },
+        ]);
+        assert!(!queried_ability_present(&registry, &[1, 0]));
+        assert!(queried_ability_present(&registry, &[0, 1]));
+        assert!(!queried_ability_present(&registry, &[1, -1]));
+        assert!(!queried_ability_present(&registry, &[1]));
     }
     #[test]
     fn only_existing_empty_builtin_test_all_can_be_omitted_without_registry_changes() {
