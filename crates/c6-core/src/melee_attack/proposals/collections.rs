@@ -193,6 +193,10 @@ impl Runtime {
             .find(|v| v.0 == collection)
             .map(|v| &v.1.added)
     }
+    /// Current ordered GetOnChanged consumers, retained by this same owner.
+    pub fn changed_ring(&self, collection: u64) -> Option<&ListenerRing<u64>> {
+        self.changed.as_ref()?.iter().find(|row| row.0 == collection).map(|row| &row.1)
+    }
     pub fn ring_mut(&mut self, collection: u64) -> Option<&mut ListenerRing<u64>> {
         self.collections
             .iter_mut()
