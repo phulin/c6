@@ -78,9 +78,21 @@ pub fn activate_diplomatic_without_actions(
         .handlers
         .iter()
         .any(|h| h.owner != -1 && h.opponent != -1)
+        && d.diplomatic_states.states.iter().any(|s| {
+            !s.allowed_action_hashes.is_empty()
+                || !s.response_action_hashes.is_empty()
+                || !s.desired_action_hashes.is_empty()
+                || !s.transitions.is_empty()
+                || !s.triggers.is_empty()
+        })
     {
         return Err(Error::Unsupported("NPC initialized diplomatic evaluator"));
     }
+    // The stock empty-state family (Free Cities) can prepare initialized
+    // evaluator scores. Its concrete Cost/Desirability functions only write
+    // caller-owned score outputs: no script/RNG/gameplay mutation. Those
+    // planner values are omitted under StockNpcExternalPolicies scope; empty
+    // action/transition families cannot select an action from the scores.
     let mut activate = Vec::with_capacity(d.diplomatic_states.states.len());
     for s in &d.diplomatic_states.states {
         let update = s.is_active.0 != 0 && s.is_updating.0 == 0 && s.opponent != -1;
@@ -597,6 +609,42 @@ mod tests {
             (s.is_active.0, s.is_updating.0, s.has_changed_state.0),
             (1, 0, 0)
         );
+    }
+    #[test]
+    fn diplomatic_initialized_scores_require_empty_action_and_transition_families() {
+        use crate::player_ai_diplomatic::BoolByte;
+        let (mut state, _, owner) = fixture();
+        let d = state.retained.players[0].ai_diplomatic.as_mut().unwrap();
+        d.managed_contracts.clear();
+        assert!(d
+            .diplo_action_evaluator
+            .handlers
+            .iter()
+            .any(|h| h.owner != -1 && h.opponent != -1));
+        d.diplomatic_states.states.truncate(1);
+        let s = &mut d.diplomatic_states.states[0];
+        s.opponent = owner;
+        s.is_active = BoolByte(1);
+        s.is_updating = BoolByte(0);
+        s.has_changed_state = BoolByte(0);
+        s.allowed_action_hashes.clear();
+        s.response_action_hashes.clear();
+        s.desired_action_hashes.clear();
+        s.transitions.clear();
+        s.triggers.clear();
+        activate_diplomatic_without_actions(&mut state, owner).unwrap();
+        state.retained.players[0]
+            .ai_diplomatic
+            .as_mut()
+            .unwrap()
+            .diplomatic_states
+            .states[0]
+            .allowed_action_hashes
+            .push(123);
+        assert!(matches!(
+            activate_diplomatic_without_actions(&mut state, owner),
+            Err(Error::Unsupported("NPC initialized diplomatic evaluator"))
+        ));
     }
     #[test]
     fn diplomatic_inactive_definitions_do_not_execute_positive_state_effects() {
