@@ -265,7 +265,7 @@ impl<P> Context<'_, '_, P> {
         owner: i32,
         major: bool,
         units: &[u32],
-        formations: &[u32],
+        _formations: &[u32],
     ) -> Result<(), Error> {
         self.through_social(owner)?;
         // DoTurnActivate2ba0baa branches over Research through Stats for
@@ -363,12 +363,32 @@ impl<P> Context<'_, '_, P> {
             )
             .map_err(|e| failure("resource maintenance and notifications", e))?;
         }
+        // 2ba0ec6 reacquires Player.Units/Begin AFTER city activation. A city
+        // may just have trained a unit and formation; entry-time rosters would
+        // silently omit its real RestoreMovement/SetEligibleToHeal callbacks.
+        let player = self
+            .state
+            .world()
+            .player(owner)
+            .map_err(|e| failure("current restoration player", e))?;
+        let current_units = player
+            .unit_records()
+            .map_err(|e| failure("current restoration units", e))?
+            .iter()
+            .map(|record| record.value.id)
+            .collect::<Vec<_>>();
+        let current_formations = player
+            .formation_records()
+            .map_err(|e| failure("current restoration formations", e))?
+            .iter()
+            .map(|record| record.value.id)
+            .collect::<Vec<_>>();
         self.backend
             .restore_player_movement(
                 self.state,
                 owner,
-                units,
-                formations,
+                &current_units,
+                &current_formations,
                 self.movement,
                 self.formation_definitions,
                 self.placement,
