@@ -159,15 +159,23 @@ impl Definitions {
             .rows()
             .filter(|r| r.text("GovernorPromotionType").ok().map(str::as_bytes) == Some(LIBRARIAN))
             .map(|r| {
-                r.text("ModifierId")
-                    .map(str::as_bytes)
-                    .map(<[u8]>::to_vec)
-                    .map_err(|e| Error::Rules(e.to_string()))
+                Ok((
+                    r.row_id()
+                        .ok_or(Error::Unsupported("governor modifier intrinsic rowid"))?
+                        .0,
+                    r.text("ModifierId")
+                        .map_err(|e| Error::Rules(e.to_string()))?
+                        .as_bytes()
+                        .to_vec(),
+                ))
             })
-            .collect::<Result<Vec<_>, _>>()?;
-        ids.sort();
+            .collect::<Result<Vec<_>, Error>>()?;
+        // GovernorPromotion's reference builder preserves intrinsic join-row
+        // order. Native Librarian allocates science before culture; the
+        // affected-owner vector separately sorts by modifier definition name.
+        ids.sort_by_key(|r| r.0);
         let mut recipes = vec![];
-        for id in ids {
+        for (_, id) in ids {
             let m = table("Modifiers")?
                 .rows()
                 .find(|r| r.text("ModifierId").ok().map(str::as_bytes) == Some(id.as_slice()))
