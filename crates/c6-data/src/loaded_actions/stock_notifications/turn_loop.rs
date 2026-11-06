@@ -58,7 +58,7 @@ impl<P> Runtime<'_, P> {
     }
 }
 #[allow(clippy::too_many_arguments)]
-fn update<'b, P, E>(
+pub(super) fn update<'b, P, E>(
     context: &mut current_aftermath::Context<'_, Runtime<'b, P>>,
     runtime: &mut loaded::Runtime,
     research_runtime: &mut crate::research::Runtime,

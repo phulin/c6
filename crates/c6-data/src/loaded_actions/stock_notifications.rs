@@ -28,6 +28,7 @@ pub mod era_changes;
 pub mod first_contact;
 #[path = "stock_first_contact_unit_view.rs"]
 pub mod first_contact_unit_view;
+pub mod first_contact_update;
 pub mod founding;
 #[path = "stock_notifications_game_update.rs"]
 pub mod game_update;
@@ -191,6 +192,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     unit_production_signals: Option<city_production::unit::Signals>,
     movement: Option<movement::State<'a>>,
     first_contact: Option<first_contact::State<'a, P>>,
+    pub(crate) first_meeting_update: Option<first_contact_update::Continuation>,
     first_contact_unit_view: Option<first_contact_unit_view::Inputs<'a>>,
     combat: Option<combat::State<'a>>,
     capture_dispositions: Vec<crate::city_capture::PendingDisposition>,
@@ -259,6 +261,7 @@ impl<'a, P> Runtime<'a, P> {
             unit_production_signals: None,
             movement: None,
             first_contact: None,
+            first_meeting_update: None,
             first_contact_unit_view: None,
             combat: None,
             capture_dispositions: Vec::new(),

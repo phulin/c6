@@ -32,6 +32,7 @@ pub mod combat;
 pub mod declare_war;
 #[path = "session_district.rs"]
 pub mod district;
+pub mod first_contact;
 pub mod founding;
 #[path = "session_government.rs"]
 pub mod government;
@@ -122,7 +123,13 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         &self.context
     }
     pub fn pending_choice(&self) -> Option<&PolicyChoice> {
-        self.context.notifications.backend.pending_policy_choice()
+        self.context
+            .notifications
+            .backend
+            .first_meeting_update
+            .as_ref()
+            .and_then(|pending| pending.choice.as_ref())
+            .or_else(|| self.context.notifications.backend.pending_policy_choice())
     }
     pub fn pending_first_meetings(&self) -> &[c6_core::diplomacy_first_meeting::PendingDecision] {
         self.context.notifications.backend.pending_first_meetings()
@@ -141,11 +148,27 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
             return Err(Error::Failed(failure.clone()));
         }
         if self
+            .context
+            .notifications
+            .backend
+            .first_meeting_update
+            .is_some()
+        {
+            return Err(Error::DecisionBoundary(
+                "resume first-contact result update",
+            ));
+        }
+        if self
             .pending_first_meetings()
             .first()
             .is_none_or(|d| d.player != issuer)
         {
             return Err(Error::DecisionBoundary("first-contact response owner"));
+        }
+        if self.first_meeting_requires_update(choice) {
+            return Err(Error::DecisionBoundary(
+                "first-contact response requires update services",
+            ));
         }
         let before = self.state().action_stamp();
         let before_decision = self.pending_first_meetings().first().copied();
@@ -156,6 +179,26 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         );
         let partial_failure = self.state().action_stamp() != before
             || self.pending_first_meetings().first().copied() != before_decision;
+        let result = result.and_then(|progress| match progress {
+            c6_core::diplomacy_first_meeting::ChoiceProgress::Pending(decision) => Ok(
+                c6_core::diplomacy_first_meeting::ChoiceOutcome::Pending(decision),
+            ),
+            c6_core::diplomacy_first_meeting::ChoiceProgress::Closed(session) => Ok(
+                c6_core::diplomacy_first_meeting::ChoiceOutcome::Closed(session),
+            ),
+            c6_core::diplomacy_first_meeting::ChoiceProgress::RequiresResultActionUpdate(
+                result,
+            ) => {
+                self.context.notifications.backend.first_meeting_update =
+                    Some(stock_notifications::first_contact_update::Continuation {
+                        result,
+                        choice: None,
+                    });
+                Err(stock_notifications::movement::Error::Missing(
+                    "first-contact response requires update services",
+                ))
+            }
+        });
         self.retain(result, partial_failure)
     }
     pub fn failure(&self) -> Option<&str> {
@@ -205,6 +248,17 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         Ok(())
     }
     fn check<E>(&self) -> Result<(), Error<E>> {
+        if self
+            .context
+            .notifications
+            .backend
+            .first_meeting_update
+            .is_some()
+        {
+            return Err(Error::DecisionBoundary(
+                "resume first-contact result update",
+            ));
+        }
         if let Some(decision) = self.pending_first_meetings().first() {
             return Err(Error::PendingFirstMeeting(*decision));
         }
@@ -667,6 +721,8 @@ impl<P> Session<'_, '_, P> {
     /// Replace an externally selected technology queue at an ordinary player
     /// action site. This leaves any suspended PlayerActions callback in place;
     /// use resume_research for a source-positioned acquisition/activation choice.
+    /// Also resolves a matching research choice in a first-contact result update;
+    /// resume_first_meeting_update then continues that same suspended callback.
     pub fn request_technology(
         &mut self,
         player: i32,
@@ -712,7 +768,44 @@ impl<P> Session<'_, '_, P> {
         choices: &super::choose_tech::Definitions,
         culture: Option<&stock_notifications::research::CultureInputs<'_>>,
     ) -> Result<(), Error<ResearchError>> {
-        self.ordinary_player_action(player)?;
+        let result_choice = self
+            .context
+            .notifications
+            .backend
+            .first_meeting_update
+            .as_ref();
+        let resolving_result_choice = result_choice.is_some();
+        if let Some(pending) = result_choice {
+            if let Some(failure) = &self.failed {
+                return Err(Error::Failed(failure.clone()));
+            }
+            let Some(choice) = pending.choice.as_ref() else {
+                return Err(Error::DecisionBoundary(
+                    "resume first-contact result update",
+                ));
+            };
+            if choice.player != player
+                || choice.kind != PolicyKind::Research(kind)
+                || !choice.options.contains(&index)
+            {
+                return Err(Error::DecisionBoundary(
+                    "request differs from first-contact research choice",
+                ));
+            }
+            match self.update.pending_player_effect() {
+                Some(
+                    c6_core::game_update::PlayerEffect::Activation { player: owner, .. }
+                    | c6_core::game_update::PlayerEffect::ActiveControl { player: owner },
+                ) if owner == player => {}
+                _ => {
+                    return Err(Error::DecisionBoundary(
+                        "first-contact research callback differs",
+                    ))
+                }
+            }
+        } else {
+            self.ordinary_player_action(player)?;
+        }
         let mut effects = stock_notifications::research::Effects::new(
             &mut self.context.notifications.backend,
             self.research
@@ -733,9 +826,22 @@ impl<P> Session<'_, '_, P> {
             crate::research::Kind::Civic => {
                 research.request_civic(player, index, crate::research::InsertMode::Replace)
             }
-        };
+        }
+        .and_then(|()| {
+            if resolving_result_choice
+                && c6_core::research_turn::current(&research, player, kind)? != index
+            {
+                return Err(crate::research::Error::Missing(
+                    "first-contact research request did not select the choice",
+                ));
+            }
+            Ok(())
+        });
         if result.is_ok() {
             effects.backend.resolve_research_choice(player, kind);
+            if let Some(pending) = effects.backend.first_meeting_update.as_mut() {
+                pending.choice = None;
+            }
         }
         let partial_failure = !matches!(
             result,
