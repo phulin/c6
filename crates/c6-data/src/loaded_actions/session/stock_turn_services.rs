@@ -40,6 +40,10 @@ pub struct City<'s> {
     pub levels: &'s [(i32, u32)],
     pub fallout: &'s [i32],
     pub loyalty_subscribers: Option<usize>,
+    /// Current ordinary-building completion registrations and shared definitions.
+    pub building_completion: Option<
+        crate::loaded_actions::stock_notifications::city_production::completion::Services<'s>,
+    >,
     /// Current district completion services for naturally accrued production.
     pub district: Option<&'s crate::district_actions::stock::Inputs<'s>>,
 }
@@ -396,13 +400,17 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                                 )
                             }
                             production_dispatch::Kind::Building => {
+                                let effects = city_production::Effects::new(
+                                    backend,
+                                    &q.definitions.buildings,
+                                    q.appeal,
+                                    city_production::Scope::StockPlainHeadlessNoAddedConsumers,
+                                );
                                 production_dispatch::Effects::Building(
-                                    city_production::Effects::new(
-                                        backend,
-                                        &q.definitions.buildings,
-                                        q.appeal,
-                                        city_production::Scope::StockPlainHeadlessNoAddedConsumers,
-                                    ),
+                                    match q.building_completion {
+                                        Some(completion) => effects.with_completion(completion),
+                                        None => effects,
+                                    },
                                 )
                             }
                         };
