@@ -67,6 +67,10 @@ pub struct Modifiers {
         u64,
         crate::loaded_actions::stock_notifications::first_contact::random_modifier::Parameters,
     )>,
+    government_effects: Option<(
+        Vec<u64>,
+        crate::loaded_actions::stock_notifications::first_contact::government_modifier::Definitions,
+    )>,
     modifiers: Vec<Modifier>,
     objects: Vec<Object>,
     opinion_graph: Option<crate::game_update_state::activation::opinion_subject_graph::Runtime>,
@@ -96,6 +100,7 @@ impl Modifiers {
             human_statement_owners: Vec::new(),
             activations: Vec::new(),
             random_effects: Vec::new(),
+            government_effects: None,
             modifiers,
             objects,
             opinion_graph: None,
@@ -163,6 +168,29 @@ impl Modifiers {
             }
         }
         self.random_effects = effects;
+        Ok(self)
+    }
+    /// Bind the concrete government effect to live Culture and bound rules.
+    pub fn with_government_effects(
+        mut self,
+        labels: Vec<u64>,
+        definitions: crate::loaded_actions::stock_notifications::first_contact::government_modifier::Definitions,
+    ) -> Result<Self, Error> {
+        for (at, label) in labels.iter().enumerate() {
+            if labels[..at].contains(label)
+                || !self
+                    .activations
+                    .iter()
+                    .any(|a| a.label == *label && !a.remove_immediately)
+                || self
+                    .random_effects
+                    .iter()
+                    .any(|(random, _)| random == label)
+            {
+                return Err(Error::Missing("government diplomacy activation receiver"));
+            }
+        }
+        self.government_effects = Some((labels, definitions));
         Ok(self)
     }
     fn object(&self, label: u64) -> Result<&Object, Error> {
@@ -612,16 +640,28 @@ impl modifiers::EffectContext for Apply<'_> {
         } else {
             false
         };
+        if !self.state.player_alive(subject).map_err(Error::State)? && !m.allow_dead {
+            return Ok(true);
+        }
+        let government_value = self
+            .owner
+            .government_effects
+            .as_ref()
+            .filter(|(labels, _)| labels.contains(&m.label))
+            .map(|(_, definitions)| definitions.value(self.state, m.owner, subject))
+            .transpose()
+            .map_err(Error::Missing)?;
         let a = self
             .owner
             .activations
             .iter_mut()
             .find(|a| a.label == m.label)
             .ok_or(Error::Missing("diplomacy activation parameters"))?;
-        if !self.state.player_alive(subject).map_err(Error::State)? && !m.allow_dead {
-            return Ok(true);
-        }
         let mut values = a.clone();
+        if let Some(value) = government_value {
+            values.initial = value;
+            values.maximum = value;
+        }
         let board = &mut self
             .state
             .war_diplomacy_mut(m.owner)
