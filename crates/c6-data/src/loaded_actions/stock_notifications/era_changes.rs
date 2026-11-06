@@ -1,5 +1,5 @@
 //! Ordered Player.Eras.SetEra callbacks on the current stock runtime.
-//! Positive random boosts, pillaged-route upgrades and Gossip visibility delivery
+//! Positive random boosts, pillaged-route upgrades and eligible Gossip delivery
 //! remain explicit; supported callbacks read current canonical gameplay owners.
 use super::{processing, turn_reports, Runtime};
 use c6_core::{core_player::initialization::WireBinding, loaded_state::LoadedState};
@@ -99,9 +99,106 @@ pub(super) struct State<'a> {
     sight: &'a std::cell::RefCell<crate::unit_sight_state::Runtime>,
     inputs: Inputs,
     history_empty: Option<bool>,
+    gossip_visibility: Option<GossipVisibility>,
+    gossip_definition: Option<Option<c6_core::city_power_activation::gossip_delivery::Definition>>,
+    gossip_archive: Vec<EraGossip>,
     reports: Vec<CityReport>,
 }
+/// Semantic archive entry created before the synchronous recipient scan. It is
+/// retained even if an eligible delivery later returns an unsupported effect.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EraGossip {
+    pub turn: i32,
+    pub owner: i32,
+    pub old_era: i32,
+    pub new_era: i32,
+}
+struct GossipVisibility {
+    manager: c6_core::city_power_activation::gossip_delivery::Manager<()>,
+    alive_majors: Vec<i32>,
+}
+impl GossipVisibility {
+    fn require_no_delivery(
+        &self,
+        owner: i32,
+        definition: Option<c6_core::city_power_activation::gossip_delivery::Definition>,
+    ) -> Result<(), &'static str> {
+        // EraChanged.GetOtherPlayer is exactly -1. ReportGossip therefore does
+        // not reach its alternative-other-player visibility comparison.
+        for &recipient in &self.alive_majors {
+            let visibility = self.manager.most_recent(recipient, owner);
+            let Some(definition) = definition else {
+                continue;
+            };
+            if i32::from(visibility.visibility) < definition.visibility_level {
+                continue;
+            }
+            if recipient == owner || recipient == -1 {
+                continue;
+            }
+            return Err(if definition.filter {
+                "era Gossip filtered occurrence continuation"
+            } else {
+                "era Gossip eligible recipient delivery"
+            });
+        }
+        Ok(())
+    }
+}
 impl<'a, P> Runtime<'a, P> {
+    pub fn era_gossip_archive(&self) -> &[EraGossip] {
+        self.era_changes
+            .as_ref()
+            .map_or(&[], |s| s.gossip_archive.as_slice())
+    }
+
+    /// Bind the current rules lookup for occurrence type d0b71d9f. None means
+    /// the admitted definition collection has no such definition, not unknown.
+    pub fn bind_era_gossip_definition(
+        &mut self,
+        state: &LoadedState,
+        definition: Option<c6_core::city_power_activation::gossip_delivery::Definition>,
+    ) -> Result<(), processing::Error> {
+        self.check(state)?;
+        if definition.is_some_and(|d| d.type_hash != 0xd0b71d9f) {
+            return Err(processing::Error::Unsupported("era Gossip definition type"));
+        }
+        self.era_changes
+            .as_mut()
+            .ok_or(processing::Error::Unsupported("era callback registrations"))?
+            .gossip_definition = Some(definition);
+        Ok(())
+    }
+
+    /// Scope the actual canonical Session visibility owner for this activation.
+    /// The copy expires on return; it is never an initial or fixture answer.
+    /// Supported recipient skips contain no callback capable of changing it.
+    pub fn with_era_gossip_visibility<T>(
+        &mut self,
+        visibility: &crate::game_update_state::deactivation::VisibilityHistory,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let previous = self.era_changes.as_mut().map(|s| {
+            let old_empty = s.history_empty.replace(visibility.history.is_empty());
+            let old_visibility = s.gossip_visibility.replace(GossipVisibility {
+                manager: c6_core::city_power_activation::gossip_delivery::Manager {
+                    history: visibility.history.clone(),
+                    fallback: visibility.fallback,
+                    pending: Vec::new(),
+                    filtered: Vec::new(),
+                },
+                alive_majors: visibility.alive_majors.clone(),
+            });
+            (old_empty, old_visibility)
+        });
+        let result = f(self);
+        if let (Some(s), Some((old_empty, old_visibility))) = (&mut self.era_changes, previous) {
+            s.history_empty = old_empty;
+            s.gossip_visibility = old_visibility;
+        }
+        result
+    }
+
     pub fn era_city_reports(&self) -> &[CityReport] {
         self.era_changes
             .as_ref()
@@ -122,6 +219,9 @@ impl<'a, P> Runtime<'a, P> {
             inputs,
             sight,
             history_empty: None,
+            gossip_visibility: None,
+            gossip_definition: None,
+            gossip_archive: Vec::new(),
             reports: Vec::new(),
         });
         Ok(())
@@ -244,7 +344,25 @@ impl<'a, P> Runtime<'a, P> {
                         // the current TurnVisibility vector is empty. Occurrence
                         // construction only writes the temporary type/owner.
                         Some(true) => {}
-                        Some(false) => return Err("era Gossip visibility delivery"),
+                        Some(false) => {
+                            // Handler29bb5f0 constructs the occurrence for every
+                            // owner, including NPCs. Add29b25d0 archives before
+                            // Report29b2670 examines current alive-major history.
+                            current.gossip_archive.push(EraGossip {
+                                turn: state.retained().core.current_turn,
+                                owner,
+                                old_era: old,
+                                new_era: new,
+                            });
+                            let visibility = current
+                                .gossip_visibility
+                                .as_ref()
+                                .ok_or("era current Session Gossip visibility scope")?;
+                            let definition = current
+                                .gossip_definition
+                                .ok_or("era current Gossip definition")?;
+                            visibility.require_no_delivery(owner, definition)?;
+                        }
                         None => return Err("era current Session Gossip history scope"),
                     },
                 }
@@ -288,5 +406,77 @@ impl<'a, P> Runtime<'a, P> {
         })();
         self.era_changes = Some(current);
         result
+    }
+}
+
+#[cfg(test)]
+mod gossip_tests {
+    use super::*;
+    use c6_core::city_power_activation::gossip_delivery::{Definition, Manager, TurnVisibility};
+
+    fn scope(history: Vec<TurnVisibility>, fallback: i8) -> GossipVisibility {
+        GossipVisibility {
+            manager: Manager {
+                history,
+                fallback: TurnVisibility {
+                    visibility: fallback,
+                    ..TurnVisibility::constructed()
+                },
+                pending: Vec::new(),
+                filtered: Vec::new(),
+            },
+            alive_majors: vec![0, 1],
+        }
+    }
+    fn definition() -> Option<Definition> {
+        Some(Definition {
+            type_hash: 0xd0b71d9f,
+            visibility_level: 0,
+            filter: false,
+        })
+    }
+    #[test]
+    fn unrelated_trade_history_selects_actual_fallback_for_npc_era() {
+        let history = vec![TurnVisibility {
+            viewing_player: 0,
+            viewed_player: 1,
+            visibility: 1,
+            ..TurnVisibility::constructed()
+        }];
+        assert!(scope(history.clone(), -1)
+            .require_no_delivery(63, definition())
+            .is_ok());
+        // A loaded fallback is a live input, not an assumed constructor value.
+        assert_eq!(
+            scope(history, 0).require_no_delivery(63, definition()),
+            Err("era Gossip eligible recipient delivery")
+        );
+    }
+    #[test]
+    fn latest_matching_insertion_and_owner_exclusion_control_delivery() {
+        let history = vec![
+            TurnVisibility {
+                turn: 99,
+                viewing_player: 1,
+                viewed_player: 0,
+                visibility: 3,
+                ..TurnVisibility::constructed()
+            },
+            TurnVisibility {
+                turn: 1,
+                viewing_player: 1,
+                viewed_player: 0,
+                visibility: -1,
+                ..TurnVisibility::constructed()
+            },
+        ];
+        assert!(scope(history, 3)
+            .require_no_delivery(0, definition())
+            .is_ok());
+        assert_eq!(
+            scope(Vec::new(), 0).require_no_delivery(0, definition()),
+            Err("era Gossip eligible recipient delivery")
+        );
+        assert!(scope(Vec::new(), 3).require_no_delivery(63, None).is_ok());
     }
 }

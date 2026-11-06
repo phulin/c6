@@ -131,7 +131,7 @@ pub(super) fn update<'b, P, E>(
                     match context
                         .notifications
                         .backend
-                        .with_era_gossip_history(&visibility.history, |backend| {
+                        .with_era_gossip_visibility(visibility, |backend| {
                             activation(
                                 context.notifications.state,
                                 backend,
