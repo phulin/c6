@@ -1,11 +1,17 @@
 //! District/improvement guards of stock Placement.ExecuteForcedUnitRebase.
 //! Completion and current air capacity precede city, occupation and pairing
 //! queries. Only pillaged or enemy-occupied hangars enter forced rebasing.
-use crate::{resource_binding::ResourceAuthority, unit_initialization_definitions, Rules};
+use crate::{
+    loaded_actions::city_range_attack, resource_binding::ResourceAuthority,
+    unit_initialization_definitions, Rules,
+};
 use c6_core::{core_player::initialization::WireBinding, loaded_state::LoadedState};
+#[path = "forced_rebase_occupation.rs"]
+mod occupation;
 #[derive(Debug)]
 pub enum Error {
     Binding,
+    Combat(city_range_attack::Error),
     Definitions(unit_initialization_definitions::Error),
     Rules(crate::Error),
     Missing(&'static str),
@@ -20,6 +26,7 @@ impl std::fmt::Display for Error {
 impl std::error::Error for Error {}
 pub struct Definitions {
     binding: WireBinding,
+    combat: city_range_attack::Definitions,
     air_slots: Vec<(u32, i32)>,
     improvements: Vec<Improvement>,
 }
@@ -84,6 +91,8 @@ impl Definitions {
             .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
             binding: state.binding().clone(),
+            combat: city_range_attack::Definitions::from_rules(state, rules, authority)
+                .map_err(Error::Combat)?,
             air_slots,
             improvements,
         })
@@ -137,31 +146,10 @@ pub fn check_districts(
             {
                 continue;
             }
-            if !district.pillaged {
-                // 2befa78..2befabf: an intact district only rebases when
-                // IsOccupiedByEnemy is true. An exclusively own-unit plot
-                // returns false before any aircraft/pairing traversal.
-                let mut foreign = false;
-                for p in &state.retained().players {
-                    if p.header.owner == owner {
-                        continue;
-                    }
-                    for slot in state
-                        .world()
-                        .player(p.header.owner)
-                        .map_err(|_| Error::Missing("current rebase player"))?
-                        .unit_records()
-                        .map_err(|_| Error::Missing("current rebase units"))?
-                    {
-                        if (slot.value.k_location.x, slot.value.k_location.y) == district.location {
-                            foreign = true;
-                        }
-                    }
-                }
-                if !foreign {
-                    continue;
-                }
-                return Err(Error::Missing("current district enemy occupation"));
+            if !district.pillaged
+                && !occupation::occupied_by_enemy(state, definitions, owner, district.location)?
+            {
+                continue;
             }
             return Err(Error::AircraftContinuation {
                 district: district.id,
