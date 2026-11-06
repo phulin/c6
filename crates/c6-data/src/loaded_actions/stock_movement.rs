@@ -210,7 +210,18 @@ impl<P> services::Services for Runtime<'_, P> {
             .ok()
             .and_then(|index| values.get(index))
             .ok_or(services::Error::Missing("encountered unit index"))?;
-        Ok(())
+        self.preflight_stock_encountered_unit(state)
+            .map_err(services::Error::Effect)
+    }
+    fn signal_encountered_unit(
+        &mut self,
+        state: &mut LoadedState,
+        _sight: &mut sight::Runtime,
+        player: i32,
+        unit_type: i32,
+    ) -> Result<(), services::Error<Error>> {
+        self.stock_signal_encountered_unit(state, player, unit_type)
+            .map_err(services::Error::Effect)
     }
 }
 impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {

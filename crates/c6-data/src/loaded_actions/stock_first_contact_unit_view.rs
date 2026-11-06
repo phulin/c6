@@ -135,6 +135,74 @@ impl<'a, P> Runtime<'a, P> {
         self.first_contact_unit_view = Some(inputs);
         Ok(())
     }
+    pub(super) fn preflight_stock_encountered_unit(
+        &self,
+        state: &LoadedState,
+    ) -> Result<(), Error> {
+        let inputs = self
+            .first_contact_unit_view
+            .as_ref()
+            .ok_or(missing("unit view current encounter subscribers"))?;
+        if inputs.definitions.binding != *state.binding() {
+            return Err(missing("unit view definitions binding"));
+        }
+        if inputs
+            .consumers
+            .iter()
+            .any(|consumer| matches!(consumer, Consumer::Unsupported(_)))
+        {
+            return Err(missing("unit view unsupported encounter subscriber"));
+        }
+        Ok(())
+    }
+    pub(super) fn stock_signal_encountered_unit(
+        &mut self,
+        state: &mut LoadedState,
+        player: i32,
+        index: i32,
+    ) -> Result<(), Error> {
+        self.preflight_stock_encountered_unit(state)?;
+        let inputs = self
+            .first_contact_unit_view
+            .take()
+            .ok_or(missing("unit view subscribers"))?;
+        let result = (|| {
+            for consumer in &inputs.consumers {
+                match consumer {
+                    Consumer::Boost(row) => {
+                        if let Some(boost) = inputs.definitions.matching_boost(*row, index)? {
+                            let mut runtime = self
+                                .action_research
+                                .take()
+                                .ok_or(missing("unit view canonical research loan"))?;
+                            let result = {
+                                let mut effects = stock::research::Effects::new(
+                                    self,
+                                    &mut runtime,
+                                    inputs.choices,
+                                    inputs.culture,
+                                );
+                                ResearchTrigger {
+                                    definitions: inputs.research,
+                                    effects: &mut effects,
+                                }
+                                .trigger(state, player, boost)
+                                .map_err(error)
+                            };
+                            self.action_research = Some(runtime);
+                            result?;
+                        }
+                    }
+                    Consumer::Unsupported(_) => {
+                        return Err(missing("unit view unsupported encounter subscriber"))
+                    }
+                }
+            }
+            Ok(())
+        })();
+        self.first_contact_unit_view = Some(inputs);
+        result
+    }
     pub(super) fn stock_view_unit(
         &mut self,
         state: &mut LoadedState,
@@ -191,48 +259,7 @@ impl<'a, P> Runtime<'a, P> {
                     .and_then(|v| v.get_mut(ordinal))
                     .ok_or(missing("unit view encountered flag"))?;
                 *flag = true;
-                let inputs = self
-                    .first_contact_unit_view
-                    .take()
-                    .ok_or(missing("unit view subscribers"))?;
-                let result = (|| {
-                    for consumer in &inputs.consumers {
-                        match consumer {
-                            Consumer::Boost(row) => {
-                                if let Some(boost) =
-                                    inputs.definitions.matching_boost(*row, index)?
-                                {
-                                    let mut runtime = self
-                                        .action_research
-                                        .take()
-                                        .ok_or(missing("unit view canonical research loan"))?;
-                                    let result = {
-                                        let mut effects = stock::research::Effects::new(
-                                            self,
-                                            &mut runtime,
-                                            inputs.choices,
-                                            inputs.culture,
-                                        );
-                                        ResearchTrigger {
-                                            definitions: inputs.research,
-                                            effects: &mut effects,
-                                        }
-                                        .trigger(state, player, boost)
-                                        .map_err(error)
-                                    };
-                                    self.action_research = Some(runtime);
-                                    result?;
-                                }
-                            }
-                            Consumer::Unsupported(_) => {
-                                return Err(missing("unit view unsupported encounter subscriber"))
-                            }
-                        }
-                    }
-                    Ok(())
-                })();
-                self.first_contact_unit_view = Some(inputs);
-                result?;
+                self.stock_signal_encountered_unit(state, player, index)?;
             }
         }
         // Four-argument ViewUnit tests observer barbarian status after Basic.
