@@ -64,7 +64,10 @@ impl crate::loaded_actions::stock_notifications::first_contact::opinion_callback
         owner: i32,
     ) -> Result<i32, &'static str> {
         let faith = social::faith_yield(state, self.social_definitions, self.social_queries, owner)
-            .map_err(|_| "opinion current Faith calculation")?;
+            .map_err(|error| match error {
+                c6_core::game_update::Error::Unsupported(cause) => cause,
+                _ => "opinion current Faith calculation",
+            })?;
         let mut effects = Culture {
             runtime: self.runtime,
             cities: self.social_queries.cities,
@@ -75,7 +78,10 @@ impl crate::loaded_actions::stock_notifications::first_contact::opinion_callback
             effects: &mut effects,
         }
         .culture_yield(owner)
-        .map_err(|_| "opinion current Culture calculation")?;
+        .map_err(|error| match error {
+            research::Error::Missing(cause) | research::Error::Effect(cause) => cause,
+            _ => "opinion current Culture calculation",
+        })?;
         // GetFaithCultureStrength2361440 truncates each Q8 independently,
         // wraps their whole-integer sum, then clamps nonpositive to one.
         Ok((faith / 256).wrapping_add(culture / 256).max(1))
