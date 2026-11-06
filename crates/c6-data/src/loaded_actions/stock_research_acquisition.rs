@@ -876,13 +876,36 @@ impl<P> Effects<'_, '_, P> {
                         if state
                             .player_slot_status(player)
                             .map_err(|_| Error::Effect(effect.clone()))?
-                            != 3
+                            == 3
                         {
-                            return Err(Error::Effect(effect));
+                            self.backend
+                                .reached
+                                .push("stock civic acquired human policy guards");
+                            return Ok(());
+                        }
+                        // CultureAi::PurchaseAndSlotPolicies20300c0 next
+                        // returns for !Player.IsMajor, before logger lookup,
+                        // policy analysis, messages, mutable guards or RNG.
+                        // IsMajor2b315c0 compares current GetLevel to this hash.
+                        let level = self
+                            .runtime
+                            .civilization_levels
+                            .iter()
+                            .find(|r| r.0 == player)
+                            .map(|r| r.1)
+                            .ok_or_else(|| Error::Acquisition {
+                                effect: effect.clone(),
+                                reason: "current civic player civilization level".into(),
+                            })?;
+                        if level == 0x253718b0 {
+                            return Err(Error::Acquisition {
+                                effect,
+                                reason: "major NPC acquired-civic policy selection".into(),
+                            });
                         }
                         self.backend
                             .reached
-                            .push("stock civic acquired human policy guards");
+                            .push("stock civic acquired nonmajor policy guard");
                         Ok(())
                     }
                 }
