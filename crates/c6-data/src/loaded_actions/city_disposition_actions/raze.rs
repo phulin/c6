@@ -5,6 +5,8 @@ use super::Definitions;
 use crate::city_capture::{self, Disposition, PendingDisposition};
 use c6_core::{loaded_state::LoadedState, unit::ComponentId};
 
+pub mod requirements;
+
 pub const DIRECTIVE: u32 = 0x8805_00fc;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Stage {
@@ -218,4 +220,128 @@ pub fn no_naval_units_to_relocate(
         }
     }
     Ok(())
+}
+
+/// Actual Diplomacy.OnCityRazed2aa27f0 for the surviving-major surprise-war
+/// profile. The live CityRazed ring supplies receivers in registration order.
+#[allow(clippy::too_many_arguments)]
+pub fn on_city_razed<P, R: crate::loaded_actions::declare_war::diplomacy::Reports<P>>(
+    state: &mut LoadedState,
+    backend: &mut P,
+    definitions: &super::keep::Definitions,
+    alive_majors: &[i32],
+    levels: &[(i32, u32)],
+    receiver: i32,
+    previous_owner: i32,
+    city: ComponentId,
+    reports: &mut R,
+) -> Result<(), Error>
+where
+    R::Error: std::fmt::Debug,
+{
+    use super::keep::{native_i32, percent, player};
+    let fail = |e| error(Stage::CityRazed, e);
+    if state.binding() != &definitions.binding {
+        return Err(fail("Raze diplomacy binding"));
+    }
+    let owner = i32::from(city.owner);
+    let turn = state.retained().core.current_turn;
+    // Raze writes the shared last-city-capture turn only on the razer's own
+    // receiver, unlike Keep's unconditional write on every Diplomacy receiver.
+    if receiver == owner {
+        state
+            .war_diplomacy_mut(receiver)
+            .map_err(|e| error(Stage::CityRazed, e))?
+            .last_war_and_city_turns[7] = turn;
+        return Ok(()); // Player.Diplomacy.HasMet(self) is false.
+    }
+    if !state
+        .game_relations()
+        .map_err(|e| error(Stage::CityRazed, e))?
+        .has_met(receiver, owner)
+        .map_err(|e| error(Stage::CityRazed, e))?
+    {
+        return Ok(());
+    }
+    let major = crate::registry::linux_type_hash(b"CIVILIZATION_LEVEL_FULL_CIV");
+    if levels.iter().find(|r| r.0 == owner).map(|r| r.1) != Some(major) {
+        return Ok(());
+    }
+    if levels.iter().find(|r| r.0 == previous_owner).map(|r| r.1) != Some(major)
+        || !state
+            .player_alive(previous_owner)
+            .map_err(|e| error(Stage::CityRazed, e))?
+    {
+        return Err(fail("Raze diplomacy requires surviving previous major"));
+    }
+    let score = state
+        .game_relations()
+        .map_err(|e| error(Stage::CityRazed, e))?
+        .grievance_score(owner, previous_owner)
+        .map_err(|e| error(Stage::CityRazed, e))?;
+    let mut amount =
+        super::keep::surprise_raze_points(state, definitions, alive_majors, city, previous_owner)
+            .map_err(|e| error(Stage::CityRazed, e))?;
+    if receiver != previous_owner {
+        if score > 0 {
+            amount = percent(amount, definitions.defensive_percent);
+        }
+        let relations = state
+            .game_relations()
+            .map_err(|e| error(Stage::CityRazed, e))?;
+        amount = if relations
+            .is_allied(receiver, previous_owner)
+            .map_err(|e| error(Stage::CityRazed, e))?
+        {
+            percent(amount, definitions.ally_percent)
+        } else if relations
+            .has_declared_friendship(receiver, previous_owner)
+            .map_err(|e| error(Stage::CityRazed, e))?
+        {
+            percent(amount, definitions.friendship_percent)
+        } else {
+            0
+        };
+    }
+    if amount == 0 || levels.iter().find(|r| r.0 == receiver).map(|r| r.1) != Some(major) {
+        return Ok(());
+    }
+    let name = state
+        .city(owner, city.id)
+        .map_err(|e| error(Stage::CityRazed, e))?
+        .header
+        .name
+        .clone();
+    let modifiers = player(state, receiver)
+        .map_err(|e| error(Stage::CityRazed, e))?
+        .diplomacy
+        .grievance_generation_modifier
+        .wrapping_add(
+            player(state, owner)
+                .map_err(|e| error(Stage::CityRazed, e))?
+                .diplomacy
+                .grievance_generation_modifier,
+        )
+        .wrapping_add(100);
+    let adjusted = native_i32(f64::from(modifiers.wrapping_mul(amount)) * 0.01);
+    state
+        .war_relations_mut()
+        .map_err(|e| error(Stage::CityRazed, e))?
+        .change_grievance_and_tension(receiver, owner, adjusted, turn)
+        .map_err(|e| error(Stage::CityRazed, e))?;
+    reports
+        .grievances(state, backend, receiver, owner)
+        .map_err(|e| error(Stage::CityRazed, e))?;
+    state
+        .war_relations_mut()
+        .map_err(|e| error(Stage::CityRazed, e))?
+        .append_grievance_log(c6_core::game_diplomatic_relations::war::GrievanceLogItem {
+            holder: receiver,
+            source: owner,
+            turn,
+            amount: adjusted,
+            reason: b"LOC_DIPLO_GRIEVANCE_LOG_CITY_RAZED".to_vec(),
+            other_reason: name,
+        })
+        .map_err(|e| error(Stage::CityRazed, e))
 }

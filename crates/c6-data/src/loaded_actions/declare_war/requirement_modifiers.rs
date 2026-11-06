@@ -43,7 +43,7 @@ pub struct Modifier {
 }
 /// Current concrete DiplomacySimpleEffect parameters for a first activation.
 /// Values are integer effect parameters; the tracker stores Q8 values.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Activation {
     pub label: u64,
     pub definition: Vec<u8>,
@@ -55,6 +55,9 @@ pub struct Activation {
     pub reduction: i32,
     pub name: Vec<u8>,
     pub visibility: i32,
+    /// Native DiplomacyBaseEffect+48; the fresh extra-value branch activates
+    /// and immediately deactivates its concrete tracker.
+    pub remove_immediately: bool,
 }
 pub struct Modifiers {
     stamp: ActionStamp,
@@ -128,6 +131,9 @@ impl Modifiers {
     fn key(&self, label: u64) -> Result<(i32, i32, i32), Error> {
         let o = self.object(label)?;
         Ok((o.owner, o.first, o.second))
+    }
+    pub fn activations(&self) -> &[Activation] {
+        &self.activations
     }
     pub fn modifiers(&self) -> &[Modifier] {
         &self.modifiers
@@ -333,13 +339,13 @@ impl modifiers::EffectContext for Apply<'_> {
     }
     fn apply_concrete_effect(&mut self) -> Result<bool, Error> {
         let m = &self.owner.modifiers[self.modifier];
+        let subject = self.owner.object(m.tracked[self.subject].object)?.owner;
         let a = self
             .owner
             .activations
-            .iter()
+            .iter_mut()
             .find(|a| a.label == m.label)
             .ok_or(Error::Missing("diplomacy activation parameters"))?;
-        let subject = self.owner.object(m.tracked[self.subject].object)?.owner;
         if !self.state.player_alive(subject).map_err(Error::State)? && !m.allow_dead {
             return Ok(true);
         }
@@ -362,9 +368,34 @@ impl modifiers::EffectContext for Apply<'_> {
         // BaseEffect skips Activate when its integer value already equals the
         // current value (zero for the absent tracker).
         if a.initial == 0 {
+            if a.remove_immediately {
+                return Err(Error::Missing("zero-value immediate diplomacy removal"));
+            }
             return Ok(true);
         }
-        let tracker = first_tracker(a);
+        let mut values = a.clone();
+        if a.remove_immediately {
+            // Fresh tracker GetCurrentValue is zero at both native reads in
+            // Apply/AccumulateExtraValue. Existing trackers are rejected above.
+            // These sign changes mutate the persistent concrete effect itself.
+            if a.initial.wrapping_mul(a.increment) < 0 {
+                a.increment = a.increment.wrapping_neg();
+            }
+            if a.initial.wrapping_mul(a.reduction) > 0 {
+                a.reduction = a.reduction.wrapping_neg();
+            }
+            values.increment = a.increment;
+            values.reduction = a.reduction;
+            values.maximum = a.initial;
+        }
+        let mut tracker = first_tracker(&values);
+        if a.remove_immediately {
+            tracker.is_active = false;
+            tracker.accumulation_turn_count = 0;
+            if tracker.cooldown_turns <= 0 {
+                tracker.current_value = 0;
+            }
+        }
         entries.insert(
             at,
             c6_core::player_diplomacy_blackboard::ModifierEntry { key, tracker },
@@ -418,6 +449,7 @@ mod activation_tests {
             reduction: 1,
             name: b"occupied".to_vec(),
             visibility: 0,
+            remove_immediately: false,
         };
         let t = first_tracker(&a);
         assert_eq!(

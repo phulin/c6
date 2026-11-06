@@ -6,12 +6,13 @@ use c6_core::{
 };
 
 pub struct Definitions {
-    binding: c6_core::core_player::initialization::WireBinding,
+    pub(super) binding: c6_core::core_player::initialization::WireBinding,
     capture_percent: i32,
+    raze_percent: i32,
     city_percent: i32,
-    defensive_percent: i32,
-    ally_percent: i32,
-    friendship_percent: i32,
+    pub(super) defensive_percent: i32,
+    pub(super) ally_percent: i32,
+    pub(super) friendship_percent: i32,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &crate::Rules) -> Result<Self, String> {
@@ -51,9 +52,21 @@ impl Definitions {
         } else {
             0
         };
+        let raze_percent = if let Some(index) = actions.find_index(declare_war::SURPRISE_ACTION) {
+            rules
+                .gameplay()
+                .table("DiplomaticActions")
+                .and_then(|t| t.row_by_id(actions.entries()[index].database_rowid))
+                .and_then(|r| r.get("RazeWarmongerPercent").ok())
+                .and_then(crate::game_parameters::sql_integer)
+                .ok_or("Raze RazeWarmongerPercent")?
+        } else {
+            0
+        };
         Ok(Self {
             binding: state.binding().clone(),
             capture_percent,
+            raze_percent,
             city_percent: parameter("WARMONGER_CITY_PERCENT_OF_DOW")?,
             defensive_percent: parameter("SHARE_WAR_GRIEVANCES_DEFENSIVE_PERCENT")?,
             ally_percent: parameter("SHARE_WAR_GRIEVANCES_ALLY")?,
@@ -61,7 +74,7 @@ impl Definitions {
         })
     }
 }
-fn player(
+pub(super) fn player(
     state: &LoadedState,
     owner: i32,
 ) -> Result<&c6_core::loaded_components::RetainedPlayer, Error> {
@@ -72,7 +85,7 @@ fn player(
         .find(|p| p.header.owner == owner)
         .ok_or_else(|| error(Stage::CityOccupied, "Keep current Player"))
 }
-fn percent(value: i32, factor: i32) -> i32 {
+pub(super) fn percent(value: i32, factor: i32) -> i32 {
     value.wrapping_mul(factor) / 100
 }
 fn adjusted_size(value: i32, population: i32, average: i32) -> Result<i32, Error> {
@@ -119,6 +132,40 @@ pub fn surprise_capture_points(
     city: ComponentId,
     previous_owner: i32,
 ) -> Result<i32, Error> {
+    surprise_points(
+        state,
+        definitions,
+        alive_majors,
+        city,
+        previous_owner,
+        definitions.capture_percent,
+    )
+}
+/// The Raze flag selects RazeWarmongerPercent before the same city/size kernel.
+pub fn surprise_raze_points(
+    state: &LoadedState,
+    definitions: &Definitions,
+    alive_majors: &[i32],
+    city: ComponentId,
+    previous_owner: i32,
+) -> Result<i32, Error> {
+    surprise_points(
+        state,
+        definitions,
+        alive_majors,
+        city,
+        previous_owner,
+        definitions.raze_percent,
+    )
+}
+fn surprise_points(
+    state: &LoadedState,
+    definitions: &Definitions,
+    alive_majors: &[i32],
+    city: ComponentId,
+    previous_owner: i32,
+    action_percent: i32,
+) -> Result<i32, Error> {
     if state.binding() != &definitions.binding {
         return Err(error(
             Stage::CityOccupied,
@@ -144,12 +191,12 @@ pub fn surprise_capture_points(
         .header
         .population;
     adjusted_size(
-        percent(definitions.capture_percent, definitions.city_percent),
+        percent(action_percent, definitions.city_percent),
         population,
         current_average(state, alive_majors)?,
     )
 }
-fn native_i32(value: f64) -> i32 {
+pub(super) fn native_i32(value: f64) -> i32 {
     if !value.is_finite() || value < f64::from(i32::MIN) || value >= 2147483648.0 {
         i32::MIN
     } else {
