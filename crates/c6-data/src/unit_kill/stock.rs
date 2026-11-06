@@ -302,6 +302,7 @@ pub struct Stock<'a, R> {
     _requirements: &'a mut R,
     definitions: &'a Definitions,
     input: &'a Metadata,
+    sight_definitions: Option<&'a crate::loaded_actions::city_range_attack::Definitions>,
     unit_definitions: Option<
         &'a c6_core::movement_world::DefinitionTable<
             'a,
@@ -328,6 +329,7 @@ impl<'a, R> Stock<'a, R> {
             _requirements: requirements,
             definitions,
             input,
+            sight_definitions: None,
             unit_definitions: None,
             influence: None,
             collections: None,
@@ -340,6 +342,13 @@ impl<'a, R> Stock<'a, R> {
         collections: &'a mut c6_core::melee_attack::proposals::collections::Runtime,
     ) -> Self {
         self.collections = Some(collections);
+        self
+    }
+    pub fn with_sight_definitions(
+        mut self,
+        definitions: &'a crate::loaded_actions::city_range_attack::Definitions,
+    ) -> Self {
+        self.sight_definitions = Some(definitions);
         self
     }
     pub fn with_influence(mut self, callback: &'a mut Influence<'a>) -> Self {
@@ -514,11 +523,21 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> Continuations<P> for S
     }
 }
 impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> for Stock<'_, R> {
+    fn unit_cleanup_sight_definitions(
+        &self,
+    ) -> Result<
+        &crate::loaded_actions::city_range_attack::Definitions,
+        kill::Error<Error, EffectError<P>>,
+    > {
+        self.sight_definitions.ok_or(kill::Error::Missing(
+            "current Unit cleanup sight definitions",
+        ))
+    }
     fn clear_owned_unit_modifier(
         &mut self,
         state: &mut LoadedState,
-        _sight: &mut sight::Runtime,
-        _providers: &mut P,
+        sight: &mut sight::Runtime,
+        providers: &mut P,
         instance: i32,
     ) -> Result<(), kill::Error<Error, EffectError<P>>> {
         let row = self
@@ -538,7 +557,7 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
             .ok()
             .and_then(|p| p.collection_modifiers().ok())
             .and_then(|m| m.modifier(receiver));
-        let retained = if let Some(current) = combat {
+        let mut retained = if let Some(current) = combat {
             if current.instance != instance
                 || !current.tracked.is_empty()
                 || !current.applied.is_empty()
@@ -561,10 +580,18 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                 .effects
                 .unit_modifier(receiver)
                 .map_err(kill::Error::CleanupQuery)?;
-            if current.instance != instance
-                || current.enabled
-                || !current.tracked.is_empty()
-                || !current.applied.is_empty()
+            if current.instance != instance {
+                return Err(kill::Error::Missing("owned noncombat modifier identity"));
+            }
+            if (current.enabled || !current.tracked.is_empty() || !current.applied.is_empty())
+                && !matches!(
+                    self.effects
+                        .effect(current.effect)
+                        .map_err(kill::Error::CleanupQuery)?,
+                    crate::melee_attack::backend::EffectState::Unit(
+                        crate::unit_kill::effects::Effect::SeeHidden
+                    )
+                )
             {
                 return Err(kill::Error::Missing(
                     "active owned noncombat modifier destructor",
@@ -634,11 +661,15 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                 "enabled owned modifier detach logging",
             ));
         }
+        if let Retained::Unit(modifier) = &mut retained {
+            let definitions = self.definitions;
+            objects::deactivate_owned(state, sight, providers, self, definitions, modifier)?;
+        }
         // Stock Unit::ToString and DynamicModifier::ToString use only current
         // scalar getters and formatting-owned strings (the latter caches only
         // its rendered output). There are no gameplay/RNG callbacks in them.
-        // Deactivate has no tracked/applied subjects here; its concrete effect
-        // Before/After slots are the already-qualified PlayerStrength RETs.
+        // Inactive combat modifiers retain their already-qualified no-subject
+        // destructor. Active SeeHidden uses the concrete Deactivate above.
         let owner = self
             .effects
             .object_mut(owner_ptr)
@@ -653,7 +684,7 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
             changes::release(
                 &mut Release {
                     requirements: self._requirements,
-                    providers: _providers,
+                    providers,
                     input: self.input,
                 },
                 owner_requirement,
@@ -678,6 +709,11 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                 crate::melee_attack::proposals::collection_modifiers::destroy_unit_combat_collection(state,collection)
                     .map_err(|e|kill::Error::Effect(Error::Collection(e)))?;
             }
+        }
+        if let Retained::Unit(modifier) = retained {
+            self.effects
+                .retire_effect(state, modifier.effect)
+                .map_err(kill::Error::CleanupQuery)?;
         }
         Ok(())
     }

@@ -47,7 +47,10 @@ pub fn remove_fields<C, P>(
 ) -> Result<FieldRemoval, Error<C, P>> {
     if let Effect::SeeHidden = effect {
         return crate::unit_creation::collections::see_hidden::apply(state, actor, true)
-            .map(|success| FieldRemoval { success, ability_lost: None })
+            .map(|success| FieldRemoval {
+                success,
+                ability_lost: None,
+            })
             .map_err(|_| Error::Missing("SeeHidden removal Sight.UpdateMap continuation"));
     }
     if let Effect::CombatStrength { amount, kind } = effect {
@@ -159,6 +162,41 @@ pub fn remove_fields<C, P>(
         ability_lost: None,
     })
 }
+/// AdjustUnitSeeHidden.Remove ignores its initialization boolean and calls
+/// SetSeeHiddenType(NO_HIDDEN). The setter stores first, then performs the
+/// existing complete UpdateMap(location,true) for a currently placed Unit.
+pub(crate) fn remove_see_hidden<P: super::Providers, C>(
+    state: &mut LoadedState,
+    runtime: &mut sight::Runtime,
+    providers: &mut P,
+    definitions: &crate::loaded_actions::city_range_attack::Definitions,
+    actor: (i32, u32),
+) -> Result<bool, Error<C, EffectError<P>>> {
+    let unit = super::unit(state, actor)?;
+    if unit.k_sight_modifiers.e_can_see_hidden_type == -1 {
+        return Ok(true);
+    }
+    let location = unit.k_location;
+    let placed = c6_core::skip_turn::placement::coordinate_valid(location);
+    state
+        .unit_mut(actor.0, actor.1)
+        .map_err(Error::State)?
+        .k_sight_modifiers
+        .e_can_see_hidden_type = -1;
+    if placed {
+        sight::Context {
+            state,
+            runtime,
+            effects: providers,
+            sight_definitions: definitions,
+            actor,
+        }
+        .update_map(location, true)
+        .map_err(Error::Sight)?;
+    }
+    Ok(true)
+}
+
 pub fn remove_with_continuations<P: super::Providers, C: super::Continuations<P>>(
     state: &mut LoadedState,
     runtime: &mut sight::Runtime,

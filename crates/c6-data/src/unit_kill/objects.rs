@@ -21,6 +21,14 @@ pub trait Services<P: super::Providers>: super::Continuations<P> {
     fn unit_cleanup_runtime_mut(
         &mut self,
     ) -> Result<&mut EffectRuntime, crate::melee_attack::backend::QueryError>;
+    fn unit_cleanup_sight_definitions(
+        &self,
+    ) -> Result<
+        &crate::loaded_actions::city_range_attack::Definitions,
+        Error<Self::Error, EffectError<P>>,
+    > {
+        Err(Error::Missing("current Unit cleanup sight definitions"))
+    }
     fn clear_owned_unit_modifier(
         &mut self,
         _state: &mut LoadedState,
@@ -81,6 +89,7 @@ struct Context<'a, P, C> {
     providers: &'a mut P,
     effects: &'a mut C,
     definitions: &'a Definitions,
+    destroying: Option<&'a mut kernel::Modifier>,
 }
 fn object_key<E, P>(
     object: &crate::melee_attack::backend::Object,
@@ -120,6 +129,9 @@ impl<P: super::Providers, C: Services<P>> kernel::Context for Context<'_, P, C> 
             .ok_or(Error::Missing("current Unit wrapper lifecycle"))
     }
     fn modifier(&self, id: u64) -> Result<&kernel::Modifier, Self::Error> {
+        if let Some(value) = self.destroying.as_deref().filter(|m| m.receiver == id) {
+            return Ok(value);
+        }
         self.effects
             .unit_cleanup_runtime()
             .map_err(Error::CleanupQuery)?
@@ -127,6 +139,12 @@ impl<P: super::Providers, C: Services<P>> kernel::Context for Context<'_, P, C> 
             .map_err(Error::CleanupQuery)
     }
     fn modifier_mut(&mut self, id: u64) -> Result<&mut kernel::Modifier, Self::Error> {
+        if self.destroying.as_ref().is_some_and(|m| m.receiver == id) {
+            return self
+                .destroying
+                .as_deref_mut()
+                .ok_or(Error::Missing("retained destroying Unit modifier"));
+        }
         self.effects
             .unit_cleanup_runtime_mut()
             .map_err(Error::CleanupQuery)?
@@ -186,6 +204,16 @@ impl<P: super::Providers, C: Services<P>> kernel::Context for Context<'_, P, C> 
             return Ok(false);
         };
         let actor = (unit.record.e_owner, unit.record.id);
+        if effect == super::effects::Effect::SeeHidden {
+            let definitions = self.effects.unit_cleanup_sight_definitions()?;
+            return super::effects::remove_see_hidden(
+                self.state,
+                self.sight,
+                self.providers,
+                definitions,
+                actor,
+            );
+        }
         super::effects::remove_with_continuations(
             self.state,
             self.sight,
@@ -205,6 +233,32 @@ impl<P: super::Providers, C: Services<P>> kernel::Context for Context<'_, P, C> 
             .unit_cleanup_log(self.state, receiver, object, true)
     }
 }
+/// ClearModifier has already removed the registration. Its same owned object
+/// stays alive through native Deactivate; callbacks still query the canonical
+/// registries and cannot find a spurious reinserted registration.
+pub fn deactivate_owned<P: super::Providers, C: Services<P>>(
+    state: &mut LoadedState,
+    sight: &mut sight::Runtime,
+    providers: &mut P,
+    effects: &mut C,
+    definitions: &Definitions,
+    retained: &mut kernel::Modifier,
+) -> Result<(), Error<C::Error, EffectError<P>>> {
+    let receiver = retained.receiver;
+    kernel::deactivate(
+        &mut Context {
+            state,
+            sight,
+            providers,
+            effects,
+            definitions,
+            destroying: Some(retained),
+        },
+        receiver,
+    )
+    .map_err(|e| Error::ObjectCleanup(Box::new(e)))
+}
+
 fn dispatch<P: super::Providers, C: Services<P>>(
     state: &mut LoadedState,
     sight: &mut sight::Runtime,
@@ -220,6 +274,7 @@ fn dispatch<P: super::Providers, C: Services<P>>(
             providers,
             effects,
             definitions,
+            destroying: None,
         },
         objects,
     )

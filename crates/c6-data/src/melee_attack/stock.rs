@@ -57,6 +57,7 @@ where
         )
         .map_err(|e| error("stock death", e))?
         .with_unit_definitions(self.units)
+        .with_sight_definitions(definitions.sight)
         .with_influence(self.influence);
         melee::resolve::apply_damage_with_continuations(
             state,
