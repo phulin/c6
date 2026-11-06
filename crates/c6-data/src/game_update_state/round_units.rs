@@ -400,10 +400,27 @@ pub fn healing_world(
     } else if owner == a.0 {
         HealingTerritory::Friendly
     } else {
-        return Err(Error::Unsupported {
-            actor: a,
-            operation: "healing suzerain/alliance territory",
-        });
+        // Native GetDiplomaticTerritory queries the plot owner's CURRENT
+        // suzerain before the actor's alliance relationship. Category 3 is
+        // foreign nonallied land even during peace; no war/class query occurs.
+        let plot_player = state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Missing("healing current plot owner"))?;
+        if plot_player.influence.suzerain == a.0 {
+            HealingTerritory::Friendly
+        } else if state
+            .game_relations()
+            .map_err(Error::State)?
+            .is_allied(a.0, owner)
+            .map_err(|_| Error::Missing("healing current alliance relationship"))?
+        {
+            HealingTerritory::Friendly
+        } else {
+            HealingTerritory::Enemy
+        }
     };
     let player = state
         .retained()
