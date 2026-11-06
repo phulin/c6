@@ -1,4 +1,4 @@
-//! Linux dust-storm execution (296c600/296db70/2970a50). Rules and
+//! Linux bounded dust-storm and hurricane execution (296c600/296db70/2970a50). Rules and
 //! configuration are explicit; all random choices use the current GameSync.
 //! Occupied damage branches and imported storms without live start plots remain
 //! unsupported. Presentation reporting contains no reached gameplay RNG.
@@ -13,6 +13,11 @@ use c6_core::{
     unit::PlotCoord,
 };
 
+struct Damage {
+    kind: u32,
+    percentage: i32,
+    coastal_lowland_percentage: Option<i32>,
+}
 struct Event {
     hash: u32,
     hexes: i32,
@@ -20,7 +25,7 @@ struct Event {
     spacing: i32,
     duration: i32,
     terrains: Vec<u32>,
-    damages: Vec<(u32, i32)>,
+    damages: Vec<Damage>,
     unsupported_damage_options: bool,
     yields: Vec<(u32, i32, i32)>,
 }
@@ -80,15 +85,28 @@ impl Context {
             let mut damages = Vec::new();
             let mut unsupported_damage_options = false;
             for r in matching("RandomEvent_Damages")? {
-                // The reached dust-storm rows have no optional turn/coastal overrides.
-                if ["MinTurn", "MaxTurn", "CoastalLowlandPercentage"]
+                // Turn-bounded damage rows remain explicit unsupported branches.
+                if ["MinTurn", "MaxTurn"]
                     .iter()
                     .any(|c| !matches!(r.get(c), Ok(crate::SqlValue::Null)))
                 {
                     unsupported_damage_options = true;
                     continue;
                 }
-                damages.push((hash(r, "DamageType")?, int(r, "Percentage")?));
+                let coastal_lowland_percentage =
+                    match r.get("CoastalLowlandPercentage").map_err(Error::Rules)? {
+                        crate::SqlValue::Null => None,
+                        crate::SqlValue::Integer(value) => Some(
+                            i32::try_from(*value)
+                                .map_err(|_| Error::Missing("coastal lowland damage percentage"))?,
+                        ),
+                        _ => return Err(Error::Missing("coastal lowland damage percentage")),
+                    };
+                damages.push(Damage {
+                    kind: hash(r, "DamageType")?,
+                    percentage: int(r, "Percentage")?,
+                    coastal_lowland_percentage,
+                });
             }
             let mut yields = Vec::new();
             for r in matching("RandomEvent_Yields")? {
@@ -382,10 +400,10 @@ fn neighbor(state: &LoadedState, index: i32, direction: usize) -> Result<Option<
     .map_err(|_| Error::Missing("storm adjacency"))
 }
 fn supported(event: &Event) -> Result<(), Error> {
-    if event.hash != linux_type_hash(b"RANDOM_EVENT_DUST_STORM_GRADIENT")
-        || event.hexes != 3
-        || event.unsupported_damage_options
-    {
+    let profile = (event.hash == linux_type_hash(b"RANDOM_EVENT_DUST_STORM_GRADIENT")
+        && event.hexes == 3)
+        || (event.hash == linux_type_hash(b"RANDOM_EVENT_HURRICANE_CAT_4") && event.hexes == 7);
+    if !profile || event.unsupported_damage_options {
         return Err(Error::Requires("positive storm definition/effects"));
     }
     Ok(())
@@ -400,7 +418,8 @@ fn start_plot(
     supported(def)?;
     let map = state.world().map();
     let mut options = Vec::new();
-    // Hexes3 derives required count1. FindRequiredTiles tests only the center.
+    // ChooseStormStartPlot296d840 passes required count1 for Hexes3..18.
+    // Thus dust3 and hurricane7 both test only the center terrain.
     for (i, plot) in map.plots.iter().enumerate() {
         if !def.terrains.is_empty() && !def.terrains.contains(&plot.terrain_hash) {
             continue;
@@ -446,8 +465,13 @@ fn effects(
     let def = context.event(storm.random_event_ordinal)?;
     supported(def)?;
     let mut plots = vec![storm.current_plot];
-    // ClimateData.GetStormPlots2969450: center, direction0, direction5.
-    for d in [0, 5] {
+    // ClimateData.GetStormPlots2969450 preserves source direction order.
+    let directions: &[usize] = if def.hexes == 7 {
+        &[0, 1, 2, 3, 4, 5]
+    } else {
+        &[0, 5]
+    };
+    for &d in directions {
         if let Some(p) = neighbor(state, storm.current_plot, d)? {
             plots.push(p);
         }
@@ -457,16 +481,51 @@ fn effects(
         if storm.plots_affected.contains(&index) {
             continue;
         }
-        for &(kind, chance) in &def.damages {
+        for damage in &def.damages {
+            let kind = damage.kind;
+            let mut chance = damage.percentage.wrapping_mul(percent) / 100;
+            if let Some(override_chance) = damage.coastal_lowland_percentage {
+                let terrain = state
+                    .world()
+                    .map()
+                    .components
+                    .iter()
+                    .find_map(|c| match c {
+                        Component::Terrain(t) => Some(t),
+                        _ => None,
+                    })
+                    .ok_or(Error::Missing("storm coastal lowland owner"))?;
+                if terrain
+                    .coastal_lowlands
+                    .iter()
+                    .any(|p| p.plot_index == index && p.lowland_type_hash != u32::MAX)
+                {
+                    // Native override is the raw percentage, including the
+                    // final half-strength pass; it is not scaled a second time.
+                    chance = override_chance;
+                }
+            }
             let roll = i32::from(state.game_sync_rand(100).map_err(Error::Random)?);
-            if roll < chance.wrapping_mul(percent) / 100 {
+            if roll < chance {
                 let plot = &state.world().map().plots[index as usize];
                 let owned = plot.city_attributes.as_ref().is_some_and(|a| a.player >= 0);
                 let improvement = kind == linux_type_hash(b"IMPROVEMENT_DESTROYED")
                     || kind == linux_type_hash(b"IMPROVEMENT_PILLAGED");
                 let district = kind == linux_type_hash(b"DISTRICT_PILLAGED")
                     || kind == linux_type_hash(b"BUILDING_PILLAGED");
-                if (!improvement && !district)
+                let naval = kind == linux_type_hash(b"UNIT_DAMAGE_NAVAL");
+                if naval {
+                    // DealEventDamage -> DamageUnit obtains this exact layer0
+                    // vector. Empty means no HP roll, owner or damage callback.
+                    if !state
+                        .world()
+                        .plot_units(0, index as usize)
+                        .map_err(|_| Error::Missing("storm current layer0 units"))?
+                        .is_empty()
+                    {
+                        return Err(Error::Requires("storm occupied naval damage effects"));
+                    }
+                } else if (!improvement && !district)
                     || (owned
                         && ((improvement && plot.improvement_hash != u32::MAX)
                             || (district
