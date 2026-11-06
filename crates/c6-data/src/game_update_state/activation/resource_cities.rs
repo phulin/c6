@@ -11,6 +11,8 @@ pub(super) struct Definitions {
     resources: LinuxDefinitionRegistry,
     visibility: crate::city_turn::resources::Definitions,
     accumulating: Vec<bool>,
+    rates: Vec<(i32, i32)>,
+    compatible_improvements: Vec<Vec<u32>>,
     buildings: LinuxDefinitionRegistry,
     maintenance: Vec<usize>,
     power: crate::city_power::Definitions,
@@ -34,6 +36,46 @@ impl Definitions {
                     .ok_or(missing("resource city accumulation definition"))
             })
             .collect::<Result<Vec<_>, _>>()?;
+        let mut rates = Vec::new();
+        let mut compatible_improvements = Vec::new();
+        let consumption = rules
+            .gameplay()
+            .table("Resource_Consumption")
+            .ok_or(missing("resource extraction rates"))?;
+        let improvements = rules
+            .gameplay()
+            .table("Improvement_ValidResources")
+            .ok_or(missing("resource extraction improvements"))?;
+        for resource in registry.entries() {
+            let row = consumption.rows().find(|row| {
+                row.text("ResourceType").ok().map(str::as_bytes)
+                    == Some(resource.type_name.as_slice())
+            });
+            let rate = |column| -> Result<i32, Error> {
+                row.map(|row| {
+                    row.get(column)
+                        .ok()
+                        .and_then(crate::game_parameters::sql_integer)
+                        .ok_or(missing("resource extraction rate"))
+                })
+                .unwrap_or(Ok(0))
+            };
+            rates.push((rate("BaseExtractionRate")?, rate("ImprovedExtractionRate")?));
+            compatible_improvements.push(
+                improvements
+                    .rows()
+                    .filter(|row| {
+                        row.text("ResourceType").ok().map(str::as_bytes)
+                            == Some(resource.type_name.as_slice())
+                    })
+                    .map(|row| {
+                        row.text("ImprovementType")
+                            .map(|name| linux_type_hash(name.as_bytes()))
+                            .map_err(|_| missing("resource extraction improvement reference"))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+        }
         let buildings = collection(rules, "Buildings", "BuildingType")
             .map_err(|_| missing("resource maintenance buildings"))?;
         let mut maintenance = Vec::new();
@@ -54,6 +96,8 @@ impl Definitions {
         Ok(Self {
             resources: registry,
             accumulating,
+            rates,
+            compatible_improvements,
             buildings,
             maintenance,
             visibility: crate::city_turn::resources::Definitions::from_rules(rules)
@@ -67,16 +111,41 @@ impl Definitions {
 /// IncrementAccumulatedResources2b6e310 visits City order, then ascending map
 /// indices returned by GetPurchasedPlots2a42110. No-work/unrevealed and
 /// non-accumulating resources return before extraction or resource mutation.
-pub(super) fn accumulate(state: &LoadedState, defs: &Definitions, owner: i32) -> Result<(), Error> {
-    let player = super::player(state, owner)?;
-    for city in &player.cities.records.entries {
-        for plot in &state.world().map().plots {
-            if !plot.city_attributes.as_ref().is_some_and(|attributes| {
-                i32::from(attributes.player) == owner
-                    && attributes.owning_city == city.value.header.id
-            }) {
-                continue;
-            }
+pub(super) fn accumulate(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    owner: i32,
+    effects: &mut impl super::Effects,
+) -> Result<Option<i32>, Error> {
+    use c6_core::map::PlotFlag;
+    let cities = super::player(state, owner)?
+        .cities
+        .records
+        .entries
+        .iter()
+        .map(|e| e.value.header.id)
+        .collect::<Vec<_>>();
+    let mut last = None;
+    for city_id in cities {
+        let plots = state
+            .world()
+            .map()
+            .plots
+            .iter()
+            .enumerate()
+            .filter(|(_, plot)| {
+                plot.city_attributes
+                    .as_ref()
+                    .is_some_and(|a| i32::from(a.player) == owner && a.owning_city == city_id)
+            })
+            .map(|(index, _)| index as u32)
+            .collect::<Vec<_>>();
+        for plot_id in plots {
+            let plot = state
+                .world()
+                .map()
+                .plot_by_index(plot_id)
+                .ok_or(missing("purchased resource plot"))?;
             if plot.resource_hash == u32::MAX {
                 continue;
             }
@@ -88,23 +157,98 @@ pub(super) fn accumulate(state: &LoadedState, defs: &Definitions, owner: i32) ->
                 .visibility
                 .visible_resource(state, owner, index as i32)
                 .map_err(|_| missing("current purchased resource visibility"))?;
-            if visible < 0 {
-                continue;
-            }
-            if !*defs
-                .accumulating
-                .get(visible as usize)
-                .ok_or(missing("current resource consumption definition"))?
+            if visible < 0
+                || !*defs
+                    .accumulating
+                    .get(visible as usize)
+                    .ok_or(missing("current resource consumption definition"))?
             {
                 continue;
             }
-            // Improved/district extraction then changes stockpiles, extraction
-            // Q8 totals, resource reports and climate inputs. It is not a zero
-            // contribution merely because the actor has no military demand.
-            return Err(missing("visible accumulating city resource extraction"));
+            let hash = linux_type_hash(&defs.resources.entries()[index].type_name);
+            let (base, improved_rate) = defs.rates[index];
+            let mut amount = base;
+            let improved = !plot.flags.get(PlotFlag::ImprovementPillaged)
+                && defs.compatible_improvements[index].contains(&plot.improvement_hash);
+            let district = plot
+                .city_attributes
+                .as_ref()
+                .filter(|a| a.district != u32::MAX)
+                .and_then(|a| {
+                    super::player(state, owner)
+                        .ok()?
+                        .districts
+                        .records
+                        .entries
+                        .iter()
+                        .find(|e| e.value.id == a.district)
+                        .map(|e| &e.value)
+                });
+            // Native accumulation's district test checks pillage only. It is
+            // distinct from GetResourceExtractableAt's completed-district gate.
+            if improved || district.is_some_and(|district| !district.pillaged) {
+                let extra = super::player(state, owner)?
+                    .resources
+                    .extra_accumulation_modifier
+                    .iter()
+                    .rfind(|row| defs.resources.find_index(row.resource_hash) == Some(index))
+                    .ok_or(missing("current resource accumulation modifier"))?
+                    .value
+                    .max(0);
+                amount = amount.wrapping_add(improved_rate).wrapping_add(extra);
+                let city = state
+                    .city(owner, city_id)
+                    .map_err(|_| missing("resource extracting City"))?;
+                if city.resources.extra_accumulation_modifier > 0 {
+                    amount = amount.wrapping_add(city.resources.extra_accumulation_modifier);
+                }
+                let specific = city
+                    .resources
+                    .extra_accumulation_specific_resource_modifier
+                    .iter()
+                    .rfind(|row| defs.resources.find_index(row.definition_hash) == Some(index))
+                    .ok_or(missing("current city resource accumulation modifier"))?
+                    .value;
+                if specific > 0 {
+                    amount = amount.wrapping_add(specific);
+                }
+                if city
+                    .resources
+                    .extra_accumulation_for_strategic_diversity_modifier
+                    > 0
+                {
+                    return Err(missing(
+                        "positive resource strategic diversity extraction modifier",
+                    ));
+                }
+            }
+            let terrain = state
+                .city(owner, city_id)
+                .map_err(|_| missing("resource extracting City"))?
+                .resources
+                .extra_accumulation_terrain_modifier
+                .iter()
+                .rfind(|row| row.definition_hash == plot.terrain_hash)
+                .ok_or(missing("current terrain resource extraction modifier"))?
+                .value;
+            if terrain > 0 {
+                return Err(missing("positive terrain resource extraction modifier"));
+            }
+            if amount != 0 {
+                effects.change_owned_resource(state, owner, hash, amount)?;
+                let total = state
+                    .player_resources_mut(owner)
+                    .map_err(|_| missing("accumulated resource owner"))?
+                    .accumulated_resource_per_turn_q8
+                    .iter_mut()
+                    .rfind(|row| defs.resources.find_index(row.resource_hash) == Some(index))
+                    .ok_or(missing("accumulated resource per turn cell"))?;
+                total.value = total.value.wrapping_add(amount.wrapping_shl(8));
+                last = Some(index as i32);
+            }
         }
     }
-    Ok(())
+    Ok(last)
 }
 
 fn reset_temporary_power(power: &mut c6_core::city_services::Power) {

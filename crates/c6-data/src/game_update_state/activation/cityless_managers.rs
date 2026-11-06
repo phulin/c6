@@ -383,6 +383,25 @@ pub struct Queries<'a> {
     pub game_speed_type: u32,
 }
 pub trait Effects {
+    /// Same original ownership0 ChangeResourceAmount service as research.
+    fn change_owned_resource(
+        &mut self,
+        _state: &mut LoadedState,
+        _owner: i32,
+        _resource: u32,
+        _delta: i32,
+    ) -> Result<(), Error> {
+        Err(missing("current resource amount services"))
+    }
+    fn resource_report(
+        &mut self,
+        _state: &LoadedState,
+        _owner: i32,
+        _resource: i32,
+    ) -> Result<(), Error> {
+        Err(missing("current resource report"))
+    }
+
     fn allocate_luxuries(
         &mut self,
         state: &mut LoadedState,
@@ -679,8 +698,11 @@ pub fn before_units(
             }
         }
     }
-    resource_cities::accumulate(state, &defs.city_resources, owner)?;
+    let last_resource = resource_cities::accumulate(state, &defs.city_resources, owner, e)?;
     e.report_block(state, 0x1153df52, false)?;
+    if let Some(resource) = last_resource {
+        e.resource_report(state, owner, resource)?;
+    }
     e.allocate_luxuries(state, &defs.luxuries, owner)?;
     if !runtime.parks.is_empty() {
         return Err(missing("national park amenities"));
