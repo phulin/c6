@@ -121,6 +121,7 @@ pub enum Effect {
 }
 #[derive(Clone, Copy, Debug)]
 pub enum Query {
+    PolicyUnlocked { owner: i32, hash: u32 },
     CityYield {
         city: c6_core::unit::ComponentId,
         yield_index: i32,
@@ -663,6 +664,9 @@ impl Definitions {
         Ok(cost.era.and_then(|era| self.eras.type_hash(era as usize)))
     }
     pub fn binding(&self) -> &c6_core::core_player::initialization::WireBinding { &self.binding }
+    pub(crate) fn policy_index(&self, hash: u32) -> Option<i32> {
+        self.policies.find_index(hash).map(|i|i as i32)
+    }
     pub fn diplomatic_visibility(&self) -> &diplomacy::Definitions {
         &self.diplomatic_visibility
     }

@@ -503,7 +503,7 @@ impl<P> research::Effects for Effects<'_, '_, P> {
     fn query(
         &mut self,
         state: &mut LoadedState,
-        _: &research::Definitions,
+        definitions: &research::Definitions,
         query: research::Query,
     ) -> Result<i32, Error> {
         self.backend.check(state).map_err(Error::Notification)?;
@@ -523,6 +523,20 @@ impl<P> research::Effects for Effects<'_, '_, P> {
             return Err(Error::Query(query));
         }
         match query {
+            research::Query::PolicyUnlocked { owner, hash } => {
+                let index = definitions.policy_index(hash).ok_or(Error::Query(query))?;
+                let tech = self
+                    .choices
+                    .player(state, owner, self.choice_graph)
+                    .map_err(Error::Choice)?;
+                culture
+                    .definitions
+                    .player(state, owner, culture.graph, Some(&tech), culture.starting)
+                    .map_err(Error::Culture)?
+                    .policy_unlocked(index)
+                    .map(i32::from)
+                    .map_err(Error::Culture)
+            }
             research::Query::NationalParkCount => culture
                 .national_park_count
                 .and_then(|n| i32::try_from(n).ok())

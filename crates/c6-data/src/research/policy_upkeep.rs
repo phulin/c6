@@ -1,7 +1,6 @@
 //! Rule-driven Culture.ObsoletePolicies predicates. Age and GreatPeople
 //! eligibility continuations remain explicit.
 use super::*;
-use c6_core::player_prerequisites::IndexedBools;
 
 struct Obsolete {
     policy: u32,
@@ -61,20 +60,16 @@ impl Definitions {
         &self,
         policy: u32,
         active: bool,
-        unlocked: &IndexedBools,
+        mut unlocked: impl FnMut(u32) -> Result<bool, Error<E>>,
     ) -> Result<bool, Error<E>> {
         // IsPolicyObsolete scans ObsoletePolicies in definition order only
         // when IsPolicyActive succeeds. A replacement's *unlocked* flag is
-        // used, rather than its active slot or prerequisite civic directly.
+        // queried through the full live IsPolicyUnlocked predicate. The stored
+        // HasPolicy flag is only its first short-circuit, not the whole answer.
         if active {
             for row in self.obsolete.iter().filter(|row| row.policy == policy) {
                 if let Some(replacement) = row.replacement {
-                    let flag = unlocked
-                        .pairs
-                        .iter()
-                        .rfind(|p| p.definition_hash == replacement)
-                        .ok_or(Error::Missing("current replacement-policy unlocked flag"))?;
-                    if flag.value {
+                    if unlocked(replacement)? {
                         return Ok(true);
                     }
                 }
@@ -97,7 +92,7 @@ impl Definitions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use c6_core::unit::HashValue;
+
     fn rules() -> Definitions {
         Definitions {
             obsolete: vec![Obsolete {
@@ -108,32 +103,28 @@ mod tests {
             restricted: vec![],
         }
     }
-    fn flags(values: &[(u32, bool)]) -> IndexedBools {
-        IndexedBools {
-            pairs: values
+    fn flags(values: &[(u32, bool)]) -> impl FnMut(u32) -> Result<bool, Error<()>> + '_ {
+        |hash| {
+            values
                 .iter()
-                .map(|&(definition_hash, value)| HashValue {
-                    definition_hash,
-                    value,
-                })
-                .collect(),
+                .rfind(|p| p.0 == hash)
+                .map(|p| p.1)
+                .ok_or(Error::Missing("current replacement-policy unlocked flag"))
         }
     }
     #[test]
     fn replacement_unlock_requests_removal_without_selecting_a_card() {
         let rules = rules();
-        assert!(!rules
-            .obsolete::<()>(1, true, &flags(&[(2, false)]))
-            .unwrap());
+        assert!(!rules.obsolete::<()>(1, true, flags(&[(2, false)])).unwrap());
         assert!(matches!(
-            rules.obsolete::<()>(1, true, &flags(&[(2, true)])),
+            rules.obsolete::<()>(1, true, flags(&[(2, true)])),
             Ok(true)
         ));
         assert!(matches!(
-            rules.obsolete::<()>(1, true, &flags(&[])),
+            rules.obsolete::<()>(1, true, flags(&[])),
             Err(Error::Missing("current replacement-policy unlocked flag"))
         ));
-        assert!(rules.obsolete::<()>(1, false, &flags(&[])).is_ok());
+        assert!(rules.obsolete::<()>(1, false, flags(&[])).is_ok());
     }
     #[test]
     fn remaining_checks_keep_native_order_and_explicit_boundaries() {
@@ -146,11 +137,11 @@ mod tests {
             restricted: vec![1],
         };
         assert!(matches!(
-            rules.obsolete::<()>(1, true, &flags(&[(2, true)])),
+            rules.obsolete::<()>(1, true, flags(&[(2, true)])),
             Ok(true)
         ));
         assert!(matches!(
-            rules.obsolete::<()>(1, true, &flags(&[(2, false)])),
+            rules.obsolete::<()>(1, true, flags(&[(2, false)])),
             Err(Error::Missing("current GreatPeople policy obsolescence"))
         ));
         assert!(matches!(

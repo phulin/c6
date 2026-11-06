@@ -186,11 +186,20 @@ impl<E: Effects> Context<'_, E> {
                     .rfind(|p| p.definition_hash == hash)
                     .ok_or(Error::Missing("current policy active flag"))?
                     .value;
-                if self.definitions.policy_upkeep.obsolete(
-                    hash,
-                    active,
-                    &culture.policy_unlocked,
-                )? {
+                let definitions = self.definitions;
+                if definitions
+                    .policy_upkeep
+                    .obsolete(hash, active, |replacement| {
+                        match self.query(Query::PolicyUnlocked {
+                            owner,
+                            hash: replacement,
+                        })? {
+                            0 => Ok(false),
+                            1 => Ok(true),
+                            _ => Err(Error::Missing("noncanonical current policy unlock")),
+                        }
+                    })?
+                {
                     // SetPolicyActive(false) and the slot store precede the
                     // distinct PolicyObsoleted signal. No policy is selected,
                     // enacted, or marked as an external policy-change command.
