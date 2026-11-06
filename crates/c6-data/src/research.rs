@@ -687,6 +687,18 @@ impl Definitions {
             self.civic_obsolete_actions.contains(&hash),
         ))
     }
+    pub(crate) fn civic_delegation_removal_count(
+        &self,
+        index: i32,
+    ) -> Result<usize, Error<std::convert::Infallible>> {
+        let civic = self
+            .civics
+            .get(index as u32 as usize)
+            .ok_or(Error::IllegalCivic(index))?;
+        Ok(self
+            .diplomatic_visibility
+            .delegation_removal_count(civic.hash))
+    }
     pub fn civic_era_hash(
         &self,
         index: i32,

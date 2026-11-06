@@ -11,6 +11,9 @@ pub struct Binding {
     pub game_technology: Option<Vec<GameSubscriber>>,
     pub game_civic: Option<Vec<GameSubscriber>>,
     pub resource_unlocks: Option<ResourceUnlocks>,
+    /// Actual ordered DelegationRemoved requirement subscribers. None leaves
+    /// the signal unsupported, including an already-false delegation flag.
+    pub delegation_removed: Option<Vec<crate::loaded_actions::declare_war::requirements::Receiver>>,
 }
 #[derive(Clone, Debug)]
 pub struct Player {
@@ -621,6 +624,7 @@ impl<P> Effects<'_, '_, P> {
                 reason: "game acquisition binding identity differs".into(),
             });
         }
+        let delegation_removed = binding.delegation_removed.clone();
         let callbacks = match kind {
             research::Kind::Technology => &binding.game_technology,
             research::Kind::Civic => &binding.game_civic,
@@ -645,12 +649,58 @@ impl<P> Effects<'_, '_, P> {
                 GameSubscriber::Diplomacy { owner } => {
                     if owner == player {
                         if kind == research::Kind::Civic {
-                            if definitions
-                                .civic_acquisition_filters(index)
-                                .map_err(|e| source_failure(format!("{e:?}")))?
-                                .3
-                            {
-                                return Err(failure());
+                            let count = definitions
+                                .civic_delegation_removal_count(index)
+                                .map_err(|e| source_failure(format!("{e:?}")))?;
+                            if count != 0 {
+                                let mut receivers =
+                                    delegation_removed.clone().ok_or_else(|| {
+                                        source_failure(
+                                            "current DelegationRemoved subscribers".into(),
+                                        )
+                                    })?;
+                                if receivers.iter().any(|r| r.kind != crate::loaded_actions::declare_war::requirements::Kind::Delegation) {
+                                    return Err(source_failure("unexpected DelegationRemoved subscriber".into()));
+                                }
+                                let alive = self
+                                    .backend
+                                    .player_services
+                                    .as_ref()
+                                    .and_then(|services| services.alive_players.as_ref())
+                                    .ok_or_else(failure)?
+                                    .values()
+                                    .to_vec();
+                                for _ in 0..count {
+                                    research::diplomacy::remove_delegations_on_civic(
+                                        state,
+                                        definitions.diplomatic_visibility(),
+                                        &self.runtime.civilization_levels,
+                                        &alive,
+                                        owner,
+                                        |state, issuer, defender| {
+                                            use crate::loaded_actions::declare_war::requirements;
+                                            for receiver in &mut receivers {
+                                                // This is OnDelegationEstablished's actual
+                                                // interface identity guard, also on removal.
+                                                if receiver.context != Some(defender) || receiver.subject != Some(issuer) {
+                                                    continue;
+                                                }
+                                                self.backend.with_modifier_owners(|_, owners| {
+                                                    requirements::changed(
+                                                        state, &mut owners.requirements, receiver,
+                                                        issuer, defender, -1,
+                                                        &mut requirements::CanonicalQueries,
+                                                        &mut crate::loaded_actions::government_actions::requirements::UnavailableContinuations,
+                                                    )
+                                                }).map_err(|e| format!("{e:?}"))?
+                                                    .map_err(|e| format!("{e:?}"))?;
+                                            }
+                                            Ok::<(), String>(())
+                                        },
+                                        |_, _, _| Err("current diplomatic visibility report".into()),
+                                    )
+                                    .map_err(|e| source_failure(format!("{e:?}")))?;
+                                }
                             }
                         } else {
                             let alive = self

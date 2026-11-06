@@ -237,6 +237,34 @@ impl LoadedState {
 }
 
 impl super::LoadedState {
+    /// SetHasDelegationAt always writes, then the caller dispatches the
+    /// synchronous established/removed signal even when the flag is unchanged.
+    pub fn set_current_diplomatic_delegation(
+        &mut self,
+        owner: i32,
+        other: i32,
+        present: bool,
+    ) -> Result<(), super::Error> {
+        let player = self
+            .retained
+            .players
+            .iter_mut()
+            .find(|p| p.header.owner == owner)
+            .ok_or(super::Error::Binding)?;
+        let target = usize::try_from(other).map_err(|_| super::Error::Binding)?;
+        let cell = player
+            .diplomacy
+            .has_delegation
+            .get_mut(target)
+            .ok_or(super::Error::Binding)?;
+        let next = self
+            .revision
+            .checked_add(1)
+            .ok_or(super::Error::ResourceLimit)?;
+        *cell = present;
+        self.revision = next;
+        Ok(())
+    }
     /// Source SetVisibilityOn clamps only the upper bound and reports only a
     /// changed level. The caller performs that synchronous report before source.
     pub fn set_current_diplomatic_visibility(

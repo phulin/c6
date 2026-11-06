@@ -37,6 +37,7 @@ pub struct Definitions {
     spies: Vec<u32>,
     unit_hashes: Vec<u32>,
     binding: c6_core::core_player::initialization::WireBinding,
+    delegation_removal_civics: Vec<u32>,
 }
 impl Definitions {
     pub fn from_rules(
@@ -129,13 +130,75 @@ impl Definitions {
                 spies.push(linux_type_hash(name));
             }
         }
+        // Retain the actual DiplomaticAction collection order and repeats.
+        let actions = collection(rules, "DiplomaticActions", "DiplomaticActionType")
+            .map_err(Error::Definitions)?;
+        let table = rules
+            .gameplay()
+            .table("DiplomaticActions")
+            .ok_or(Error::Missing("DiplomaticActions"))?;
+        let mut delegation_removal_civics = Vec::new();
+        for action in actions.entries() {
+            let row = table
+                .row_by_id(action.database_rowid)
+                .ok_or(Error::Missing("DiplomaticAction row"))?;
+            if let SqlValue::Text(civic) =
+                row.get("InitiatorObsoleteCivic").map_err(Error::Rules)?
+            {
+                if matches!(row.get("RemoveOnEntry").map_err(Error::Rules)?, SqlValue::Integer(v) if *v != 0)
+                {
+                    delegation_removal_civics.push(linux_type_hash(civic));
+                }
+            }
+        }
         Ok(Self {
+            delegation_removal_civics,
             sources,
             spies,
             unit_hashes,
             binding: bound.destination_binding().clone(),
         })
     }
+    pub(super) fn delegation_removal_count(&self, civic: u32) -> usize {
+        self.delegation_removal_civics
+            .iter()
+            .filter(|hash| **hash == civic)
+            .count()
+    }
+}
+/// RemoveOnEntry sets the delegation flag and dispatches its removal signal
+/// even when already false. Visibility rechecking follows that signal for each
+/// other alive player, unconditionally, in the manager's current order.
+pub fn remove_delegations_on_civic<E>(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    levels: &[(i32, u32)],
+    alive: &[i32],
+    owner: i32,
+    mut removed: impl FnMut(&mut LoadedState, i32, i32) -> Result<(), E>,
+    mut visibility_report: impl FnMut(&mut LoadedState, i32, i32) -> Result<(), E>,
+) -> Result<(), Error<E>> {
+    if state.binding() != &definitions.binding {
+        return Err(Error::Missing("delegation removal rules binding"));
+    }
+    for &other in alive {
+        if other == owner {
+            continue;
+        }
+        state
+            .set_current_diplomatic_delegation(owner, other, false)
+            .map_err(Error::State)?;
+        removed(state, owner, other).map_err(Error::Effect)?;
+        recheck(
+            state,
+            definitions,
+            levels,
+            owner,
+            other,
+            &mut visibility_report,
+        )?;
+    }
+    Ok(())
 }
 /// No city means CountOutgoingRoutesTo's first source iterator is empty. Spy
 /// units are filtered by the admitted Unit definition; a real spy refuses here.
