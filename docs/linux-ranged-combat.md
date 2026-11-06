@@ -36,7 +36,7 @@ rejects later action requests; `into_parts` returns the owners for inspection.
 The qualified stock output scope replaces native status text, XP display caches
 and platform achievement output with typed records. Additional synchronous
 consumers require explicit support. Positive unimplemented branches return errors,
-including bombard against Units, unsupported District configurations, combat
+including unsupported District configurations, combat
 capture, joint-war XP consumers,
 multiplayer combat notifications, positive rewards/yields/boosts and positive era
 score continuations. This adapter does not compose melee combat. Definition,
@@ -50,6 +50,41 @@ compared gameplay state, visibility, callback effects, history, modifier lifetim
 and ordered GameSync draws. A controlled missing-report case also verifies that
 the failed prefix and Session freeze survive extraction and reassembly. These
 comparisons do not establish arbitrary ranged configurations or complete turns.
+
+## Unit bombard against land defenders
+
+The same Session operation supports an ordinary unembarked land siege Unit
+against an ordinary unembarked land defender. It selects the formation's bombard
+strength and a BOMBARD proposal, applying the current
+`COMBAT_BOMBARD_VS_UNIT_STRENGTH_MODIFIER` against land defenders. Existing
+movement-after-moving, visibility, range and attack-budget checks remain active.
+The attacker receives no retaliation damage and does not advance.
+
+Bombard generation destroys its temporary proposal before the single damage
+roll. Experience uses bombard strength in the attacker's ratio with the ranged
+experience base. Surviving and killed defenders pass through the existing stock
+damage, Unit death, experience, combat callback and processed-message owners;
+owned combat effects retire with their destroyed modifiers.
+
+The retained Linux Catapult/Warrior cases cover a healthy defender receiving
+22 damage and a defender starting at 90 damage being killed. Both consume one
+ordered GameSync draw (bound 12, value 0), exhaust the Catapult's movement and
+attack budget, and reject a subsequent attack in the read-only readiness test. The persistent Session matches
+the compared gameplay state, visibility, callback effects, history, proposal and
+requirement identities, and effect lifetimes through `HeadlessMessagesProcessed`.
+No turn is advanced or external policy decision filled automatically.
+
+These comparisons use public gameplay commit `feb669a8` and private adapter
+commit `54aa169b`. Private receipt
+`evidence/linux/unit-siege-dev-session-final.json` records both canonical input
+sets, actual source pins, target/rules/configuration identities, commands and
+results. The earlier lethal failure is retained separately: gameplay and RNG
+matched, while an owned combat effect incorrectly survived its modifier's death.
+
+Embarked, naval and air bombard remain explicit unsupported execution branches.
+Unqualified callback, promotion, capture and joint-war branches retain their
+existing errors. These two cases do not establish arbitrary Unit combat, a
+complete RNG inventory, complete gameplay state or full turns.
 
 ## Unit ranged attacks against Ancient Walls
 
@@ -112,8 +147,7 @@ These siege comparisons use public gameplay commit
 `evidence/linux/city-siege-exhaust-session-1.json` record their separate current
 configuration identities, exact sources, canonical inputs, commands and results.
 
-Urban Defenses, equal-type attacks, bombard against Units, positive bypass-wall
-support,
+Urban Defenses, equal-type attacks, positive bypass-wall support,
 special wall-prevention modifiers and lethal garrison continuations are explicit
 unsupported branches. Other unqualified callback, promotion and joint-war
 branches retain the existing errors. These fixtures do not establish arbitrary
