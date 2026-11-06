@@ -65,6 +65,7 @@ pub enum Continuation {
     },
     DestroyRequirement(u64),
     DestroySet(u64),
+    TradeRelations(&'static str),
 }
 #[derive(Debug)]
 pub enum Cause {
@@ -126,6 +127,37 @@ impl<P> changes::Services for StockServices<'_, '_, P> {
             old,
             new,
         })
+    }
+    fn trade_relations_changed(
+        &mut self,
+        state: &mut LoadedState,
+        sets: &mut subject_sets::Runtime,
+        row: &mut changes::OwnerModifier,
+    ) -> Result<bool, Continuation> {
+        self.backend
+            .with_growth_requirement_effects(state, |_, state, canonical| {
+                let result = canonical.with_opinion_graph(|graph, canonical| {
+                    graph.owner_changed_current(state, sets, canonical, row.receiver)
+                });
+                // This row is comparison metadata; canonical graph controls own the
+                // transition, including writes made before an unsupported callback.
+                if let Some(modifier) = canonical
+                    .modifiers()
+                    .iter()
+                    .find(|item| item.label == row.receiver)
+                {
+                    row.enabled = modifier.control.enabled;
+                }
+                if let Some(metadata) = canonical
+                    .opinion_graph()
+                    .and_then(|graph| graph.rows().iter().find(|item| item.label == row.receiver))
+                {
+                    row.has_activated = metadata.has_activated;
+                    row.current_update_instance = Some(metadata.effect.current_update_instance);
+                }
+                result
+            })
+            .map_err(Continuation::TradeRelations)
     }
     fn destroy_requirement(
         &mut self,

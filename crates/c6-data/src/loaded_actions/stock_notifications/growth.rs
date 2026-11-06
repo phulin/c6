@@ -35,6 +35,32 @@ impl<P> Runtime<'_, P> {
         self.growth.as_ref()?.requirement_effects.as_ref()
     }
 
+    /// Borrow the sole current diplomatic modifier owner across a callback.
+    /// Restore it after errors so partial native transitions remain inspectable.
+    pub(crate) fn with_growth_requirement_effects<T>(
+        &mut self,
+        state: &mut LoadedState,
+        apply: impl FnOnce(
+            &mut Self,
+            &mut LoadedState,
+            &mut crate::loaded_actions::declare_war::requirement_modifiers::Modifiers,
+        ) -> Result<T, &'static str>,
+    ) -> Result<T, &'static str> {
+        self.check(state)
+            .map_err(|_| "growth modifier runtime binding")?;
+        let mut effects = self
+            .growth
+            .as_mut()
+            .and_then(|inputs| inputs.requirement_effects.take())
+            .ok_or("current growth modifier owner")?;
+        let result = apply(self, state, &mut effects);
+        self.growth
+            .as_mut()
+            .expect("bound growth owner")
+            .requirement_effects = Some(effects);
+        result
+    }
+
     pub fn bind_growth(&mut self, state: &LoadedState, inputs: Inputs) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("growth runtime binding"))?;
