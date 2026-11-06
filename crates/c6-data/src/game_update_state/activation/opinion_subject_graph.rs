@@ -2,6 +2,7 @@
 //! Controls, tracked/applied membership and affected instances stay in the same
 //! canonical diplomacy modifier owner used by action callbacks. Requirement
 //! construction borrows the existing shared cache/counter and concrete factories.
+use super::relationship_requirements as relationship;
 use super::trade_relations_opinion::{self as leaf, Effect};
 use crate::loaded_actions::declare_war::requirement_modifiers::{Modifiers, Subject};
 use c6_core::unit_moved_signal::modifiers::Context as _;
@@ -21,6 +22,8 @@ pub struct Metadata {
     pub has_activated: bool,
     pub effect: Effect,
     pub statement_flags: [bool; 2],
+    /// Other concrete leaves are owned by the SAME canonical modifier owner.
+    pub canonical_leaf: bool,
 }
 #[derive(Debug)]
 pub struct Runtime {
@@ -106,6 +109,97 @@ impl Runtime {
             subject,
         })?;
         Ok(true)
+    }
+    pub fn owner_changed_current_with_relationships(
+        &mut self,
+        state: &mut LoadedState,
+        sets: &mut sets::Runtime,
+        canonical: &mut Modifiers,
+        receiver: u64,
+        definitions: &relationship::Definitions,
+    ) -> Result<bool, &'static str> {
+        let mut profile = self
+            .known_major
+            .take()
+            .ok_or("opinion collection profile absent")?;
+        let result = self.owner_changed(
+            state,
+            sets,
+            canonical,
+            receiver,
+            &mut RelationshipServices {
+                profile: &mut profile,
+                definitions,
+            },
+        );
+        self.known_major = Some(profile);
+        result
+    }
+    pub fn destroy_set(&mut self, set: u64) -> Result<bool, &'static str> {
+        let profile = self
+            .known_major
+            .as_mut()
+            .ok_or("opinion collection profile absent")?;
+        let Some(at) = profile.managed_sets.iter().position(|id| *id == set) else {
+            return Ok(false);
+        };
+        profile.managed_sets.remove(at);
+        Ok(true)
+    }
+    pub fn retire_requirement(&mut self, label: u64) -> Result<bool, &'static str> {
+        let profile = self
+            .known_major
+            .as_mut()
+            .ok_or("opinion collection profile absent")?;
+        if !profile.subscriptions.iter().any(|r| r.0 == label) {
+            return Ok(false);
+        }
+        profile.destroy(label)?;
+        Ok(true)
+    }
+    pub fn signal_cursor_start(&mut self, signal: u32) -> Result<usize, &'static str> {
+        self.known_major
+            .as_mut()
+            .ok_or("opinion collection profile absent")?
+            .ring_mut(signal)?
+            .cursor_start()
+            .map_err(|_| "opinion signal cursor start")
+    }
+    pub fn signal_cursor_next(
+        &mut self,
+        signal: u32,
+        current: usize,
+    ) -> Result<Option<usize>, &'static str> {
+        self.known_major
+            .as_mut()
+            .ok_or("opinion collection profile absent")?
+            .ring_mut(signal)?
+            .cursor_next(current)
+            .map_err(|_| "opinion signal cursor next")
+    }
+    pub fn signal_cursor_route(
+        &mut self,
+        signal: u32,
+        current: usize,
+    ) -> Result<Option<SignalRegistration>, &'static str> {
+        self.known_major
+            .as_mut()
+            .ok_or("opinion collection profile absent")?
+            .ring_mut(signal)?
+            .cursor_route(current)
+            .map_err(|_| "opinion signal cursor route")
+    }
+    pub fn signal_cursor_release(
+        &mut self,
+        signal: u32,
+        current: usize,
+    ) -> Result<(), &'static str> {
+        self.known_major
+            .as_mut()
+            .ok_or("opinion collection profile absent")?
+            .ring_mut(signal)?
+            .cursor_release(current)
+            .map_err(|_| "opinion signal cursor release")
     }
     pub fn owner_changed_current(
         &mut self,
@@ -343,6 +437,29 @@ impl modifiers::Context for Apply<'_> {
         Ok(modifier(self.canonical, self.row.label)?.repeatable)
     }
     fn apply_effect(&mut self) -> Result<bool, Self::Error> {
+        if self.row.canonical_leaf {
+            let owner = modifier(self.canonical, self.row.label)?.owner;
+            if self.row.statement_flags != [false, false]
+                && self
+                    .state
+                    .player_slot_status(owner)
+                    .map_err(|_| "opinion statement owner controls")?
+                    != 3
+            {
+                return Err("opinion nonhuman statement concrete guard");
+            }
+            self.canonical
+                .apply_tracked_effect(self.state, self.sets, self.row.label, self.subject)
+                .map_err(|e| match e {
+                    crate::loaded_actions::declare_war::requirement_modifiers::Error::Missing(
+                        reason,
+                    ) => reason,
+                    crate::loaded_actions::declare_war::requirement_modifiers::Error::State(_) => {
+                        "opinion canonical effect state"
+                    }
+                })?;
+            return Ok(true);
+        }
         modifiers::apply_effect(self).map_err(|e| match e {
             modifiers::EffectError::Context(reason) => reason,
             modifiers::EffectError::DefinitionDisappeared => {
@@ -477,8 +594,143 @@ impl modifiers::EffectContext for Apply<'_> {
 pub struct KnownMajor {
     pub players: Vec<(i32, u64)>,
     pub contexts: Vec<(i32, i32)>,
+    pub relationship_factories: Vec<(Vec<u8>, relationship::Kind)>,
+    signals: Vec<(
+        u32,
+        c6_core::unit_moved_signal::ListenerRing<SignalRegistration>,
+    )>,
+    subscriptions: Vec<(u64, u32, c6_core::unit_moved_signal::Subscription)>,
+    managed_sets: Vec<u64>,
     pub meeting_receivers:
         Vec<crate::loaded_actions::stock_notifications::first_contact::requirements::Receiver>,
+}
+#[derive(Clone, Copy, Debug)]
+pub enum SignalReceiver {
+    Relationship(relationship::Receiver),
+    Meeting(crate::loaded_actions::stock_notifications::first_contact::requirements::Receiver),
+}
+#[derive(Clone, Copy, Debug)]
+pub struct SignalRegistration {
+    pub label: u64,
+    pub receiver: SignalReceiver,
+}
+impl KnownMajor {
+    pub fn new(players: Vec<(i32, u64)>, contexts: Vec<(i32, i32)>) -> Self {
+        Self {
+            players,
+            contexts,
+            meeting_receivers: Vec::new(),
+            relationship_factories: Vec::new(),
+            signals: Vec::new(),
+            subscriptions: Vec::new(),
+            managed_sets: Vec::new(),
+        }
+    }
+    pub fn bind_current_sets(&mut self, labels: impl IntoIterator<Item = u64>) {
+        for label in labels {
+            if !self.managed_sets.contains(&label) {
+                self.managed_sets.push(label)
+            }
+        }
+    }
+    pub fn signal_registrations(&self) -> Vec<(u32, Vec<SignalRegistration>)> {
+        let mut result = self
+            .signals
+            .iter()
+            .map(|(signal, ring)| (*signal, ring.ordered_subscribers().collect()))
+            .collect::<Vec<_>>();
+        result.sort_by_key(|r| r.0);
+        result
+    }
+    fn ring_mut(
+        &mut self,
+        signal: u32,
+    ) -> Result<&mut c6_core::unit_moved_signal::ListenerRing<SignalRegistration>, &'static str>
+    {
+        if !self.signals.iter().any(|r| r.0 == signal) {
+            self.signals.push((
+                signal,
+                c6_core::unit_moved_signal::ListenerRing::from_ordered(&[])
+                    .map_err(|_| "opinion signal allocation")?,
+            ));
+        }
+        Ok(&mut self.signals.iter_mut().find(|r| r.0 == signal).unwrap().1)
+    }
+    fn subscribe(
+        &mut self,
+        label: u64,
+        signal: u32,
+        receiver: SignalReceiver,
+    ) -> Result<(), &'static str> {
+        let token = self
+            .ring_mut(signal)?
+            .subscribe(SignalRegistration { label, receiver })
+            .map_err(|_| "opinion signal subscribe")?;
+        self.subscriptions.push((label, signal, token));
+        Ok(())
+    }
+    fn destroy(&mut self, label: u64) -> Result<(), &'static str> {
+        while let Some(index) = self.subscriptions.iter().position(|r| r.0 == label) {
+            let (_, signal, token) = self.subscriptions.remove(index);
+            self.ring_mut(signal)?
+                .unsubscribe(token)
+                .map_err(|_| "opinion signal unsubscribe")?;
+        }
+        self.meeting_receivers.retain(|r| r.label != label);
+        Ok(())
+    }
+}
+struct RelationshipServices<'a> {
+    profile: &'a mut KnownMajor,
+    definitions: &'a relationship::Definitions,
+}
+impl Services for RelationshipServices<'_> {
+    fn collection(
+        &mut self,
+        state: &mut LoadedState,
+        canonical: &mut Modifiers,
+        receiver: u64,
+    ) -> Result<Vec<u64>, &'static str> {
+        self.profile.collection(state, canonical, receiver)
+    }
+    fn create_subject_set(
+        &mut self,
+        state: &mut LoadedState,
+        sets: &mut sets::Runtime,
+        receiver: u64,
+        context: i32,
+        subject: u64,
+        definition: &[u8],
+    ) -> Result<Option<u64>, &'static str> {
+        let result = sets::get_or_create_subject(
+            &mut KnownMajorFactory {
+                state,
+                sets,
+                profile: self.profile,
+                definitions: Some(self.definitions),
+            },
+            receiver,
+            context,
+            sets::Subject::ModifierObject(subject),
+            definition,
+        )
+        .map_err(initialization_error)?;
+        if let Some(id) = result {
+            if !self.profile.managed_sets.contains(&id) {
+                self.profile.managed_sets.push(id);
+            }
+        }
+        Ok(result)
+    }
+    fn release_subject_set(
+        &mut self,
+        state: &mut LoadedState,
+        sets: &mut sets::Runtime,
+        receiver: u64,
+        set: u64,
+    ) -> Result<(), &'static str> {
+        self.profile.release_subject_set(state, sets, receiver, set)
+    }
 }
 impl Services for KnownMajor {
     fn release_subject_set(
@@ -495,6 +747,7 @@ impl Services for KnownMajor {
                 state,
                 sets,
                 profile: self,
+                definitions: None,
             },
             set,
         )
@@ -532,24 +785,32 @@ impl Services for KnownMajor {
         if definition != b"PLAYER_IS_KNOWN_MAJOR_CIV" {
             return Err("unsupported opinion subject definition");
         }
-        sets::get_or_create_subject(
+        let result = sets::get_or_create_subject(
             &mut KnownMajorFactory {
                 state,
                 sets,
                 profile: self,
+                definitions: None,
             },
             receiver,
             context,
             sets::Subject::ModifierObject(subject),
             definition,
         )
-        .map_err(initialization_error)
+        .map_err(initialization_error)?;
+        if let Some(id) = result {
+            if !self.managed_sets.contains(&id) {
+                self.managed_sets.push(id);
+            }
+        }
+        Ok(result)
     }
 }
 struct KnownMajorFactory<'a> {
     state: &'a mut LoadedState,
     sets: &'a mut sets::Runtime,
     profile: &'a mut KnownMajor,
+    definitions: Option<&'a relationship::Definitions>,
 }
 impl sets::SubjectContext for KnownMajorFactory<'_> {
     type Error = &'static str;
@@ -600,10 +861,84 @@ impl sets::SubjectContext for KnownMajorFactory<'_> {
             };
             // OnInitialize23835a0 subscribes BEFORE the first virtual Test.
             self.profile.meeting_receivers.push(receiver);
+            self.profile
+                .subscribe(label, 0xc78, SignalReceiver::Meeting(receiver))
+                .map_err(sets::Error::Context)?;
             meeting::test::<()>(self.state, receiver)
                 .map_err(|_| sets::Error::Context("opinion HasMet Test"))?
+        } else if let Some(kind) = self
+            .profile
+            .relationship_factories
+            .iter()
+            .find(|r| r.0 == definition.id)
+            .map(|r| r.1)
+        {
+            let descriptor = relationship::Receiver {
+                kind,
+                context: owner,
+                subject: other,
+            };
+            let signal_receiver = SignalReceiver::Relationship(descriptor);
+            match kind {
+                relationship::Kind::MetXTurns { turns } => {
+                    let receiver = Receiver {
+                        label,
+                        kind: Kind::MetXTurnsAgo,
+                        context: Some(owner),
+                        subject: Some(other),
+                        minimum_turns: turns,
+                    };
+                    self.profile.meeting_receivers.push(receiver);
+                    self.profile
+                        .subscribe(label, 0xc78, SignalReceiver::Meeting(receiver))
+                        .map_err(sets::Error::Context)?;
+                    self.profile
+                        .subscribe(label, 0x990, signal_receiver)
+                        .map_err(sets::Error::Context)?;
+                }
+                relationship::Kind::AtPeace { turns } => {
+                    for signal in [0xcc0, 0xcd8, 0xc78] {
+                        self.profile
+                            .subscribe(label, signal, signal_receiver)
+                            .map_err(sets::Error::Context)?;
+                    }
+                    if turns > 0 {
+                        self.profile
+                            .subscribe(label, 0x990, signal_receiver)
+                            .map_err(sets::Error::Context)?;
+                    }
+                }
+                relationship::Kind::OpenBorders { grace_turns } => {
+                    for signal in [0xdc8, 0xde0] {
+                        self.profile
+                            .subscribe(label, signal, signal_receiver)
+                            .map_err(sets::Error::Context)?;
+                    }
+                    if grace_turns > 0 {
+                        self.profile
+                            .subscribe(label, 0x990, signal_receiver)
+                            .map_err(sets::Error::Context)?;
+                    }
+                }
+                relationship::Kind::NearCultureBorder { .. } => {
+                    self.profile
+                        .subscribe(label, 0x990, signal_receiver)
+                        .map_err(sets::Error::Context)?;
+                }
+                _ => {
+                    return Err(sets::Error::Context(
+                        "unsupported opinion relationship factory",
+                    ))
+                }
+            }
+            let defs = self.definitions.ok_or(sets::Error::Context(
+                "opinion current relationship definitions",
+            ))?;
+            let alive_majors = self.profile.players.iter().map(|p| p.0).collect::<Vec<_>>();
+            relationship::test(self.state, defs, &alive_majors, descriptor)
+                .map_err(|_| sets::Error::Context("opinion initial relationship Test"))?
         } else {
-            return Err(sets::Error::Context("unsupported KnownMajor child"));
+            return Err(sets::Error::Context("unsupported opinion subject child"));
         };
         Ok(sets::InitializedRequirement::Simple(
             c6_core::simple_requirement::Requirement {
@@ -625,8 +960,7 @@ impl sets::SubjectContext for KnownMajorFactory<'_> {
     ) -> Result<(), sets::Error<Self::Error>> {
         // CivilizationLevel has no signal registration. HasMet destructor
         // 2383650 unsubscribes its actual meeting handle.
-        self.profile.meeting_receivers.retain(|r| r.label != label);
-        Ok(())
+        self.profile.destroy(label).map_err(sets::Error::Context)
     }
     fn log_missing_set(&mut self, _: &[u8]) -> Result<(), Self::Error> {
         Ok(())
@@ -668,15 +1002,26 @@ impl sets::changes::Context for KnownMajorFactory<'_> {
             .ok_or(sets::Error::MissingRequirementDefinition)?;
         if definition.id != b"REQUIRES_MAJOR_CIV_OPPONENT"
             && definition.id != b"REQUIRES_PLAYERS_HAVE_MET"
+            && !self
+                .profile
+                .relationship_factories
+                .iter()
+                .any(|r| r.0 == definition.id)
         {
             return Err(sets::Error::Context(
                 "unsupported opinion requirement destruction",
             ));
         }
-        self.profile.meeting_receivers.retain(|r| r.label != label);
-        Ok(())
+        self.profile.destroy(label).map_err(sets::Error::Context)
     }
-    fn destroy_set(&mut self, _: u64) -> Result<(), sets::Error<Self::Error>> {
+    fn destroy_set(&mut self, set: u64) -> Result<(), sets::Error<Self::Error>> {
+        let at = self
+            .profile
+            .managed_sets
+            .iter()
+            .position(|id| *id == set)
+            .ok_or(sets::Error::Context("unknown opinion base set destruction"))?;
+        self.profile.managed_sets.remove(at);
         Ok(())
     }
     fn reset_trigger(&mut self, set: u64) -> Result<(), sets::Error<Self::Error>> {

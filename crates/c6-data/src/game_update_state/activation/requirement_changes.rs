@@ -382,12 +382,12 @@ impl<S: Services> changes::Context for Context<'_, S> {
         new: i32,
     ) -> Result<(), sets::Error<Self::Error>> {
         if let SetListener::Owner(receiver) = listener {
-            if let Some(row) = self.runtime.owner_modifiers.iter_mut().find(|row| {
-                row.receiver == receiver
-                    && row
-                        .opinion
-                        .is_some_and(|(kind, _)| kind == OpinionKind::TradeRelations)
-            }) {
+            if let Some(row) = self
+                .runtime
+                .owner_modifiers
+                .iter_mut()
+                .find(|row| row.receiver == receiver && row.opinion.is_some())
+            {
                 if row.suppressed {
                     return Ok(());
                 }
@@ -397,7 +397,7 @@ impl<S: Services> changes::Context for Context<'_, S> {
                     .map_err(sets::Error::Context)?
                 {
                     return Err(sets::Error::CurrentInput(
-                        "current TradeRelations modifier graph",
+                        "current concrete opinion modifier graph",
                     ));
                 }
                 return Ok(());

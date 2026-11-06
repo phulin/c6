@@ -370,6 +370,43 @@ impl Modifiers {
         })
         .map(|_| ())
     }
+    /// Bind additional captured opinion leaves without replacing prior owners.
+    pub fn bind_additional_opinion_effects(
+        &mut self,
+        activations: Vec<Activation>,
+        effects: Vec<(
+            u64,
+            crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::Effect,
+        )>,
+        alive_majors: Vec<i32>,
+    ) -> Result<(), Error> {
+        if activations.iter().enumerate().any(|(i, a)| {
+            self.activations.iter().any(|old| old.label == a.label)
+                || activations[..i].iter().any(|old| old.label == a.label)
+                || !self.modifiers.iter().any(|m| m.label == a.label)
+        }) || effects.iter().enumerate().any(|(i, (label, _))| {
+            self.opinion_effects.iter().any(|(old, _)| old == label)
+                || effects[..i].iter().any(|(old, _)| old == label)
+                || !self.modifiers.iter().any(|m| m.label == *label)
+        }) {
+            return Err(Error::Missing(
+                "duplicate/missing additional opinion effect binding",
+            ));
+        }
+        if self
+            .opinion_alive_majors
+            .as_ref()
+            .is_some_and(|old| old != &alive_majors)
+        {
+            return Err(Error::Missing(
+                "current opinion alive-major roster mismatch",
+            ));
+        }
+        self.activations.extend(activations);
+        self.opinion_effects.extend(effects);
+        self.opinion_alive_majors = Some(alive_majors);
+        Ok(())
+    }
     pub fn bind_opinion_graph(
         &mut self,
         graph: crate::game_update_state::activation::opinion_subject_graph::Runtime,
