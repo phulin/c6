@@ -22,6 +22,12 @@ pub enum Error {
     Collection(crate::melee_attack::proposals::collection_modifiers::DestroyCollectionError),
     ItemSignal(Box<c6_core::melee_attack::proposals::collections::Error<Error>>),
     UnknownSubscriber(u64),
+    ActiveOwnedModifier {
+        receiver: u64,
+        instance: i32,
+        effect: u64,
+        effect_state: String,
+    },
 }
 
 /// Source-qualified stock listener kinds in initialized registration order.
@@ -593,9 +599,17 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                     )
                 )
             {
-                return Err(kill::Error::Missing(
-                    "active owned noncombat modifier destructor",
-                ));
+                return Err(kill::Error::Effect(Error::ActiveOwnedModifier {
+                    receiver,
+                    instance,
+                    effect: current.effect,
+                    effect_state: format!(
+                        "{:?}",
+                        self.effects
+                            .effect(current.effect)
+                            .map_err(kill::Error::CleanupQuery)?
+                    ),
+                }));
             }
             Retained::Unit(
                 self.effects
