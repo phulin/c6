@@ -40,6 +40,15 @@ through `HeadlessMessagesProcessed`, preserving genuine pending player decisions
 The domestic trade first-step and natural Campus turn-completion comparisons are
 also bounded accepted cases; they do not establish complete subsystem coverage.
 
+Current [dynamic district adjacency](../crates/c6-data/src/city_turn/district_yields.rs)
+feeds the production district and city yield queries used by Session. A positive
+Linux query case gives Japan's completed Campus 1 Science adjacency, compared
+with 0 from the same plot query without its city's dynamic bonuses; all compared
+native components and known RNG owners remain unchanged. Terrain, feature,
+improvement, appeal and river selectors have Linux source and synthetic coverage,
+but lack separate native cases. This query comparison does not establish complete
+district, action, RNG or turn parity.
+
 The accepted [ordinary Farm Repair](linux-builder-repair.md) restores a pillaged,
 resource-free Farm through the Session and action aftermath without spending a
 Builder charge. The accepted ordinary owned, resource-free forest
