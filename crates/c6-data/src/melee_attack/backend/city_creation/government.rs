@@ -236,56 +236,119 @@ impl EffectRuntime {
                 self.attach_city_owner(state, requirements, owner, d, None, reports)?;
             }
             Recipe::FlatBonus { id, bonus, amount } => {
-                let instance = self.allocate_modifier_id(state).map_err(Error::Query)?;
-                let effect = (1u64 << 62) | u64::from(instance as u32);
-                if self.effects.iter().any(|r| r.0 == effect) {
-                    return Err(Error::Query(QueryError::DuplicateEffect(effect)));
-                }
-                self.effects.push((
-                    effect,
+                self.attach_flat_player_effect(
+                    state,
+                    owner,
+                    id,
                     super::super::EffectState::GovernmentBonus {
                         context: owner,
                         bonus: *bonus,
                         amount: *amount,
                     },
-                ));
-                let creation = self
-                    .city_creation
-                    .as_mut()
-                    .ok_or(Error::Missing("Government flat lifecycle"))?;
-                let destruction = creation
-                    .object_mut(owner)?
-                    .destroyed
-                    .subscribe(DestroyedListener::ModifierOwner(instance))
-                    .map_err(Error::Ring)?;
-                let tracked_destruction = creation
-                    .object_mut(owner)?
-                    .destroyed
-                    .subscribe(DestroyedListener::Modifier(instance))
-                    .map_err(Error::Ring)?;
-                creation
-                    .object_mut(owner)?
-                    .affected
-                    .mark(id, instance)
-                    .map_err(|_| Error::Missing("FlatBonus affected ordering"))?;
-                creation.government.flat.push(Flat {
-                    owner,
-                    instance,
-                    effect,
-                    destruction,
-                    tracked_destruction,
-                    applied: false,
-                });
-                self.apply_government_bonus(state, effect, false)?;
-                self.city_creation
-                    .as_mut()
-                    .unwrap()
-                    .government
-                    .flat
-                    .last_mut()
-                    .unwrap()
-                    .applied = true;
+                )?;
             }
+        }
+        Ok(())
+    }
+    /// COLLECTION_OWNER uses the existing modifier ID, affected-list and
+    /// ObjectDestroyed lifetime machinery, shared with government flat effects.
+    fn attach_flat_player_effect(
+        &mut self,
+        state: &mut LoadedState,
+        owner: u64,
+        id: &[u8],
+        value: super::super::EffectState,
+    ) -> Result<(), Error> {
+        let instance = self.allocate_modifier_id(state).map_err(Error::Query)?;
+        let effect = (1u64 << 62) | u64::from(instance as u32);
+        if self.effects.iter().any(|r| r.0 == effect) {
+            return Err(Error::Query(QueryError::DuplicateEffect(effect)));
+        }
+        self.effects.push((effect, value));
+        let creation = self
+            .city_creation
+            .as_mut()
+            .ok_or(Error::Missing("Government flat lifecycle"))?;
+        let destruction = creation
+            .object_mut(owner)?
+            .destroyed
+            .subscribe(DestroyedListener::ModifierOwner(instance))
+            .map_err(Error::Ring)?;
+        let tracked_destruction = creation
+            .object_mut(owner)?
+            .destroyed
+            .subscribe(DestroyedListener::Modifier(instance))
+            .map_err(Error::Ring)?;
+        creation
+            .object_mut(owner)?
+            .affected
+            .mark(id, instance)
+            .map_err(|_| Error::Missing("FlatBonus affected ordering"))?;
+        creation.government.flat.push(Flat {
+            owner,
+            instance,
+            effect,
+            destruction,
+            tracked_destruction,
+            applied: false,
+        });
+        self.apply_government_bonus(state, effect, false)?;
+        self.city_creation
+            .as_mut()
+            .unwrap()
+            .government
+            .flat
+            .last_mut()
+            .unwrap()
+            .applied = true;
+        Ok(())
+    }
+    pub fn attach_research_trade_capacity(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        kind: crate::research::Kind,
+        hash: u32,
+        recipes: &[crate::research::attached_modifiers::Recipe],
+    ) -> Result<(), Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        if recipes.is_empty() {
+            return Ok(());
+        }
+        let kind = super::super::ContextObject::Research { owner, kind, hash };
+        let context = if let Some((h, _)) = self.objects.iter().find(|r| r.1.kind == kind) {
+            *h
+        } else {
+            let h = self
+                .append_normal_object(
+                    state,
+                    super::super::Object {
+                        kind,
+                        instance_id: 0,
+                        unit_sort_suffix: None,
+                        unit_lifecycle: None,
+                    },
+                )
+                .map_err(Error::Query)?;
+            self.city_creation
+                .as_mut()
+                .ok_or(Error::Missing("research shared modifier lifecycle"))?
+                .government
+                .constructed
+                .push(h);
+            self.ensure_policy_city_lifecycle(h)?;
+            h
+        };
+        for recipe in recipes {
+            self.attach_flat_player_effect(
+                state,
+                context,
+                &recipe.id,
+                super::super::EffectState::TradeRouteCapacity {
+                    context,
+                    amount: recipe.amount,
+                },
+            )?;
         }
         Ok(())
     }
@@ -295,6 +358,28 @@ impl EffectRuntime {
         effect: u64,
         remove: bool,
     ) -> Result<(), Error> {
+        if let super::super::EffectState::TradeRouteCapacity { context, amount } =
+            *self.effect(effect).map_err(Error::Query)?
+        {
+            let super::super::ContextObject::Research { owner, .. } =
+                self.object(context).map_err(Error::Query)?.kind
+            else {
+                return Err(Error::Missing("research capacity Player interface"));
+            };
+            let delta = if remove {
+                amount.wrapping_neg()
+            } else {
+                amount
+            };
+            if delta != 0 {
+                let trade = state
+                    .activation_managers_mut(owner)
+                    .map_err(|_| Error::Missing("current trade capacity Player"))?
+                    .trade;
+                trade.outgoing_route_capacity = trade.outgoing_route_capacity.wrapping_add(delta);
+            }
+            return Ok(());
+        }
         let super::super::EffectState::GovernmentBonus {
             context,
             bonus,
@@ -542,7 +627,11 @@ impl<E: crate::city_production_turn::modifier_effects::Effects> changes::Context
             .ok_or(sets::Error::Context(Error::Missing(
                 "CityHasBuilding lifecycle",
             )))?;
-        if creation.requirement_cleanup.destroy(label).map_err(sets::Error::Context)? {
+        if creation
+            .requirement_cleanup
+            .destroy(label)
+            .map_err(sets::Error::Context)?
+        {
             return Ok(());
         }
         let r = creation

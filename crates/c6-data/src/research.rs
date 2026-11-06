@@ -14,6 +14,7 @@ use c6_core::{
     relic_creation::boost, research_acquisition as acquisition, research_turn,
 };
 pub use research_turn::{InsertMode, Kind};
+pub mod attached_modifiers;
 pub mod barbarian;
 mod city_tourism;
 mod culture_turn;
@@ -188,6 +189,7 @@ pub struct Definitions {
     route_prerequisites: Vec<Option<i32>>,
     technology_modifiers: Vec<u32>,
     civic_modifiers: Vec<u32>,
+    attached_modifiers: attached_modifiers::Definitions,
     civic_resource_prerequisites: Vec<u32>,
     civic_random_agendas: Vec<u32>,
     civic_obsolete_actions: Vec<u32>,
@@ -468,6 +470,7 @@ impl Definitions {
                 .map_err(Error::DistrictCosts)?;
         let city_tourism = city_tourism::Definitions::from_rules(rules)?;
         Ok(Self {
+            attached_modifiers: attached_modifiers::Definitions::from_rules(rules),
             barbarian: barbarian::Definitions::from_rules(rules)?,
             city_tourism,
             binding: bound.destination_binding().clone(),
@@ -592,6 +595,21 @@ impl Definitions {
             .find(|d| d.index == index)
             .ok_or(Error::IllegalTechnology(index))?;
         Ok(self.technology_modifiers.contains(&definition.hash))
+    }
+    pub fn attached_modifiers(
+        &self,
+        kind: Kind,
+        index: i32,
+    ) -> Result<(u32, &[attached_modifiers::Recipe]), String> {
+        let definitions = match kind {
+            Kind::Technology => &self.techs,
+            Kind::Civic => &self.civics,
+        };
+        let hash = definitions
+            .get(index as u32 as usize)
+            .ok_or("research modifier definition index")?
+            .hash;
+        Ok((hash, self.attached_modifiers.recipes(kind, hash)?))
     }
     pub fn technology_has_resource_unlock(
         &self,

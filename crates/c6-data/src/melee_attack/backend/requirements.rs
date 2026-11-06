@@ -364,6 +364,7 @@ impl c6_core::melee_attack::proposals::unit_subject_predicates::Context for Cont
     fn context_player_id(&mut self, interface: ContextObject) -> Result<i32, Error> {
         match interface {
             ContextObject::Player(id)
+            | ContextObject::Research { owner: id, .. }
             | ContextObject::Policy { owner: id, .. }
             | ContextObject::Government { owner: id, .. } => Ok(id),
             ContextObject::Unit(unit) => Ok(i32::from(unit.component_id().owner)),

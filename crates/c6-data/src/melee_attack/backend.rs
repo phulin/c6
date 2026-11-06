@@ -38,6 +38,12 @@ pub enum ContextObject {
         turn: i32,
     },
     Player(i32),
+    /// Objects::Player subtype1 (Civic) or subtype4 (Technology).
+    Research {
+        owner: i32,
+        kind: crate::research::Kind,
+        hash: u32,
+    },
     /// Objects::Player subtype3, subvalue Policy definition type hash.
     Policy {
         owner: i32,
@@ -240,6 +246,10 @@ pub enum EffectState {
         context: u64,
         amount: i32,
     },
+    TradeRouteCapacity {
+        context: u64,
+        amount: i32,
+    },
     GovernmentBonus {
         context: u64,
         bonus: Option<u32>,
@@ -393,6 +403,7 @@ impl EffectRuntime {
             ContextObject::Player(owner)
             | ContextObject::Belief { founder: owner, .. }
             | ContextObject::Policy { owner, .. }
+            | ContextObject::Research { owner, .. }
             | ContextObject::Government { owner, .. } => {
                 state
                     .world()
@@ -880,6 +891,7 @@ impl player_strength::Context for EffectContext<'_> {
         let owner = match self.object {
             ContextObject::Player(owner)
             | ContextObject::Policy { owner, .. }
+            | ContextObject::Research { owner, .. }
             | ContextObject::Government { owner, .. } => owner,
             ContextObject::Unit(u) => i32::from(u.component_id().owner),
             ContextObject::Building { district, .. } | ContextObject::District { district, .. } => {
@@ -1112,7 +1124,9 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
     ) -> Result<bool, Self::Error> {
         let context = match self.effects.effect(effect).map_err(Error::Query)? {
             EffectState::Player { context, .. } | EffectState::Alliance { context, .. } => *context,
-            EffectState::City { .. } | EffectState::GovernmentBonus { .. } => {
+            EffectState::City { .. }
+            | EffectState::TradeRouteCapacity { .. }
+            | EffectState::GovernmentBonus { .. } => {
                 return Err(Error::Query(QueryError::Unsupported(
                     "City effect in strength dispatcher",
                 )))
@@ -1132,9 +1146,11 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
             .map(|r| &mut r.1)
             .ok_or(Error::Query(QueryError::MissingEffect(effect)))?;
         match entry {
-            EffectState::City { .. } | EffectState::GovernmentBonus { .. } => Err(Error::Query(
-                QueryError::Unsupported("City effect in strength dispatcher"),
-            )),
+            EffectState::City { .. }
+            | EffectState::TradeRouteCapacity { .. }
+            | EffectState::GovernmentBonus { .. } => Err(Error::Query(QueryError::Unsupported(
+                "City effect in strength dispatcher",
+            ))),
             EffectState::Unit(_) => Err(Error::Query(QueryError::Unsupported(
                 "Unit effect in strength Apply dispatcher",
             ))),

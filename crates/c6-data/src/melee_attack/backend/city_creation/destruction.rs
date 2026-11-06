@@ -228,7 +228,9 @@ fn primary_object(
         ContextObject::Unit(unit) => runtime
             .make_current_unit_object(state, unit, [0, 0])
             .map_err(Error::Query),
-        ContextObject::Policy { owner, .. } | ContextObject::Government { owner, .. } => runtime
+        ContextObject::Research { owner, .. }
+        | ContextObject::Policy { owner, .. }
+        | ContextObject::Government { owner, .. } => runtime
             .objects()
             .iter()
             .find(|(_, object)| object.kind == ContextObject::Player(owner))

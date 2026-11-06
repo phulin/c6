@@ -43,6 +43,11 @@ pub enum AnalysisSubscriber {
 pub enum GameSubscriber {
     Diplomacy { owner: i32 },
     NoAttachedModifiers,
+    /// The actual AttachGameEffects consumer. The reporting bit qualifies the
+    /// current a5423bfe registrations and stock DTO publication closure.
+    AttachedModifiers {
+        capacity_report_cache_only: bool,
+    },
     PlayerCatchup { owner: i32 },
     EmptyQuests,
     BoostReference { index: Option<i32> },
@@ -671,6 +676,28 @@ impl<P> Effects<'_, '_, P> {
                     };
                     if attached {
                         return Err(failure());
+                    }
+                }
+                GameSubscriber::AttachedModifiers {
+                    capacity_report_cache_only,
+                } => {
+                    let (hash, recipes) = definitions
+                        .attached_modifiers(kind, index)
+                        .map_err(source_failure)?;
+                    if recipes.iter().any(|r| r.amount != 0) && !capacity_report_cache_only {
+                        return Err(source_failure(
+                            "unqualified trade-capacity reporting consumers".into(),
+                        ));
+                    }
+                    if !recipes.is_empty() {
+                        self.backend
+                            .with_modifier_owners(|_, owners| {
+                                owners.effects.attach_research_trade_capacity(
+                                    state, player, kind, hash, recipes,
+                                )
+                            })
+                            .map_err(|e| source_failure(format!("{e:?}")))?
+                            .map_err(|e| source_failure(format!("{e:?}")))?;
                     }
                 }
                 GameSubscriber::PlayerCatchup { owner } => {
