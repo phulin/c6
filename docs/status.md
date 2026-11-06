@@ -21,7 +21,7 @@ does not initialize a new Civ VI game. See the
 | Development and economy | Farm/Mine construction, ordinary resource-free Farm Repair and forest Chop, and builder charges; city yields and growth; ordinary city tile worker locks; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported; citizen unlock/clamp and noncanonical wrapped requests lack separate native cases |
 | Production and districts | Natural Scout, Warrior, Monument and Campus completion; Campus placement | Representative Linux cases through supported turn progression and externally supplied production choices; not arbitrary production or district branches |
 | Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and first physical step | Representative Linux cases; not district/building pillage or complete trade-route lifecycle coverage |
-| Research and government | Technology/civic selection and progress; explicit government and policy choices | Bounded definitions, effects and decision paths |
+| Research and government | Technology/civic selection, progress and bounded completion; unowned-resource revelation; explicit government and policy choices | Representative Linux cases; owned-resource extraction and other positive acquisition branches remain unsupported |
 | Religion | Human and bounded nonhuman major Initiation Rites pantheon choice and founding | Representative initialized Linux cases, including stored modifiers, owned-city propagation, reached callbacks and NPC continuation on the same controller; other belief effects remain unsupported |
 | Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; city-center melee without walls, including bounded noncapital capture and explicit [Keep City](linux-city-keep.md) and [Raze City](linux-city-raze.md); promotions and upgrades | Representative Linux cases through the persistent Session; Return/Liberate, other combat types, modifiers and aftermath branches remain outside the qualified profiles |
 | Diplomacy | Direct surprise-war declaration | Bounded cityless case; not complete diplomacy or war consequences in arbitrary worlds |
@@ -34,6 +34,15 @@ complete. Representative native comparisons cover their recorded affected gamepl
 state, callbacks and tracked RNG. They do not establish every reachable branch,
 every RNG stream, arbitrary rules/DLC/mod combinations or unrestricted action
 sequences. Historical Windows results do not count as Linux support.
+
+Normal technology completion through the same Session now includes the reached
+[resource-revelation callbacks](../crates/c6-data/src/loaded_actions/stock_research_acquisition.rs).
+In the accepted Animal Husbandry case, ordinary city science completes research,
+reveals Horses on unowned plots and clears the research queue. The next technology
+choice remains external. Compared research/resource state, the complete Map,
+represented callback state and known RNG match. Owned-resource extraction,
+positive discovery boosts/notifications and unknown acquisition subscribers remain
+unsupported; this does not establish complete research, visibility or turn coverage.
 
 The accepted [Farm Pillage](linux-unit-pillage.md) case completes the request
 through `HeadlessMessagesProcessed`, preserving genuine pending player decisions.
