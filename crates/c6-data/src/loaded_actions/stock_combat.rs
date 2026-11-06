@@ -123,6 +123,32 @@ impl<'a> State<'a> {
     }
 }
 impl<'a, P> Runtime<'a, P> {
+    /// Same-owner semantic queue; native notification objects are not created.
+    pub fn queue_city_disposition(
+        &mut self,
+        state: &LoadedState,
+        choice: &crate::city_capture::PendingDisposition,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("capture decision World"))?;
+        state
+            .city(i32::from(choice.city.owner), choice.city.id)
+            .map_err(|_| Error::Missing("capture decision City"))?;
+        if choice.legal.is_empty()
+            || self
+                .capture_dispositions
+                .iter()
+                .any(|old| old.city == choice.city)
+        {
+            return Err(Error::Missing("unique legal capture decision"));
+        }
+        self.capture_dispositions.push(choice.clone());
+        Ok(())
+    }
+    pub fn pending_city_dispositions(&self) -> &[crate::city_capture::PendingDisposition] {
+        &self.capture_dispositions
+    }
+
     pub fn bind_combat(&mut self, state: &LoadedState, combat: State<'a>) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Missing("combat World"))?;

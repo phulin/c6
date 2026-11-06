@@ -92,6 +92,15 @@ pub trait Effects<'a>: founding::Effects<'a> + crate::melee_attack::city::resolv
     ) -> Result<(), String>;
     /// Borrow the same ongoing territory while the public population kernel
     /// assigns workers. Unsupported implementations fail before assignment.
+    /// Retain the semantic decision at the native notification enqueue site.
+    /// Melee completion continues before the outer Session yields this choice.
+    fn queue_city_disposition(
+        &mut self,
+        _state: &mut LoadedState,
+        _choice: &PendingDisposition,
+    ) -> Result<(), String> {
+        Err("capture pending disposition owner".into())
+    }
     fn assign_transferred_citizens(
         &mut self,
         _state: &mut LoadedState,
@@ -728,6 +737,16 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
         step!(Occupation, self.state.city_mut(new_owner, fresh.id))
             .header
             .just_conquered_from = old_owner;
+        let pending = PendingDisposition {
+            city: fresh,
+            district: center,
+            previous_owner: old_owner,
+            legal,
+        };
+        step!(
+            Decision,
+            self.effects.queue_city_disposition(self.state, &pending)
+        );
         if !was_occupied {
             step!(Occupation, self.state.city_mut(new_owner, fresh.id))
                 .header
@@ -746,19 +765,14 @@ impl<'a, E: Effects<'a>> Context<'_, 'a, E> {
                 self.founding.levels
             )
         );
-        if legal.is_empty() {
+        if pending.legal.is_empty() {
             return Err(Self::error(
                 Stage::Decision,
                 replacement,
                 "missing legal captured-city decision",
             ));
         }
-        Ok(PendingDisposition {
-            city: fresh,
-            district: center,
-            previous_owner: old_owner,
-            legal,
-        })
+        Ok(pending)
     }
 }
 

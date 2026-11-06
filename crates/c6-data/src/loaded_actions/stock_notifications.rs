@@ -160,6 +160,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     unit_production_signals: Option<city_production::unit::Signals>,
     movement: Option<movement::State<'a>>,
     combat: Option<combat::State<'a>>,
+    capture_dispositions: Vec<crate::city_capture::PendingDisposition>,
     resource_revelation: Option<resource_revelation::State>,
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
@@ -215,6 +216,7 @@ impl<'a, P> Runtime<'a, P> {
             unit_production_signals: None,
             movement: None,
             combat: None,
+            capture_dispositions: Vec::new(),
             resource_revelation: None,
             city_queries: None,
             gold_signals: None,
@@ -487,14 +489,10 @@ impl<P> processing::Backend for Runtime<'_, P> {
         owner: i32,
     ) -> Result<bool, processing::Error> {
         self.check(state)?;
-        Ok(self.combat.as_ref().is_some_and(|combat| {
-            combat.city_melees.iter().any(|row| {
-                row.captured.as_ref().is_some_and(|capture| {
-                    i32::from(capture.disposition.city.owner) == owner
-                        && capture.disposition.legal.len() > 1
-                })
-            })
-        }))
+        Ok(self
+            .capture_dispositions
+            .iter()
+            .any(|choice| i32::from(choice.city.owner) == owner && choice.legal.len() > 1))
     }
     fn manager_initialized(&mut self, state: &mut LoadedState) -> Result<bool, processing::Error> {
         self.check(state)?;

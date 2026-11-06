@@ -10,13 +10,14 @@ impl<P> Session<'_, '_, P> {
     /// The bounded action surface exposes the legal directives; executing a
     /// disposition is not yet supported. Other actions/turns remain blocked.
     pub fn pending_city_disposition(&self) -> Option<&PendingDisposition> {
-        self.context
-            .notifications
-            .backend
-            .combat()
-            .ok()?
-            .city_melees
-            .iter()
-            .find_map(|row| row.captured.as_ref().map(|capture| &capture.disposition))
+        let backend = &self.context.notifications.backend;
+        let combat = backend.combat().ok()?;
+        backend.pending_city_dispositions().iter().find(|choice| {
+            combat.city_melees.iter().any(|row| {
+                row.captured
+                    .as_ref()
+                    .is_some_and(|capture| capture.disposition.city == choice.city)
+            })
+        })
     }
 }
