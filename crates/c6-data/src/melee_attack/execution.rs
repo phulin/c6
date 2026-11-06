@@ -54,8 +54,8 @@ pub struct GenerateRules<'a> {
     pub levels: &'a [(i32, u32)],
     pub players: &'a super::strength::CurrentPlayerCombat<'a>,
 }
-/// Generated numeric members, after both real draws and temporary-proposal
-/// destruction. Experience/member finalization and Resolve are still required.
+/// Generated numeric members, after any damage draws and temporary-proposal
+/// destruction. Class2 skips both. Experience/member finalization remains.
 #[derive(Debug)]
 pub struct GeneratedDamage {
     pub attacker: UnitReference,
@@ -163,13 +163,10 @@ impl<E> Generation<'_, '_, E> {
     pub fn selected_defender(&self) -> Defender {
         self.defender
     }
-    /// Continue source-ordered base strengths and actual proposal registration.
-    /// Failures are not replayable: the defender Clear, registration and earlier
-    /// callback effects remain in the authoritative state for diagnosis.
-    pub fn advance_proposal(
+    fn prepare_strengths(
         &mut self,
         definitions: &formation_rules::Definitions,
-    ) -> Result<RequiresStrengthModifiers, GenerateError<<E as proposals::Effects>::Error>>
+    ) -> Result<kernel::UnitGeneration, GenerateError<<E as proposals::Effects>::Error>>
     where
         E: proposals::Effects,
     {
@@ -180,18 +177,24 @@ impl<E> Generation<'_, '_, E> {
         let Defender::Unit(defender) = self.defender else {
             return Err(GenerateError::Unsupported("Unit/District generation"));
         };
-        let strengths = results::current_unit_strengths(
+        results::current_unit_strengths(
             self.state,
             definitions,
             self.actor,
             defender,
             self.members.location,
         )
-        .map_err(GenerateError::Members)?;
-        let kernel::UnitGeneration::RequiresProposeCombat(base_strengths) = strengths else {
-            return Err(GenerateError::Unsupported(
-                "support FormationClass generation",
-            ));
+        .map_err(GenerateError::Members)
+    }
+    fn propose_strengths(
+        &mut self,
+        base_strengths: kernel::BaseStrengths,
+    ) -> Result<RequiresStrengthModifiers, GenerateError<<E as proposals::Effects>::Error>>
+    where
+        E: proposals::Effects,
+    {
+        let Defender::Unit(defender) = self.defender else {
+            unreachable!("prepare_strengths checks Unit");
         };
         let (proposal_id, proposal) = proposals::Context::new(self.state, self.effects)
             .propose_units(self.actor, defender, self.members.location)
@@ -204,7 +207,26 @@ impl<E> Generation<'_, '_, E> {
             base_strengths,
         })
     }
-    /// Source ordinary Unit/Unit path: proposal callbacks, attack then defense
+    /// Continue source-ordered base strengths and actual proposal registration.
+    /// Failures are not replayable: the defender Clear, registration and earlier
+    /// callback effects remain in the authoritative state for diagnosis.
+    pub fn advance_proposal(
+        &mut self,
+        definitions: &formation_rules::Definitions,
+    ) -> Result<RequiresStrengthModifiers, GenerateError<<E as proposals::Effects>::Error>>
+    where
+        E: proposals::Effects,
+    {
+        let strengths = self.prepare_strengths(definitions)?;
+        let kernel::UnitGeneration::RequiresProposeCombat(base_strengths) = strengths else {
+            return Err(GenerateError::Unsupported(
+                "FormationClass2 has no combat proposal",
+            ));
+        };
+        self.propose_strengths(base_strengths)
+    }
+    /// Source Unit/Unit path: class2 bypasses proposals and damage; ordinary
+    /// classes run proposal callbacks, attack then defense
     /// modifiers, forward then retaliation damage, mutual-death correction,
     /// then actual ForgetCombat/destruction before XP/member result fields.
     pub fn advance_damage(
@@ -215,12 +237,38 @@ impl<E> Generation<'_, '_, E> {
         E: proposals::Effects
             + proposals::collection_modifiers::Services<Error = <E as proposals::Effects>::Error>,
     {
-        let next = self
-            .advance_proposal(rules.formation)
+        let strengths = self
+            .prepare_strengths(rules.formation)
             .map_err(DamageError::Generate)?;
         let Defender::Unit(defender) = self.defender else {
-            unreachable!("advance_proposal checks Unit");
+            unreachable!("prepare_strengths checks Unit");
         };
+        let base_strengths = match strengths {
+            kernel::UnitGeneration::RequiresSupportResolution(base_strengths) => {
+                // Linux 28cf960 jumps directly to 28cfef4 for FormationClass2.
+                // The native local damage/final-damage/modifier values stay
+                // zero, including for damaged Units. No proposal, modifier,
+                // damage query, RNG draw or ForgetCombat occurs on this path.
+                // The shared member continuation below still performs maximum
+                // damage, experience, advance and generic retreat queries.
+                return Ok(GeneratedDamage {
+                    attacker: self.actor,
+                    defender,
+                    attacker_received: 0,
+                    defender_received: 0,
+                    attacker_final_damage: 0,
+                    defender_final_damage: 0,
+                    attacker_modifier_raw: 0,
+                    defender_modifier_raw: 0,
+                    base_strengths,
+                    game_sync_draws: Vec::new(),
+                });
+            }
+            kernel::UnitGeneration::RequiresProposeCombat(base_strengths) => base_strengths,
+        };
+        let next = self
+            .propose_strengths(base_strengths)
+            .map_err(DamageError::Generate)?;
         let attacker_modifier_raw = super::strength::ordinary_attack_modifier(
             self.state,
             rules.strength,
