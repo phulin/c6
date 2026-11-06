@@ -166,7 +166,7 @@ impl Definitions {
             .find(|e| {
                 bt.row_by_id(e.database_rowid)
                     .and_then(|r| r.text("PrereqTech").ok())
-                    == Some("TECH_RAPID_DEPLOYMENT")
+                    == Some("TECH_ADVANCED_FLIGHT")
             })
             .map(|e| hash(&e.type_name));
         let terrains = rules
