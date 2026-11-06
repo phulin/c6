@@ -312,7 +312,8 @@ impl EffectRuntime {
         )
     }
     /// Import the actual strong count for an existing ability/promotion wrapper.
-    /// The count includes Unit graph context/tracked/applied references and
+    /// The count includes Unit graph context, both tracked map key/value owners,
+    /// applied references, and
     /// combat collection modifier contexts. Combat subjects are proposal objects.
     /// Any remaining strong owners stay explicit and prevent logical retirement;
     /// the native ObjectPool and its type lookup hold weak pointers only.
@@ -328,14 +329,7 @@ impl EffectRuntime {
         let modifiers = self.unit_modifiers.as_ref().ok_or(QueryError::Missing(
             "Unit subtype wrapper modifier reference graph",
         ))?;
-        let represented = modifiers
-            .iter()
-            .map(|m| {
-                usize::from(m.context == handle)
-                    + m.tracked.iter().filter(|t| t.object == handle).count()
-                    + m.applied.iter().filter(|&&h| h == handle).count()
-            })
-            .sum::<usize>()
+        let represented = unit_modifier_references(handle, modifiers)
             + combat_context_references(handle, combat_modifiers(state)?);
         let external = strong_count
             .checked_sub(represented)
@@ -537,6 +531,22 @@ fn ensure_unit_subtype_object(object: &Object) -> Result<(), QueryError> {
     Ok(())
 }
 
+// The native tracked map owns a shared_ptr in its key and another in the
+// TrackedSubject value. The logical graph stores their common object once.
+fn unit_modifier_references(
+    handle: u64,
+    modifiers: &[c6_core::unit_kill::objects::Modifier],
+) -> usize {
+    modifiers
+        .iter()
+        .map(|m| {
+            usize::from(m.context == handle)
+                + 2 * m.tracked.iter().filter(|t| t.object == handle).count()
+                + m.applied.iter().filter(|&&h| h == handle).count()
+        })
+        .sum()
+}
+
 fn ensure_releasable_unit_object(
     handle: u64,
     object: &Object,
@@ -683,11 +693,11 @@ mod destruction_tests {
         );
     }
     #[test]
-    fn a_tracked_reference_blocks_release_even_if_affected_list_is_empty() {
+    fn tracked_map_key_and_value_own_references_until_modifier_destruction() {
         let object = object();
         let modifier = k::Modifier {
             receiver: 2,
-            context: 3,
+            context: 1,
             instance: 4,
             control: m::Modifier {
                 enabled: true,
@@ -707,8 +717,15 @@ mod destruction_tests {
                 },
                 destruction_subscription: None,
             }],
-            applied: vec![],
+            applied: vec![1],
         };
+        // Scout-style self context + tracked key/value + applied object.
+        assert_eq!(
+            unit_modifier_references(1, std::slice::from_ref(&modifier)),
+            4
+        );
         assert!(ensure_releasable_unit_object(1, &object, &[modifier]).is_err());
+        assert_eq!(unit_modifier_references(1, &[]), 0);
+        assert!(ensure_releasable_unit_object(1, &object, &[]).is_ok());
     }
 }
