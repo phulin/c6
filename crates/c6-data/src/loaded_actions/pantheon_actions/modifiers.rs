@@ -78,7 +78,7 @@ impl Definitions {
         let mut ids = table(db, "BeliefModifiers")?
             .rows()
             .filter(|r| text(*r, "BeliefType").ok() == Some(belief))
-            .map(|r| text(r, "ModifierId").map(Vec::from))
+            .map(|r| text(r, "ModifierID").map(Vec::from))
             .collect::<Result<Vec<_>, _>>()?;
         ids.sort();
         let mut recipes = vec![];
@@ -190,7 +190,7 @@ mod tests {
             std::thread::current().id()
         ));
         let c = rusqlite::Connection::open(&path).unwrap();
-        c.execute_batch("CREATE TABLE Beliefs(BeliefType TEXT);CREATE TABLE BeliefModifiers(BeliefType TEXT,ModifierId TEXT);CREATE TABLE Modifiers(ModifierId TEXT,ModifierType TEXT,RunOnce,NewOnly,Permanent,Repeatable,OwnerRequirementSetId TEXT,SubjectRequirementSetId TEXT,OwnerStackLimit,SubjectStackLimit);CREATE TABLE DynamicModifiers(ModifierType TEXT,CollectionType TEXT,EffectType TEXT);CREATE TABLE ModifierArguments(ModifierId TEXT,Name TEXT,Type TEXT,Value TEXT);CREATE TABLE RequirementSets(RequirementSetId TEXT,RequirementSetType TEXT);CREATE TABLE RequirementSetRequirements(RequirementSetId TEXT,RequirementId TEXT);CREATE TABLE Requirements(RequirementId TEXT,RequirementType TEXT,Inverse,Reverse,Persistent,Triggered);CREATE TABLE RequirementArguments(RequirementId TEXT);
+        c.execute_batch("CREATE TABLE Beliefs(BeliefType TEXT);CREATE TABLE BeliefModifiers(BeliefType TEXT,ModifierID TEXT);CREATE TABLE Modifiers(ModifierId TEXT,ModifierType TEXT,RunOnce,NewOnly,Permanent,Repeatable,OwnerRequirementSetId TEXT,SubjectRequirementSetId TEXT,OwnerStackLimit,SubjectStackLimit);CREATE TABLE DynamicModifiers(ModifierType TEXT,CollectionType TEXT,EffectType TEXT);CREATE TABLE ModifierArguments(ModifierId TEXT,Name TEXT,Type TEXT,Value TEXT);CREATE TABLE RequirementSets(RequirementSetId TEXT,RequirementSetType TEXT);CREATE TABLE RequirementSetRequirements(RequirementSetId TEXT,RequirementId TEXT);CREATE TABLE Requirements(RequirementId TEXT,RequirementType TEXT,Inverse,Reverse,Persistent,Triggered);CREATE TABLE RequirementArguments(RequirementId TEXT);
         INSERT INTO Beliefs VALUES('BELIEF_INITIATION_RITES');
         INSERT INTO BeliefModifiers VALUES('BELIEF_INITIATION_RITES','Z_HEAL'),('BELIEF_INITIATION_RITES','A_FAITH');
         INSERT INTO Modifiers VALUES('A_FAITH','ATTACH',0,0,0,0,NULL,'S',0,0),('Z_HEAL','ATTACH',0,0,0,0,NULL,'S',0,0),('FAITH','F',0,0,0,0,NULL,NULL,0,0),('HEAL','H',0,0,0,0,NULL,NULL,0,0);
