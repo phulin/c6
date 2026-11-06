@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check staged Rust blobs only. Never rewrite the index or working tree."""
 import fnmatch
+import os
 import pathlib
 import subprocess
 import sys
@@ -39,8 +40,24 @@ def edition(path):
     return "2021"
 
 
+def normalized(content, path):
+    # rustfmt can need a second pass for some existing harness source.
+    for _ in range(5):
+        result = subprocess.run(
+            ["rustfmt", "--edition", edition(path), "--config", "skip_children=true", "--emit", "stdout"],
+            input=content, capture_output=True,
+        )
+        if result.returncode:
+            raise ValueError(f"cannot normalize {path}: {result.stderr.decode()}")
+        if result.stdout == content:
+            return content
+        content = result.stdout
+    raise ValueError(f"rustfmt did not converge for {path}")
+
+
 def main():
-    paths = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").split(b"\0")
+    formatting_only = os.environ.get("C6_FORMAT_ONLY") == "1"
+    paths = git("diff", "--cached", "--no-renames", "--name-only", "--diff-filter=" + ("ACMD" if formatting_only else "ACM"), "-z").split(b"\0")
     exclusions = (staged(pathlib.PurePosixPath(".rustfmt-exclude")) or b"").decode().splitlines()
     exclusions = [line.strip() for line in exclusions if line.strip() and not line.startswith("#")]
     failed = False
@@ -48,9 +65,21 @@ def main():
         if not raw.endswith(b".rs"):
             continue
         path = pathlib.PurePosixPath(raw.decode())
-        if any(fnmatch.fnmatchcase(str(path), pattern) for pattern in exclusions):
-            continue
+        excluded = any(fnmatch.fnmatchcase(str(path), pattern) for pattern in exclusions)
         content = staged(path)
+        if formatting_only:
+            previous = subprocess.run(["git", "show", "HEAD:" + str(path)], capture_output=True)
+            if previous.returncode or content is None:
+                print(f"Formatting-only commit cannot add, delete or rename Rust files: {path}", file=sys.stderr)
+                failed = True
+                continue
+            before = previous.stdout if excluded else normalized(previous.stdout, path)
+            after = content if excluded else normalized(content, path)
+            if before != after:
+                print(f"Formatting-only commit contains changes beyond rustfmt: {path}", file=sys.stderr)
+                failed = True
+        if excluded:
+            continue
         result = subprocess.run(
             ["rustfmt", "--edition", edition(path), "--config", "skip_children=true", "--emit", "stdout"],
             input=content, capture_output=True,

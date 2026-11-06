@@ -10,8 +10,12 @@ SOURCE = pathlib.Path(__file__).resolve().parents[2]
 with tempfile.TemporaryDirectory(prefix="c6-hook-test-") as temporary:
     root = pathlib.Path(temporary)
 
-    def run(*args, ok=True):
-        result = subprocess.run(args, cwd=root, capture_output=True, text=True)
+    def run(*args, ok=True, formatting_only=False):
+        environment = dict(os.environ)
+        environment.pop("C6_FORMAT_ONLY", None)
+        if formatting_only:
+            environment["C6_FORMAT_ONLY"] = "1"
+        result = subprocess.run(args, cwd=root, capture_output=True, text=True, env=environment)
         assert (result.returncode == 0) == ok, (args, result.stdout, result.stderr)
         return result
 
@@ -51,4 +55,20 @@ with tempfile.TemporaryDirectory(prefix="c6-hook-test-") as temporary:
     run("git", "commit", "--only", "-qm", "formatted", "--", "main.rs")
     assert (root / "legacy-ran").read_text() == "legacylegacy"
     assert unrelated.read_text() == "also invalid unstaged Rust"
-print("staged formatting, malformed input, --only, unstaged isolation, nonmutation, hook chaining: PASS")
+    # A commit-time guard sees the actual --only index, not an earlier inspection.
+    rust.write_text("fn main() {\n    let _x = 3;\n}\n")
+    run("git", "commit", "--only", "-qm", "reject semantic change", "--", "main.rs", formatting_only=True, ok=False)
+    run("git", "commit", "--only", "-qm", "ordinary feature", "--", "main.rs")
+    # Seed an unformatted committed source to exercise a real cleanup.
+    rust.write_text("fn main(){let _x=3;}\n")
+    run("git", "-c", "core.hooksPath=/dev/null", "commit", "--only", "-qm", "legacy formatting", "--", "main.rs")
+    rust.write_text("fn main() {\n    let _x = 3;\n}\n")
+    run("git", "add", "main.rs")
+    rust.write_text("unrelated unstaged change to the same file")
+    run("python3", "tools/check/staged_rustfmt.py", formatting_only=True)
+    # --only must reject worktree semantics even with a safe normal index.
+    rust.write_text("fn main() {\n    let _x = 4;\n}\n")
+    run("git", "commit", "--only", "-qm", "reject late semantic edit", "--", "main.rs", formatting_only=True, ok=False)
+    rust.write_text("fn main() {\n    let _x = 3;\n}\n")
+    run("git", "commit", "--only", "-qm", "formatting cleanup", "--", "main.rs", formatting_only=True)
+print("staged formatting, malformed input, --only, unstaged isolation, nonmutation, hook chaining, formatting-only semantic guard: PASS")

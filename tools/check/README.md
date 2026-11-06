@@ -23,3 +23,17 @@ Do not run workspace-wide `cargo fmt` or `cargo fmt --all` in the shared checkou
 Formatting-only cleanup commits are allowed; coordinate shared files and keep
 semantic work separate. Hooks check commits and cannot prevent editor or formatter
 commands from rewriting unstaged files.
+
+For an authorized formatting-only Rust cleanup, enable the commit-time guard:
+
+```sh
+C6_FORMAT_ONLY=1 git commit --only -m "Normalize owned Rust formatting" -- path/to/owned.rs
+```
+
+This mode compares each prospective staged Rust blob with HEAD after rustfmt
+normalization, rejecting changes beyond formatter output. It rejects Rust file
+additions, deletions and renames; excluded Rust paths must remain byte-identical.
+The comparison uses Git's actual commit index, including `--only`, so a semantic
+edit arriving after an earlier inspection cannot silently join that cleanup.
+Ordinary feature commits omit the flag. The guard covers Rust content only;
+review other owned paths separately and retain file ownership coordination.
