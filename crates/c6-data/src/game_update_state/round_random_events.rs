@@ -154,6 +154,9 @@ impl Runtime {
 }
 struct Event {
     index: i32,
+    hash: u32,
+    hexes: i32,
+    duration: i32,
     operator: u32,
     severity: i32,
     natural_wonder: Option<u32>,
@@ -237,6 +240,9 @@ impl Definitions {
             }
             definitions.push(Event {
                 index: index as i32,
+                hash: linux_type_hash(&entry.type_name),
+                hexes: int(row, "Hexes")?,
+                duration: int(row, "Duration")?,
                 operator: hash(row, "EffectOperatorType")?.unwrap_or(u32::MAX),
                 severity: int(row, "Severity")?,
                 natural_wonder: hash(row, "NaturalWonder")?,
@@ -311,6 +317,7 @@ pub trait Climate<P> {
         &mut self,
         state: &mut LoadedState,
         runtime: &mut Runtime,
+        definitions: &Definitions,
         event: PossibleEvent,
         backend: &mut crate::loaded_actions::stock_notifications::Runtime<'_, P>,
     ) -> Result<(), Error>;
@@ -615,7 +622,11 @@ pub fn run<P, C: Climate<P>>(
         return Err(Error::Missing("RandomEvents current binding"));
     }
     if let Some(pending) = runtime.pending {
-        return Err(Error::Pending(pending));
+        climate.apply_event(state, runtime, definitions, pending, backend)?;
+        runtime.pending = None;
+        climate.send_notifications(state, backend)?;
+        backend.reached.push("Game.RandomEvents.DoTurn");
+        return Ok(());
     }
     if !capabilities.has(CAPABILITY) {
         return Ok(());
@@ -677,7 +688,7 @@ pub fn run<P, C: Climate<P>>(
             .ok_or(Error::Missing("selected event index"))?;
         if event.event != -1 {
             runtime.pending = Some(event);
-            climate.apply_event(state, runtime, event, backend)?;
+            climate.apply_event(state, runtime, definitions, event, backend)?;
             runtime.pending = None;
         }
     }
@@ -725,11 +736,100 @@ impl<P> Climate<P> for CurrentClimate<'_> {
     }
     fn apply_event(
         &mut self,
-        _state: &mut LoadedState,
-        _runtime: &mut Runtime,
+        state: &mut LoadedState,
+        runtime: &mut Runtime,
+        definitions: &Definitions,
         event: PossibleEvent,
         _backend: &mut crate::loaded_actions::stock_notifications::Runtime<'_, P>,
     ) -> Result<(), Error> {
-        Err(Error::Pending(event))
+        self.runtime.validate(state).map_err(climate_error)?;
+        let definition = definitions
+            .events
+            .get(event.event as usize)
+            .ok_or(Error::Missing("selected event definition"))?;
+        if !allowed(runtime, definition)? {
+            return Ok(());
+        }
+        // Linux296d883..296d89c derives the required tile count from Hexes.
+        // FindRequiredTilesAroundPlot2971409..297140b returns false for zero,
+        // even when its terrain predicate accepts the plot. Therefore ALL
+        // scores are zero for Hexes<=2: no target draw, direction draw, active
+        // storm, damage, name generation, callback, or notification is reached.
+        // ApplyEvent nevertheless appends its initialized historical record.
+        if definition.operator != 0xf927ed0a
+            || storm_required_tiles(definition.hexes) != 0
+            || event.start_plot != -1
+        {
+            return Err(Error::Pending(event));
+        }
+        runtime
+            .wire
+            .historical_events
+            .push(targetless_storm_history(
+                definition,
+                event,
+                state.retained().core.current_turn,
+                definitions,
+            )?);
+        Ok(())
+    }
+}
+
+fn storm_required_tiles(hexes: i32) -> i32 {
+    if hexes > 18 {
+        2
+    } else {
+        i32::from(hexes > 2)
+    }
+}
+
+fn targetless_storm_history(
+    definition: &Event,
+    event: PossibleEvent,
+    turn: i32,
+    definitions: &Definitions,
+) -> Result<c6_core::game_random_events::HistoricalEvent, Error> {
+    let remap = |registry: &LinuxDefinitionRegistry, index: i32| {
+        if index == -1 {
+            Ok(u32::MAX)
+        } else {
+            registry
+                .entries()
+                .get(index as usize)
+                .map(|entry| linux_type_hash(&entry.type_name))
+                .ok_or(Error::Missing("event history definition remap"))
+        }
+    };
+    // HistoricalEvent constructor2a13760, ApplyEvent2a0fa00. A failed
+    // TriggerEvent leaves the initialized plots/direction/counters/name intact.
+    Ok(c6_core::game_random_events::HistoricalEvent {
+        wire_version: c6_core::game_random_events::HISTORY_VERSION,
+        random_event_hash: definition.hash,
+        named_river_hash: remap(&definitions.river_names, event.river)?,
+        named_volcano_hash: remap(&definitions.volcano_names, event.volcano)?,
+        natural_wonder_volcano_feature_hash: remap(&definitions.features, event.natural_wonder)?,
+        start_plot: -1,
+        current_plot: -1,
+        current_direction_ordinal: -1,
+        start_turn: turn,
+        end_turn: turn.wrapping_add(definition.duration),
+        tiles_damaged: 0,
+        population_lost: 0,
+        units_lost: 0,
+        fertility_added: 0,
+        name_bytes: Vec::new(),
+        spread_raw: Some(u8::from(event.severity == -2)),
+    })
+}
+
+#[cfg(test)]
+mod continuation_tests {
+    use super::*;
+
+    #[test]
+    fn storm_required_tile_boundaries_match_linux_signed_comparisons() {
+        for (hexes, required) in [(-1, 0), (0, 0), (1, 0), (2, 0), (3, 1), (18, 1), (19, 2)] {
+            assert_eq!(storm_required_tiles(hexes), required);
+        }
     }
 }
