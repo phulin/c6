@@ -110,7 +110,9 @@ impl MovementQueries for Movement<'_, '_, '_> {
         let placement = self
             .queries
             .placement_context(s, &self.definitions.placement)
-            .map_err(query_error)?;
+            .map_err(query_error)?
+            .with_combat_definitions(&self.definitions.formation)
+            .with_district_definitions(&self.definitions.movement);
         melee::resolve::surviving::combat_movement_cost(
             s,
             &self.definitions.movement,
@@ -219,7 +221,8 @@ where
             .queries
             .placement_context(s, &self.movement.definitions.placement)
             .map_err(|e| error("placement", e))?
-            .with_district_definitions(self.inputs.generation.maximum_damage);
+            .with_district_definitions(self.inputs.generation.maximum_damage)
+            .with_combat_definitions(self.inputs.generation.formation);
         melee::target_selection::test_attack_into_with_placement(
             self.targets,
             &inputs,
