@@ -82,6 +82,17 @@ where
 /// can retain its search/definitions here while this module owns queue control.
 pub trait Movement<E: OperationReports> {
     type Error;
+    /// Current Combat.IsEnemyAt after a rejected attack query. None retains
+    /// the existing unavailable continuation for occupied destinations.
+    fn enemy_at(
+        &self,
+        _state: &LoadedState,
+        _visibility: &unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
     /// Opt-in exact FoundCity composition. The default leaves this operation
     /// unsupported before Add/Clear; it never supplies a success/no-op handler.
     fn found_city_rules(&self) -> Option<(&crate::found_city::Definitions, &crate::Rules)> {
@@ -1047,8 +1058,13 @@ fn update<E: Effects, M: Movement<E>>(
                             .map_err(Error::Movement)?
                             .ok_or(Error::Unsupported("MoveTo complete AttackInto composition"))?;
                         data.delete = true;
-                    } else if enemy_at(state, next)? {
-                        data.delete = true;
+                    } else {
+                        let enemy = match movement.enemy_at(state, runtime.visibility, actor, next)
+                            .map_err(Error::Movement)? {
+                            Some(value) => value,
+                            None => enemy_at(state, next)?,
+                        };
+                        if enemy { data.delete = true; }
                     }
                 }
             }

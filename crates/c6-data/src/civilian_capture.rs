@@ -1,6 +1,7 @@
 //! Linux XP2 ordinary noncombat capture, joined to the existing Unit factory,
 //! delayed death, placement and movement owners. The first supported profile is
 //! an unembarked, undamaged Settler; other reached branches remain explicit.
+mod query;
 pub mod stock;
 
 use crate::{
@@ -18,6 +19,22 @@ use c6_core::{
 /// Called by Formation.MoveTo in the actual post-Placement scan. Admission is
 /// read-only; effects execute on the same state and callback owners as movement.
 pub trait Capture<E> {
+    fn test_attack_into(
+        &self,
+        _state: &LoadedState,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+    ) -> Result<Option<bool>, String> {
+        Ok(None)
+    }
+    fn enemy_at(
+        &self,
+        _state: &LoadedState,
+        _actor: (i32, u32),
+        _destination: PlotCoord,
+    ) -> Result<Option<bool>, String> {
+        Ok(None)
+    }
     fn preflight(
         &self,
         state: &LoadedState,
@@ -279,6 +296,39 @@ where
     C::Error: std::fmt::Debug,
     V: Events<E>,
 {
+    fn test_attack_into(
+        &self,
+        state: &LoadedState,
+        actor: (i32, u32),
+        destination: PlotCoord,
+    ) -> Result<Option<bool>, String> {
+        let placement = self
+            .queries
+            .placement_context(state, self.placement.placement)
+            .map_err(debug)?
+            .with_combat_definitions(self.combat);
+        match crate::melee_attack::test_attack_into_prefix_with_placement(
+            self.combat,
+            &placement,
+            c6_core::map::UnitReference::from_component_id(identity(unit(state, actor)?)),
+            destination,
+        )
+        .map_err(debug)?
+        {
+            crate::melee_attack::Prefix::Rejected(_) => Ok(Some(false)),
+            crate::melee_attack::Prefix::RequiresTargetSelection(_) => {
+                Err("capture reached combat target selection".into())
+            }
+        }
+    }
+    fn enemy_at(
+        &self,
+        state: &LoadedState,
+        actor: (i32, u32),
+        destination: PlotCoord,
+    ) -> Result<Option<bool>, String> {
+        query::enemy_at(state, self.combat, actor, destination).map(Some)
+    }
     fn preflight(
         &self,
         state: &LoadedState,
@@ -490,6 +540,35 @@ where
     C: Capture<E>,
 {
     type Error = crate::loaded_actions::move_to::ComputedError<placement::EffectsError<E>>;
+    fn test_attack_into(
+        &mut self,
+        state: &mut LoadedState,
+        _: &sight::Runtime,
+        actor: (i32, u32),
+        at: PlotCoord,
+        _: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        self.capture
+            .test_attack_into(state, actor, at)
+            .map_err(|e| {
+                crate::loaded_actions::move_to::ComputedError::Step(
+                    crate::formation_move_to::Error::Capture(e),
+                )
+            })
+    }
+    fn enemy_at(
+        &self,
+        state: &LoadedState,
+        _: &sight::Runtime,
+        actor: (i32, u32),
+        at: PlotCoord,
+    ) -> Result<Option<bool>, Self::Error> {
+        self.capture.enemy_at(state, actor, at).map_err(|e| {
+            crate::loaded_actions::move_to::ComputedError::Step(
+                crate::formation_move_to::Error::Capture(e),
+            )
+        })
+    }
     fn fortify_turn_max(&self) -> i32 {
         self.movement.path.fortify_turn_max
     }
