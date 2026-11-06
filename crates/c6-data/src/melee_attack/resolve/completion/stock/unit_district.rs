@@ -16,6 +16,7 @@ struct Dispatch<'a, 'i, 'd, 'r, E> {
     inputs: &'a Inputs<'i, 'd, 'r>,
     effects: &'a mut E,
     members: &'a Generated,
+    retired: Option<&'a crate::city_capture::retired_district::RetiredDistrictScalars>,
 }
 impl<E: Effects> signals::Context for Dispatch<'_, '_, '_, '_, E> {
     type Error = Box<Error<E::Error>>;
@@ -58,6 +59,7 @@ impl<E: Effects> Dispatch<'_, '_, '_, '_, E> {
                 self.inputs.placement,
                 self.inputs.barbarian_owner,
                 self.members,
+                self.retired,
             )
             .map_err(Error::Mayhem)?,
             Callback::Summary => self.bindings.outputs.push(Output::CombatSummary),
@@ -101,6 +103,7 @@ impl<E: Effects> Dispatch<'_, '_, '_, '_, E> {
                     self.inputs.placement,
                     observer,
                     self.members,
+                    self.retired,
                 )
                 .map_err(Error::Targets)?
                 {
@@ -144,6 +147,7 @@ pub fn combat_occurred<E: Effects>(
     inputs: &Inputs<'_, '_, '_>,
     effects: &mut E,
     members: &Generated,
+    retired: Option<&crate::city_capture::retired_district::RetiredDistrictScalars>,
 ) -> Result<(), Error<E::Error>> {
     if !bindings.matches(state) {
         return Err(Error::Binding);
@@ -155,6 +159,7 @@ pub fn combat_occurred<E: Effects>(
             inputs,
             effects,
             members,
+            retired,
         },
         Signal::GameCombatOccurred,
     )

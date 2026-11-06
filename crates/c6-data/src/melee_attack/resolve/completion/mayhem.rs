@@ -20,6 +20,8 @@ pub struct Definitions {
     combat_barbarians: f32,
     death: f32,
     death_barbarians: f32,
+    city_death: f32,
+    city_death_barbarians: f32,
 }
 impl Definitions {
     pub fn from_rules(
@@ -61,6 +63,8 @@ impl Definitions {
             combat_barbarians: parameter("MAYHEM_UNIT_COMBAT_WITH_BARBARIANS")?,
             death: parameter("MAYHEM_UNIT_DEATH")?,
             death_barbarians: parameter("MAYHEM_UNIT_DEATH_WITH_BARBARIANS")?,
+            city_death: parameter("MAYHEM_CITY_DEATH")?,
+            city_death_barbarians: parameter("MAYHEM_CITY_DEATH_WITH_BARBARIANS")?,
         })
     }
 }
@@ -187,6 +191,7 @@ pub fn on_unit_district_combat(
     placement: &unit_placement_state::Definitions<'_, '_>,
     barbarian_owner: i32,
     members: &crate::melee_attack::city::Generated,
+    retired: Option<&crate::city_capture::retired_district::RetiredDistrictScalars>,
 ) -> Result<(), Error> {
     if definitions.binding != *state.binding() {
         return Err(Error::Binding);
@@ -210,11 +215,25 @@ pub fn on_unit_district_combat(
     {
         return Err(Error::DistrictDeathContinuation);
     }
-    let district = state
-        .district(i32::from(members.defender.owner), members.defender.id)
-        .map_err(Error::District)?;
-    if district.garrison_damage >= members.defender_maximum_damage {
-        return Err(Error::DistrictDeathContinuation);
+    let damage = match retired {
+        Some(view) => view.garrison_damage,
+        None => {
+            state
+                .district(i32::from(members.defender.owner), members.defender.id)
+                .map_err(Error::District)?
+                .garrison_damage
+        }
+    };
+    if damage >= members.defender_maximum_damage {
+        // LogDeath(Unit,District,Player) uses the city-center definition and
+        // the attacking Unit's IsBarbarian branch; it consumes no RNG.
+        state
+            .add_global_mayhem(if attacker.e_owner == barbarian_owner {
+                definitions.city_death_barbarians
+            } else {
+                definitions.city_death
+            })
+            .map_err(Error::State)?;
     }
     Ok(())
 }

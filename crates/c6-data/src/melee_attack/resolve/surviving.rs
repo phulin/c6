@@ -216,95 +216,16 @@ fn finish_attacker<
                 movement_cost.wrapping_neg(),
             )
             .map_err(Error::MovementFormation)?;
-            // Native scans the retained destination IDs backwards. The ordinary
-            // uncaptured combat branch skips delayed-death objects. Civilian
-            // capture and nonempty live stacks remain explicit continuations.
-            let map = state.world().map();
-            let index = (members.location.y as u32)
-                .wrapping_mul(map.units.width)
-                .wrapping_add(members.location.x as u32);
-            let layer = c6_core::skip_turn::placement::formation_layer(
-                state.world(),
-                state
-                    .world()
-                    .player(formation.owner)
-                    .map_err(Error::World)?
-                    .formation(formation.requested_id)
-                    .map_err(Error::World)?
-                    .ok_or(Error::MissingFormation)?
-                    .record,
-            )
-            .map_err(Error::Layer)?
-            .unwrap_or(u32::MAX);
-            let targets = map
-                .units
-                .layers
-                .iter()
-                .find(|v| v.layer_id == layer)
-                .ok_or(Error::MissingFormation)?
-                .cells
-                .iter()
-                .find(|v| v.plot_index == index)
-                .map(|v| v.units.clone())
-                .unwrap_or_default();
-            for target in targets.into_iter().rev() {
-                let Some(found) = state.world().unit(target).map_err(Error::World)? else {
-                    continue;
-                };
-                if !found.record.b_delayed_death {
-                    return Err(Error::UnsupportedAdvanceUnit(target));
-                }
-            }
-            let record = state
-                .world()
-                .player(formation.owner)
-                .map_err(Error::World)?
-                .formation(formation.requested_id)
-                .map_err(Error::World)?
-                .ok_or(Error::MissingFormation)?
-                .record;
-            let owner = record.owner;
-            let count = record.unit_ids.len();
-            for index in 0..count {
-                let record = state
-                    .world()
-                    .player(formation.owner)
-                    .map_err(Error::World)?
-                    .formation(formation.requested_id)
-                    .map_err(Error::World)?
-                    .ok_or(Error::MissingFormation)?
-                    .record;
-                let id = *record.unit_ids.get(index).ok_or(Error::MissingFormation)?;
-                if upkeep::UnitHandle::resolve(state, owner, id)
-                    .map_err(Error::World)?
-                    .is_none()
-                {
-                    continue;
-                }
-                let result = crate::unit_placement_state::set(
-                    state,
-                    definitions,
-                    queries,
-                    sight,
-                    effects,
-                    crate::unit_placement_state::Request {
-                        actor: (owner, id),
-                        destination: members.location,
-                        validation_flags: 1,
-                    },
-                )
-                .map_err(|e| Error::Placement(Box::new(e)))?;
-                if result != 1 {
-                    return Err(Error::PlacementRejected(result));
-                }
-            }
-            upkeep::complete_formation_movement(
+            advance_formation(
                 state,
+                definitions,
+                queries,
+                sight,
+                effects,
                 formation.owner,
                 formation.requested_id,
-                effects,
-            )
-            .map_err(|e| Error::Clear(Box::new(e)))?;
+                members.location,
+            )?;
             return eligible(state, attacker, members);
         }
     }
@@ -457,4 +378,108 @@ pub fn combat_notification_required(
     }
     let (initialized, uninitializing) = manager_facts.ok_or(Error::MissingNotificationFacts)?;
     accepts_combat_notification(state, initialized, uninitializing, defender).map_err(Error::Actor)
+}
+
+/// Shared Formation.SetLocation flags3 continuation. City melee has already
+/// charged the formation and must skip the Unit/Unit eligible-to-heal tail.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn advance_formation<E>(
+    state: &mut LoadedState,
+    definitions: &crate::unit_placement_state::Definitions<'_, '_>,
+    queries: &crate::unit_placement_state::Queries<'_>,
+    sight: &mut crate::unit_sight_state::Runtime,
+    effects: &mut E,
+    owner: i32,
+    formation_id: u32,
+    destination: PlotCoord,
+) -> Result<(), Error<ProviderError<E>>>
+where
+    E: crate::unit_placement_state::Effects
+        + upkeep::Effects<Error = <E as crate::unit_sight_state::Effects>::Error>,
+{
+    // Native scans the retained destination IDs backwards. The ordinary
+    // uncaptured combat branch skips delayed-death objects. Civilian
+    // capture and nonempty live stacks remain explicit continuations.
+    let map = state.world().map();
+    let index = (destination.y as u32)
+        .wrapping_mul(map.units.width)
+        .wrapping_add(destination.x as u32);
+    let layer = c6_core::skip_turn::placement::formation_layer(
+        state.world(),
+        state
+            .world()
+            .player(owner)
+            .map_err(Error::World)?
+            .formation(formation_id)
+            .map_err(Error::World)?
+            .ok_or(Error::MissingFormation)?
+            .record,
+    )
+    .map_err(Error::Layer)?
+    .unwrap_or(u32::MAX);
+    let targets = map
+        .units
+        .layers
+        .iter()
+        .find(|v| v.layer_id == layer)
+        .ok_or(Error::MissingFormation)?
+        .cells
+        .iter()
+        .find(|v| v.plot_index == index)
+        .map(|v| v.units.clone())
+        .unwrap_or_default();
+    for target in targets.into_iter().rev() {
+        let Some(found) = state.world().unit(target).map_err(Error::World)? else {
+            continue;
+        };
+        if !found.record.b_delayed_death {
+            return Err(Error::UnsupportedAdvanceUnit(target));
+        }
+    }
+    let record = state
+        .world()
+        .player(owner)
+        .map_err(Error::World)?
+        .formation(formation_id)
+        .map_err(Error::World)?
+        .ok_or(Error::MissingFormation)?
+        .record;
+    let owner = record.owner;
+    let count = record.unit_ids.len();
+    for index in 0..count {
+        let record = state
+            .world()
+            .player(owner)
+            .map_err(Error::World)?
+            .formation(formation_id)
+            .map_err(Error::World)?
+            .ok_or(Error::MissingFormation)?
+            .record;
+        let id = *record.unit_ids.get(index).ok_or(Error::MissingFormation)?;
+        if upkeep::UnitHandle::resolve(state, owner, id)
+            .map_err(Error::World)?
+            .is_none()
+        {
+            continue;
+        }
+        let result = crate::unit_placement_state::set(
+            state,
+            definitions,
+            queries,
+            sight,
+            effects,
+            crate::unit_placement_state::Request {
+                actor: (owner, id),
+                destination,
+                validation_flags: 1,
+            },
+        )
+        .map_err(|e| Error::Placement(Box::new(e)))?;
+        if result != 1 {
+            return Err(Error::PlacementRejected(result));
+        }
+    }
+    upkeep::complete_formation_movement(state, owner, formation_id, effects)
+        .map_err(|e| Error::Clear(Box::new(e)))?;
+    Ok(())
 }

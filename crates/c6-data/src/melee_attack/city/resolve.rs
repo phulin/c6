@@ -17,6 +17,7 @@ pub trait Effects {
 #[must_use]
 pub struct Resolved {
     pub members: Generated,
+    pub captured: Option<super::capture::Captured>,
 }
 
 fn current_damage(state: &LoadedState, id: ComponentId, outer: bool) -> Result<i32, Error> {
@@ -75,18 +76,24 @@ fn change_district_damage<E: Effects>(
     Ok(())
 }
 
-/// Supported surviving attacker/city path. A reached destruction/capture or
-/// attacker death is retained as an explicit continuation error.
+/// Owned inner continuation. No completed action is reported before all
+/// capture, movement and outer CombatOccurred continuations succeed.
+#[must_use]
+pub struct Prepared {
+    pub members: Generated,
+    pub capture_required: bool,
+    pub captured: Option<super::capture::Captured>,
+}
+
+/// Source-ordered attacker completion, damage and experience up to Capture.
 #[allow(clippy::too_many_arguments)]
-pub fn apply<E>(
+pub fn prepare<E>(
     state: &mut LoadedState,
     sight: &mut sight::Runtime,
     effects: &mut E,
-    definitions: &super::Definitions,
     inputs: &crate::melee_attack::transition::Inputs<'_, '_, '_>,
-    bindings: &mut crate::melee_attack::resolve::completion::stock::Bindings,
     members: Generated,
-) -> Result<Resolved, Error>
+) -> Result<Prepared, Error>
 where
     E: Effects
         + placement::Effects
@@ -176,9 +183,43 @@ where
             "positive District defender award partners",
         ));
     }
-    if current_damage(state, members.defender, false)? >= members.defender_maximum_damage {
+    let capture_required =
+        current_damage(state, members.defender, false)? >= members.defender_maximum_damage;
+    Ok(Prepared {
+        members,
+        capture_required,
+        captured: None,
+    })
+}
+
+/// Continue the same inner resolver after the source Capture boundary.
+#[allow(clippy::too_many_arguments)]
+pub fn complete<E>(
+    state: &mut LoadedState,
+    sight: &mut sight::Runtime,
+    effects: &mut E,
+    definitions: &super::Definitions,
+    inputs: &crate::melee_attack::transition::Inputs<'_, '_, '_>,
+    bindings: &mut crate::melee_attack::resolve::completion::stock::Bindings,
+    prepared: Prepared,
+) -> Result<Resolved, Error>
+where
+    E: Effects
+        + placement::Effects
+        + upkeep::Effects<Error = ProviderError<E>>
+        + upkeep::OperationReports<Error = ProviderError<E>>
+        + crate::melee_attack::experience::Reports<Error = ProviderError<E>>
+        + crate::melee_attack::resolve::surviving::Effects
+        + crate::melee_attack::resolve::completion::stock::UnitDistrictEffects,
+    ProviderError<E>: std::fmt::Debug,
+    <E as crate::melee_attack::resolve::completion::stock::Effects>::Error: std::fmt::Debug,
+{
+    if prepared.capture_required && prepared.captured.is_none() {
         return Err(error("capture", "city capture continuation"));
     }
+    let captured = prepared.captured;
+    let members = prepared.members;
+    let attacker = members.attacker;
     upkeep::clear_unit_operations(state, attacker.player(), attacker.id, effects)
         .map_err(|e| error("inner movement", e))?;
     let unit =
@@ -200,6 +241,28 @@ where
         cost.wrapping_neg(),
     )
     .map_err(|e| error("inner movement cost", e))?;
+    if captured.is_some() && members.attacker_advances {
+        let (enemy, combat) = effects
+            .visible_enemy_at(state, sight, attacker, members.location)
+            .map_err(|e| error("capture advance", e))?;
+        if !(enemy && combat)
+            && !effects
+                .enemy_defensible_district(state, attacker, members.location)
+                .map_err(|e| error("capture advance", e))?
+        {
+            crate::melee_attack::resolve::surviving::advance_formation(
+                state,
+                inputs.placement,
+                inputs.queries,
+                sight,
+                effects,
+                formation.owner,
+                formation.requested_id,
+                members.location,
+            )
+            .map_err(|e| error("capture advance", e))?;
+        }
+    }
     crate::melee_attack::resolve::budget::consume_reference_attack(
         state,
         inputs.movement,
@@ -224,7 +287,43 @@ where
         inputs.callbacks,
         effects,
         &members,
+        captured.as_ref().map(|c| &c.retired),
     )
     .map_err(|e| error("combat occurred", e))?;
-    Ok(Resolved { members })
+    Ok(Resolved { members, captured })
+}
+
+/// Supported surviving attacker/city path. A reached destruction/capture or
+/// attacker death is retained as an explicit continuation error.
+#[allow(clippy::too_many_arguments)]
+pub fn apply<E>(
+    state: &mut LoadedState,
+    sight: &mut sight::Runtime,
+    effects: &mut E,
+    definitions: &super::Definitions,
+    inputs: &crate::melee_attack::transition::Inputs<'_, '_, '_>,
+    bindings: &mut crate::melee_attack::resolve::completion::stock::Bindings,
+    members: Generated,
+) -> Result<Resolved, Error>
+where
+    E: Effects
+        + placement::Effects
+        + upkeep::Effects<Error = ProviderError<E>>
+        + upkeep::OperationReports<Error = ProviderError<E>>
+        + crate::melee_attack::experience::Reports<Error = ProviderError<E>>
+        + crate::melee_attack::resolve::surviving::Effects
+        + crate::melee_attack::resolve::completion::stock::UnitDistrictEffects,
+    ProviderError<E>: std::fmt::Debug,
+    <E as crate::melee_attack::resolve::completion::stock::Effects>::Error: std::fmt::Debug,
+{
+    let prepared = prepare(state, sight, effects, inputs, members)?;
+    complete(
+        state,
+        sight,
+        effects,
+        definitions,
+        inputs,
+        bindings,
+        prepared,
+    )
 }

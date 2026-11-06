@@ -85,6 +85,27 @@ pub trait Damage<E: placement::Effects, R> {
         formation: &crate::formation_rules::Definitions,
         pending: execution::RequiresResolve,
     ) -> Result<resolve::RequiresExperience, Self::Error>;
+    /// Reached only after city damage/experience establishes a lethal center.
+    /// Older Unit-only providers retain an explicit unsupported continuation.
+    fn capture(
+        &mut self,
+        _state: &mut LoadedState,
+        _sight: &mut sight::Runtime,
+        _effects: &mut E,
+        runtime: backend::EffectRuntime,
+        requirements: R,
+        _members: &super::city::Generated,
+    ) -> (
+        backend::EffectRuntime,
+        R,
+        Result<super::city::capture::Captured, String>,
+    ) {
+        (
+            runtime,
+            requirements,
+            Err("city capture services unavailable".into()),
+        )
+    }
 }
 pub struct Inputs<'a, 'd, 'r> {
     pub generation: &'a execution::GenerateRules<'a>,
@@ -206,35 +227,31 @@ impl<R: backend::Requirements> Session<R> {
             .take()
             .ok_or_else(|| failure(Stage::Reentry, "attack already active"))?;
         let (_, mut backend) = backend.with_reporting(Reports(effects));
+        if let target_selection::Defender::District(district) = selected {
+            let definitions = match inputs.generation.city {
+                Some(d) => d,
+                None => {
+                    let (_, backend) = backend.with_reporting(());
+                    self.backend = Some(backend);
+                    return Err(failure(Stage::Generate, "city melee definitions"));
+                }
+            };
+            let (backend, result) = super::city::transition::execute(
+                state,
+                sight,
+                backend,
+                damage,
+                definitions,
+                inputs,
+                bindings,
+                actor,
+                district,
+            );
+            let (_, backend) = backend.with_reporting(());
+            self.backend = Some(backend);
+            return result;
+        }
         let result = (|| {
-            if let target_selection::Defender::District(district) = selected {
-                let definitions = inputs
-                    .generation
-                    .city
-                    .ok_or_else(|| failure(Stage::Generate, "city melee definitions"))?;
-                let members = super::city::generate(
-                    state,
-                    &mut backend,
-                    definitions,
-                    inputs.generation,
-                    inputs.experience,
-                    actor,
-                    district,
-                )
-                .map_err(|e| failure(Stage::Generate, e))?;
-                let (reports, _, _, _) = backend.kill_parts();
-                return super::city::resolve::apply(
-                    state,
-                    sight,
-                    reports.0,
-                    definitions,
-                    inputs,
-                    bindings,
-                    members,
-                )
-                .map(Outcome::CityResolved)
-                .map_err(|e| failure(Stage::Completion, e));
-            }
             let pending = match execution::begin_selected(
                 state,
                 Some(inputs.generation.maximum_damage),

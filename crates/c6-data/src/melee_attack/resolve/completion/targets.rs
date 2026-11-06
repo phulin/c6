@@ -11,6 +11,7 @@ use c6_core::{
 #[derive(Debug)]
 pub enum Error {
     Binding,
+    Retired(String),
     ArmyKnowledge(super::army_knowledge::Error),
     Missing(&'static str),
     Actor(crate::melee_attack::Error),
@@ -170,8 +171,8 @@ pub fn unit_killed(
     };
     Ok(())
 }
-/// A source-qualified native planner observation. CityAttacked only adjusts
-/// WarKnowledge.current_tally_q8 using CityValue and consumes no RNG; external
+/// A source-qualified native planner observation. CityAttacked/LoseCity only
+/// adjust WarKnowledge.current_tally_q8 using CityValue and consume no RNG; external
 /// policies own targeting, so this planning score is emitted rather than updated.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CityAttackPlanningObservation {
@@ -179,6 +180,7 @@ pub struct CityAttackPlanningObservation {
     pub previous_owner: i32,
     pub city_id: u32,
     pub defending: bool,
+    pub city_lost: bool,
 }
 pub fn unit_district_combat(
     state: &LoadedState,
@@ -186,6 +188,7 @@ pub fn unit_district_combat(
     placement: &unit_placement_state::Definitions<'_, '_>,
     observer: i32,
     members: &crate::melee_attack::city::Generated,
+    retired: Option<&crate::city_capture::retired_district::RetiredDistrictScalars>,
 ) -> Result<Option<CityAttackPlanningObservation>, Error> {
     if defs.binding != *state.binding() {
         return Err(Error::Binding);
@@ -197,10 +200,24 @@ pub fn unit_district_combat(
     if dead(state, placement, members.attacker)? {
         return Err(Error::Missing("District combat attacker death bookkeeping"));
     }
-    let district = state
-        .district(previous_owner, members.defender.id)
-        .map_err(Error::District)?;
-    let city_id = district.city_id;
+    let (city_id, damage, current_owner) = match retired {
+        Some(view) => (
+            view.city_id,
+            view.garrison_damage,
+            view.current_owner(state).map_err(Error::Retired)?,
+        ),
+        None => {
+            let district = state
+                .district(previous_owner, members.defender.id)
+                .map_err(Error::District)?;
+            (
+                district.city_id,
+                district.garrison_damage,
+                crate::loaded_actions::city_range_attack::district_owner(state, district)
+                    .map_err(|e| Error::Retired(format!("{e:?}")))?,
+            )
+        }
+    };
     let current = state
         .retained()
         .players
@@ -219,14 +236,12 @@ pub fn unit_district_combat(
     {
         return Ok(None);
     }
-    if district.garrison_damage >= members.defender_maximum_damage {
-        return Err(Error::Missing("City lost planning observation"));
-    }
     Ok(Some(CityAttackPlanningObservation {
         observer,
         previous_owner,
         city_id,
-        defending: i32::from(members.defender.owner) == observer,
+        defending: current_owner == observer,
+        city_lost: damage >= members.defender_maximum_damage,
     }))
 }
 /// Player.Signals+78 observes the current attacking Unit in the same canonical

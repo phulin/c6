@@ -7,7 +7,9 @@ use c6_core::{
     map::UnitReference,
     unit::{ComponentId, PlotCoord},
 };
+pub mod capture;
 pub mod resolve;
+pub(crate) mod transition;
 pub mod weariness;
 
 #[derive(Clone, Debug)]
