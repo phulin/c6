@@ -254,8 +254,14 @@ impl Context {
             .map_or(-1, |a| i32::from(a.player));
         let mut nearest = if self.alive_major_ids.contains(&owner) {
             Some(owner)
-        } else {
+        } else if owner == -1 {
             None
+        } else {
+            // IsMajor is not equivalent to IsAlive. This bounded context has
+            // proved only the supplied alive-major collection.
+            return Err(Error::Requires(
+                "storm owned non-alive-major classification",
+            ));
         };
         if nearest.is_none() {
             let mut best = i32::MAX;
