@@ -77,6 +77,13 @@ impl<P> Runtime<'_, P> {
         }
         result
     }
+    /// Current activation's borrowed Session history. This is deliberately
+    /// unavailable outside that scope; an initial empty answer is not retained.
+    pub(super) fn current_gossip_history_empty(&self) -> Option<bool> {
+        self.era_changes
+            .as_ref()
+            .and_then(|state| state.history_empty)
+    }
     pub(super) fn player_era_changed(
         &mut self,
         state: &mut LoadedState,

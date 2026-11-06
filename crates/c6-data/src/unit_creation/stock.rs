@@ -92,6 +92,8 @@ pub struct Inputs<'a> {
     pub quests: &'a [crate::city_turn::religion_callbacks::CurrentQuest],
     pub achievements: signals::AchievementInputs<'a>,
     pub history: Option<&'a History<'a>>,
+    /// Live activation scope from the same Session visibility-history owner.
+    pub gossip_history_empty: Option<bool>,
 }
 /// Includes both the factory's pre-placement dispatch and the camp's additional
 /// post-placement dispatch. Null originating cities remain actual None values.
@@ -119,7 +121,12 @@ pub fn game_created<P, E: collections::Effects>(
                 .map_err(Error::Signal)?,
             Consumer::SettlerGossip => inputs
                 .signals
-                .settler_created(owners.state, &inputs.levels, reference)
+                .settler_created_with_gossip_history(
+                    owners.state,
+                    &inputs.levels,
+                    reference,
+                    inputs.gossip_history_empty,
+                )
                 .map_err(Error::Signal)?,
             Consumer::TrainedGossip => inputs
                 .signals

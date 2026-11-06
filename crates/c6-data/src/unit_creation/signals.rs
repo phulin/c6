@@ -504,6 +504,18 @@ impl Definitions {
         levels: &CurrentCivilizationLevels<'_>,
         unit: UnitReference,
     ) -> Result<(), Error> {
+        self.settler_created_with_gossip_history(state, levels, unit, None)
+    }
+    /// Same handler using the current Session visibility history at the actual
+    /// activation scope. Empty history returns from AddGossipItem before any
+    /// retained occurrence, delivery, callback or RNG work (29b25d0).
+    pub fn settler_created_with_gossip_history(
+        &self,
+        state: &LoadedState,
+        levels: &CurrentCivilizationLevels<'_>,
+        unit: UnitReference,
+        history_empty: Option<bool>,
+    ) -> Result<(), Error> {
         let actor = self.actor(state, unit)?;
         if !self.major(state, levels, actor.e_owner)? {
             return Ok(());
@@ -520,6 +532,9 @@ impl Definitions {
             .get(index)
             .ok_or(Error::Missing("Unit FoundCity definition"))?
         {
+            if history_empty == Some(true) {
+                return Ok(());
+            }
             return Err(Error::Missing("settler gossip occurrence and delivery"));
         }
         Ok(())

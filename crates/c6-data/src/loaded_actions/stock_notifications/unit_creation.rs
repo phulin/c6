@@ -278,6 +278,7 @@ impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
         unit: Option<ComponentId>,
         city: Option<ComponentId>,
     ) -> Result<(), creation::Error<movement::Error>> {
+        let gossip_history_empty = self.current_gossip_history_empty();
         let input = self
             .unit_creation
             .as_ref()
@@ -329,6 +330,7 @@ impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
                 civilization,
             },
             history: input.history.as_ref(),
+            gossip_history_empty,
         };
         stock::game_created(
             &mut owners,
