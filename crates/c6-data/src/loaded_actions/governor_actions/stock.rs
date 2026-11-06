@@ -5,8 +5,10 @@ use c6_core::loaded_state::LoadedState;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Scope {
-    /// Stock cache reporting, empty secret societies and no added script hooks.
+    /// Stock cache/summary/achievement consumers, empty secret societies, no
+    /// active governor requirements and no custom consumers of summary data.
     /// Player policy selection is external, including governor/city selection.
+    /// A different live subscriber graph requires its own Effects implementation.
     StockPlainHeadlessExternalPolicies,
 }
 pub struct Current<'s, 'a, P> {

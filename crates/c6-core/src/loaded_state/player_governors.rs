@@ -17,8 +17,8 @@ impl LoadedState {
 }
 
 impl LoadedState {
-    /// Bind the actual unsaved native maximum once. It cannot be reconstructed
-    /// from the Governors saved record after titles have been spent.
+    /// Bind the actual unsaved native maximum once. Saved points alone do not
+    /// establish this independently retained native field.
     pub fn bind_governor_current(
         &mut self,
         owner: i32,
