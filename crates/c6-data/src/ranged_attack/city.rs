@@ -73,9 +73,14 @@ where
         .formation
         .bombard(state, unit)
         .map_err(|e| error("city type", e))?;
-    if ranged <= 0 || ranged <= bombard {
-        return Err(error("city scope", "ordinary RANGED combat required"));
+    if ranged.max(bombard) <= 0 || ranged == bombard {
+        return Err(error(
+            "city scope",
+            "positive unequal ranged/bombard strength required",
+        ));
     }
+    let is_bombard = bombard > ranged;
+    let combat_type = if is_bombard { 0x4fc9163d } else { RANGED };
     let location = PlotCoord {
         x: d.location.0,
         y: d.location.1,
@@ -105,11 +110,7 @@ where
             "positive bypass outer defenses continuation",
         ));
     }
-    let attacker_strength = rules
-        .formation
-        .ranged(state, unit)
-        .map_err(|e| error("city strength", e))?
-        .wrapping_shl(8);
+    let attacker_strength = if is_bombard { bombard } else { ranged }.wrapping_shl(8);
     let (defender_strength, base_modifier) = melee::district_strength::base_defense(
         state,
         &defs.strength,
@@ -121,7 +122,7 @@ where
     )
     .map_err(|e| error("city defense", e))?;
     let (id, _) = proposals::Context::new(state, backend)
-        .propose_unit_district_with_type(actor, defender, location, RANGED)
+        .propose_unit_district_with_type(actor, defender, location, combat_type)
         .map_err(|e| error("city proposal", e))?;
     let attack_modifier = melee::district_strength::attack_modifier_with_kind(
         state,
@@ -133,7 +134,7 @@ where
         defender,
         id,
         true,
-        defs.ranged_penalty,
+        if is_bombard { 0 } else { defs.ranged_penalty },
     )
     .map_err(|e| error("city attack strength", e))?;
     let defense_modifier = base_modifier.wrapping_add(
@@ -182,7 +183,7 @@ where
     .map_err(|e| error("city outer damage", e))?;
     draws.extend(outer_draws);
     let unit = melee::actor(state, actor).map_err(|e| error("city damage", e))?;
-    let percentage = if unit.k_combat_modifers.b_ignore_ranged_vs_district_penalty {
+    let percentage = if is_bombard || unit.k_combat_modifers.b_ignore_ranged_vs_district_penalty {
         defs.outer_bombard_percent
     } else {
         defs.outer_ranged_percent

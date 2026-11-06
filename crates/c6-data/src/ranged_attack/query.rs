@@ -21,8 +21,11 @@ pub fn test(
         .combat
         .bombard(state, a)
         .map_err(|e| error("test", e))?;
-    if ranged <= bombard {
-        return Err(error("test", "equal/bombard combat type unsupported"));
+    if ranged == bombard {
+        return Err(error(
+            "test",
+            "equal ranged/bombard combat type unsupported",
+        ));
     }
     if let Some(district) = melee::target_selection::enemy_defensible_district_with_definitions(
         state,
@@ -40,6 +43,9 @@ pub fn test(
             district,
         )
         .map_err(|e| error("test", e));
+    }
+    if bombard > ranged {
+        return Err(error("test", "bombard Unit combat unsupported"));
     }
     let Some(defender) =
         melee::target_selection::ranged_defender(state, inputs, actor, destination)
@@ -95,6 +101,12 @@ pub fn can_start(
         .combat
         .ranged(state, a)
         .map_err(|e| error("can start", e))?
+        .max(
+            inputs
+                .combat
+                .bombard(state, a)
+                .map_err(|e| error("can start", e))?,
+        )
         <= 0
     {
         return Ok(false);
