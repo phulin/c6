@@ -50,6 +50,10 @@ fn hash(r: crate::Row<'_>, col: &'static str) -> Result<u32, Error> {
     ))
 }
 impl Context {
+    /// Omitted native Storm.startPlot, in canonical stored-storm order.
+    pub fn start_plots(&self) -> &[i32] {
+        &self.start_plots
+    }
     pub fn from_rules(
         rules: &Rules,
         alive_major_ids: Vec<i32>,
