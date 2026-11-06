@@ -303,6 +303,7 @@ pub trait Climate<P> {
     fn continue_events(
         &mut self,
         state: &mut LoadedState,
+        random_events: &mut Runtime,
         backend: &mut crate::loaded_actions::stock_notifications::Runtime<'_, P>,
     ) -> Result<(), Error>;
     fn temperature_change(&self, state: &LoadedState) -> Result<f32, Error>;
@@ -644,7 +645,7 @@ pub fn run<P, C: Climate<P>>(
     if state.retained().core.current_turn < threshold {
         return Ok(());
     }
-    climate.continue_events(state, backend)?;
+    climate.continue_events(state, runtime, backend)?;
     let f = feature(state.world().map())?;
     // ChangeVolcanoStatus2a0f590 exits before a random draw when no normal
     // volcano has a bound discovered name. Dormant, undiscovered plots remain.
@@ -712,9 +713,17 @@ impl<P> Climate<P> for CurrentClimate<'_> {
     fn continue_events(
         &mut self,
         state: &mut LoadedState,
+        random_events: &mut Runtime,
         _backend: &mut crate::loaded_actions::stock_notifications::Runtime<'_, P>,
     ) -> Result<(), Error> {
-        super::round_climate::continue_events(state, self.runtime).map_err(climate_error)
+        if !self.runtime.live.active_droughts.is_empty() {
+            return Err(Error::Requires("Climate CheckForEndingDroughts"));
+        }
+        super::round_storm::continue_storms(state, self.runtime, random_events)?;
+        if !self.runtime.live.active_one_offs.is_empty() {
+            return Err(Error::Requires("Climate DoActiveOneOffs"));
+        }
+        Ok(())
     }
     fn temperature_change(&self, state: &LoadedState) -> Result<f32, Error> {
         super::round_climate::temperature_change(state, self.runtime, self.cityless)
@@ -756,21 +765,19 @@ impl<P> Climate<P> for CurrentClimate<'_> {
         // scores are zero for Hexes<=2: no target draw, direction draw, active
         // storm, damage, name generation, callback, or notification is reached.
         // ApplyEvent nevertheless appends its initialized historical record.
-        if definition.operator != 0xf927ed0a
-            || storm_required_tiles(definition.hexes) != 0
-            || event.start_plot != -1
-        {
+        if definition.operator != 0xf927ed0a {
             return Err(Error::Pending(event));
         }
-        runtime
-            .wire
-            .historical_events
-            .push(targetless_storm_history(
-                definition,
-                event,
-                state.retained().core.current_turn,
-                definitions,
-            )?);
+        let mut history = targetless_storm_history(
+            definition,
+            event,
+            state.retained().core.current_turn,
+            definitions,
+        )?;
+        if storm_required_tiles(definition.hexes) != 0 || event.start_plot != -1 {
+            super::round_storm::apply(state, self.runtime, event, &mut history)?;
+        }
+        runtime.wire.historical_events.push(history);
         Ok(())
     }
 }

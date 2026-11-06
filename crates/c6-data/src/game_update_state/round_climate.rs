@@ -40,6 +40,7 @@ pub struct Runtime {
     /// resources_expended is always empty; current resources live in cityless.
     pub manager: game_climate::Manager,
     pub live: LiveFields,
+    pub storms: Option<super::round_storm::Context>,
 }
 impl Runtime {
     pub fn from_initial(
@@ -61,7 +62,25 @@ impl Runtime {
             instance: state.action_stamp(),
             manager,
             live,
+            storms: None,
         })
+    }
+    /// Install current rules/configuration for new storms; wire imports with
+    /// existing storms require their omitted start plots and are unsupported.
+    pub fn install_storm_context(
+        &mut self,
+        state: &LoadedState,
+        context: super::round_storm::Context,
+    ) -> Result<(), Error> {
+        self.validate(state)?;
+        if self.storms.is_some()
+            || !self.manager.storms.is_empty()
+            || !self.live.active_storms.is_empty()
+        {
+            return Err(Error::Requires("Climate existing storm live fields"));
+        }
+        self.storms = Some(context);
+        Ok(())
     }
     pub fn validate(&self, state: &LoadedState) -> Result<(), Error> {
         if !self.instance.same_instance(state.action_stamp()) {
