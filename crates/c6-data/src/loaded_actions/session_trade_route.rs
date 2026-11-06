@@ -47,7 +47,10 @@ impl<'a> Session<'_, 'a, OperationParameters> {
         self.ordinary_player_action(issuer)?;
         let mut callbacks = stock::Current {
             inputs: callbacks,
-            research: &mut self.research,
+            research: self
+                .research
+                .as_mut()
+                .ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
             research_definitions,
             choices,
             culture,
