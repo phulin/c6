@@ -175,13 +175,19 @@ impl Definitions {
             .ok_or("snapshot Terrains")?;
         let water_terrains = terrains
             .rows()
-            .filter(|r| r.get("Water").ok() == Some(&SqlValue::Integer(1)))
             .map(|r| {
-                r.text("TerrainType")
-                    .map(|n| hash(n.as_bytes()))
-                    .map_err(|_| "snapshot TerrainType")
+                let water = match r.get("Water").map_err(|_| "snapshot Terrain Water")? {
+                    SqlValue::Integer(0) => false,
+                    SqlValue::Integer(1) => true,
+                    _ => return Err("snapshot Terrain Water boolean"),
+                };
+                let name = r.text("TerrainType").map_err(|_| "snapshot TerrainType")?;
+                Ok(water.then(|| hash(name.as_bytes())))
             })
-            .collect::<Result<Vec<_>>>()?;
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect();
         Ok(Self {
             binding: state.binding().clone(),
             units,
