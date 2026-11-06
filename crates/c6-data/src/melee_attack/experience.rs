@@ -122,6 +122,7 @@ struct Context<'a> {
     attacker: UnitReference,
     defender: UnitReference,
     ranged: bool,
+    bombard: bool,
 }
 impl Context<'_> {
     fn unit(&self, side: kernel::Side) -> Result<&c6_core::unit::Unit, Error> {
@@ -231,7 +232,11 @@ impl kernel::Context for Context<'_> {
             .wrapping_add(attack))
     }
     fn combat(&mut self, side: kernel::Side) -> Result<i32, Error> {
-        if self.ranged && side == kernel::Side::Attacker {
+        if self.bombard && side == kernel::Side::Attacker {
+            self.formation
+                .bombard(self.state, self.unit(side)?)
+                .map_err(Error::Combat)
+        } else if self.ranged && side == kernel::Side::Attacker {
             self.formation
                 .ranged(self.state, self.unit(side)?)
                 .map_err(Error::Combat)
@@ -275,6 +280,31 @@ pub(crate) fn awards(
     defender_killed: bool,
     ranged: bool,
 ) -> Result<(i32, i32), Error> {
+    awards_with_bombard(
+        state,
+        defs,
+        formation,
+        levels,
+        attacker,
+        defender,
+        defender_killed,
+        ranged,
+        false,
+    )
+}
+/// 2bd972a selects GetBombardCombat with the same ranged XP base.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn awards_with_bombard(
+    state: &LoadedState,
+    defs: &Definitions,
+    formation: &formation_rules::Definitions,
+    levels: &[(i32, u32)],
+    attacker: UnitReference,
+    defender: UnitReference,
+    defender_killed: bool,
+    ranged: bool,
+    bombard: bool,
+) -> Result<(i32, i32), Error> {
     if state.binding().inputs != defs.identities {
         return Err(Error::Binding);
     }
@@ -286,6 +316,7 @@ pub(crate) fn awards(
         attacker,
         defender,
         ranged,
+        bombard,
     };
     let mut rules = defs.rules;
     if ranged {
@@ -364,6 +395,7 @@ pub fn unit_district_award(
         attacker,
         defender: attacker,
         ranged: false,
+        bombard: false,
     };
     if !current.can_earn(kernel::Side::Attacker)? {
         return Ok(0);

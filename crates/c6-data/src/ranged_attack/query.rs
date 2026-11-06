@@ -44,9 +44,6 @@ pub fn test(
         )
         .map_err(|e| error("test", e));
     }
-    if bombard > ranged {
-        return Err(error("test", "bombard Unit combat unsupported"));
-    }
     let Some(defender) =
         melee::target_selection::ranged_defender(state, inputs, actor, destination)
             .map_err(|e| error("test", e))?

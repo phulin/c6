@@ -1,4 +1,4 @@
-//! Ordinary ranged Unit/Unit combat over the current canonical state.
+//! Ordinary ranged and land bombard Unit/Unit combat over the current canonical state.
 //! Living and ordinary defender-killed branches retain source-ordered callbacks.
 //! Unsupported branches fail explicitly and retain prior state and gameplay RNG.
 pub mod city;
@@ -12,6 +12,7 @@ use crate::{
 use c6_core::{loaded_state::LoadedState, map::UnitReference, unit::PlotCoord};
 use melee::{backend, execution, experience, proposals, resolve};
 pub const RANGED: u32 = 0x2ec4ce4d;
+pub const BOMBARD: u32 = 0x4fc9163d;
 #[derive(Debug)]
 pub struct Error {
     pub stage: &'static str,
@@ -214,8 +215,11 @@ impl<R: backend::Requirements> Session<R> {
             .formation
             .ranged(state, attacker)
             .map_err(|e| error("type", e))?;
-        if bombard > ranged {
-            return Err(error("type", "bombard combat unsupported"));
+        if bombard == ranged {
+            return Err(error(
+                "type",
+                "equal ranged/bombard combat type unsupported",
+            ));
         }
         let defender = {
             let services =
@@ -468,11 +472,36 @@ where
     <B as proposals::Effects>::Error: std::fmt::Debug,
 {
     let a = melee::actor(state, actor).map_err(|e| error("base", e))?;
-    let attack = inputs
+    let ranged = inputs
         .generation
         .formation
         .ranged(state, a)
         .map_err(|e| error("base", e))?;
+    let bombard = inputs
+        .generation
+        .formation
+        .bombard(state, a)
+        .map_err(|e| error("base", e))?;
+    let is_bombard = bombard > ranged;
+    let combat_type = if is_bombard { BOMBARD } else { RANGED };
+    let attack = if is_bombard { bombard } else { ranged };
+    if is_bombard {
+        for reference in [actor, defender] {
+            let unit = melee::actor(state, reference).map_err(|e| error("bombard scope", e))?;
+            if state
+                .unit_runtime(reference.player(), reference.id)
+                .map_err(|e| error("bombard scope", e))?
+                .domain
+                != 2
+                || crate::unit_movement_state::unit_is_embarked(unit)
+            {
+                return Err(error(
+                    "bombard scope",
+                    "only ordinary unembarked land Unit bombard supported",
+                ));
+            }
+        }
+    }
     let d = melee::actor(state, defender).map_err(|e| error("base", e))?;
     let defense = inputs
         .generation
@@ -480,9 +509,13 @@ where
         .combat(state, d)
         .map_err(|e| error("base", e))?;
     let (id, proposal) = proposals::Context::new(state, backend)
-        .propose_units_with_type(actor, defender, location, RANGED)
+        .propose_units_with_type(actor, defender, location, combat_type)
         .map_err(|e| error("proposal", e))?;
-    let attack_modifier = melee::strength::ranged_attack_modifier(
+    let attack_modifier = (if is_bombard {
+        melee::strength::bombard_attack_modifier
+    } else {
+        melee::strength::ranged_attack_modifier
+    })(
         state,
         inputs.generation.strength,
         inputs.generation.formation,
@@ -504,6 +537,12 @@ where
         id,
     )
     .map_err(|e| error("defense strength", e))?;
+    // 28d1750 destroys the bombard proposal before damage/RNG. Ranged
+    // 28d08c0 retains it through damage and its optional capture query.
+    if is_bombard {
+        proposals::collection_modifiers::forget_combat(state, backend, id)
+            .map_err(|e| error("forget", e))?;
+    }
     let (damage, draws) = melee::damage::single_with_draws(
         state,
         inputs.generation.damage,
@@ -532,7 +571,8 @@ where
         .maximum_damage
         .maximum_damage(melee::actor(state, defender).map_err(|e| error("maximum", e))?)
         .map_err(|e| error("maximum", e))?;
-    if defender_final >= defender_max
+    if !is_bombard
+        && defender_final >= defender_max
         && state
             .combat_proposals()
             .map_err(|e| error("generation capture", e))?
@@ -553,9 +593,11 @@ where
             "positive ranged capture continuation unsupported",
         ));
     }
-    proposals::collection_modifiers::forget_combat(state, backend, id)
-        .map_err(|e| error("forget", e))?;
-    let (attacker_xp, defender_xp) = experience::awards(
+    if !is_bombard {
+        proposals::collection_modifiers::forget_combat(state, backend, id)
+            .map_err(|e| error("forget", e))?;
+    }
+    let (attacker_xp, defender_xp) = experience::awards_with_bombard(
         state,
         inputs.experience,
         inputs.generation.formation,
@@ -564,6 +606,7 @@ where
         defender,
         defender_final >= inputs.generation.damage.maximum_hit_points(),
         true,
+        is_bombard,
     )
     .map_err(|e| error("experience generation", e))?;
     ensure_alive(state, inputs, actor, defender)?;

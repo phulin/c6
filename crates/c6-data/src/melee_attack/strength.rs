@@ -34,6 +34,7 @@ pub struct Definitions {
     wounded_multiplier: i32,
     wounded_district_multiplier: Option<i32>,
     flanking_modifier: Option<i32>,
+    bombard_unit_modifier: Option<i32>,
     bonuses: Option<BonusDefinitions>,
     defense: Option<DefenseDefinitions>,
 }
@@ -286,6 +287,10 @@ impl Definitions {
                 "COMBAT_WOUNDED_DISTRICT_DAMAGE_MULTIPLIER",
             ),
             flanking_modifier,
+            bombard_unit_modifier: optional_parameter(
+                rules,
+                "COMBAT_BOMBARD_VS_UNIT_STRENGTH_MODIFIER",
+            ),
             bonuses: None,
             defense: None,
         })
@@ -819,6 +824,49 @@ pub(crate) fn ranged_attack_modifier<'a>(
         return Err(kernel::AttackError::Opening(kernel::Error::Query(
             Error::Missing("ranged land versus sea penalty"),
         )));
+    }
+    Ok(total)
+}
+
+/// 2bde530: bombard has the shared non-melee bonuses and a penalty against
+/// land defenders, independent of the attacker's domain. The signed rule is
+/// subtracted from the opening terms; the proposal retains bombard identity.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn bombard_attack_modifier<'a>(
+    state: &'a LoadedState,
+    definitions: &'a Definitions,
+    combat: &'a crate::formation_rules::Definitions,
+    levels: &'a [(i32, u32)],
+    players: &'a CurrentPlayerCombat<'a>,
+    attacker: UnitReference,
+    defender: UnitReference,
+    proposal_id: u32,
+) -> Result<i32, kernel::AttackError<Error>> {
+    definitions
+        .check(state)
+        .map_err(|e| kernel::AttackError::Opening(kernel::Error::Query(e)))?;
+    let total = kernel::ordinary_attack_modifier(&mut CurrentAttack {
+        state,
+        definitions,
+        combat,
+        levels,
+        players,
+        attacker,
+        defender,
+        proposal_id,
+        ranged: true,
+    })?;
+    let domain = state
+        .unit_runtime(defender.player(), defender.id)
+        .map_err(|e| kernel::AttackError::Opening(kernel::Error::Query(Error::State(e))))?
+        .domain;
+    if domain == 2 {
+        let penalty = definitions.bombard_unit_modifier.ok_or_else(|| {
+            kernel::AttackError::Opening(kernel::Error::Query(Error::Missing(
+                "COMBAT_BOMBARD_VS_UNIT_STRENGTH_MODIFIER",
+            )))
+        })?;
+        return Ok(total.wrapping_sub(penalty.wrapping_shl(8)));
     }
     Ok(total)
 }
