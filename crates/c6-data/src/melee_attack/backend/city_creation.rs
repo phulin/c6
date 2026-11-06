@@ -14,7 +14,7 @@ use c6_core::{
     unit_moved_signal::{modifiers::AffectedModifiers, ListenerRing, RegistryError, Subscription},
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DestroyedListener {
     Existing(u64),
     ModifierOwner(i32),
@@ -963,6 +963,31 @@ impl EffectRuntime {
             .as_ref()
             .ok_or(Error::Missing("current City creation domain"))?
             .player_cities_subscriptions)
+    }
+    /// Recover the actual preinstalled ObjectDestroyed token before importing
+    /// the corresponding modifier. This queries the same live ring; it does
+    /// not subscribe a replacement or depend on the record being imported.
+    pub fn city_initial_modifier_subscription(
+        &self,
+        subject: u64,
+        instance: i32,
+        owner: bool,
+    ) -> Result<Subscription, Error> {
+        let route = if owner {
+            DestroyedListener::ModifierOwner(instance)
+        } else {
+            DestroyedListener::Modifier(instance)
+        };
+        self.city_creation
+            .as_ref()
+            .ok_or(Error::Missing("initial City modifier domain"))?
+            .objects
+            .iter()
+            .find(|row| row.handle == subject)
+            .ok_or(Error::Missing("initial City modifier subject"))?
+            .destroyed
+            .subscription_for(|candidate| candidate == route)
+            .map_err(Error::Ring)
     }
     pub fn city_modifier_owner_subscription(&self, instance: i32) -> Result<Subscription, Error> {
         self.city_creation
