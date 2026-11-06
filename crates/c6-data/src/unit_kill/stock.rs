@@ -724,11 +724,16 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                     .map_err(|e|kill::Error::Effect(Error::Collection(e)))?;
             }
         }
-        if let Retained::Unit(modifier) = retained {
-            self.effects
-                .retire_effect(state, modifier.effect)
-                .map_err(kill::Error::CleanupQuery)?;
-        }
+        // Both DynamicModifier variants own their concrete effect. Combat
+        // registration removal above must release that effect too, after all
+        // collection and requirement subscriptions have been destroyed.
+        let effect = match retained {
+            Retained::Combat(modifier) => modifier.effect,
+            Retained::Unit(modifier) => modifier.effect,
+        };
+        self.effects
+            .retire_effect(state, effect)
+            .map_err(kill::Error::CleanupQuery)?;
         Ok(())
     }
     fn unsubscribe_unit_requirement(
