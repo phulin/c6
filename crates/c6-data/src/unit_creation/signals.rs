@@ -31,6 +31,7 @@ pub struct Definitions {
 }
 struct Boost {
     row: i64,
+    index: usize,
     unit: Option<i32>,
     items: i32,
     improvement: Option<u32>,
@@ -152,9 +153,10 @@ impl Definitions {
                 }
             };
         let mut boosts = Vec::new();
-        for row in table("Boosts")?.rows() {
+        for (index, row) in table("Boosts")?.rows().enumerate() {
             boosts.push(Boost {
                 row: row.row_id().ok_or(Error::Missing("Boost row identity"))?.0,
+                index,
                 unit: optional_hash(row, "Unit1Type")?
                     .and_then(|hash| units.find_index(hash))
                     .map(|i| i as i32),
@@ -323,7 +325,8 @@ impl Definitions {
         history::on_created(state, &self.history, maps, scratch, unit, effects)
     }
     /// Source Boost UnitCreated/count callback batch. Queries read the current
-    /// roster on every callback; a reached TriggerBoost remains required.
+    /// roster on every callback. A positive result is the canonical Boosts
+    /// ordinal, to be executed synchronously before the next consumer.
     pub fn boost_created(
         &self,
         state: &LoadedState,
@@ -332,7 +335,7 @@ impl Definitions {
         kind: BoostCallback,
         row: i64,
         unit: UnitReference,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<usize>, Error> {
         let actor = self.actor(state, unit)?;
         let boost = self
             .boosts
@@ -397,7 +400,7 @@ impl Definitions {
         match kind {
             BoostCallback::Unit | BoostCallback::UnitAndImprovement => {
                 let Some(target) = boost.unit else {
-                    return Ok(());
+                    return Ok(None);
                 };
                 let built = build_type(target)?; // source query precedes type test
                 if matches!(kind, BoostCallback::Unit) {
@@ -410,14 +413,14 @@ impl Definitions {
                             (a == target && b == actual) || (b == target && a == actual)
                         })
                     {
-                        return Ok(());
+                        return Ok(None);
                     }
                     if count_type(built)? < boost.items {
-                        return Ok(());
+                        return Ok(None);
                     }
                 } else {
                     if count_type(built)? <= 0 {
-                        return Ok(());
+                        return Ok(None);
                     }
                     let improvement = boost
                         .improvement
@@ -433,10 +436,10 @@ impl Definitions {
                             continue;
                         }
                         if boost.resource.is_none_or(|r| r == plot.resource_hash) {
-                            return Err(Error::Missing("reached unit/improvement TriggerBoost"));
+                            return Ok(Some(boost.index));
                         }
                     }
-                    return Ok(());
+                    return Ok(None);
                 }
             }
             BoostCallback::Land | BoostCallback::Corps | BoostCallback::Armies => {
@@ -462,11 +465,11 @@ impl Definitions {
                     }
                 }
                 if count < boost.items {
-                    return Ok(());
+                    return Ok(None);
                 }
             }
         }
-        Err(Error::Missing("reached UnitCreated TriggerBoost"))
+        Ok(Some(boost.index))
     }
     fn actor<'s>(&self, state: &'s LoadedState, unit: UnitReference) -> Result<&'s Unit, Error> {
         if state.binding() != &self.binding {

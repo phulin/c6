@@ -33,6 +33,13 @@ pub struct ControlInputs<'a> {
     /// OnUnitUpdate27ff430 receiver, using the existing snapshot provider.
     pub processed_report_snapshot: bool,
 }
+/// Immutable inputs for the current canonical research continuation.
+#[derive(Clone, Copy)]
+pub struct ResearchInputs<'a> {
+    pub definitions: &'a crate::research::Definitions,
+    pub choices: &'a crate::loaded_actions::choose_tech::Definitions,
+    pub culture: Option<&'a super::research::CultureInputs<'a>>,
+}
 pub struct State<'a> {
     pub definitions: &'a creation::Definitions,
     pub signals: &'a signals::Definitions,
@@ -53,6 +60,7 @@ pub struct State<'a> {
     pub control: Option<ControlInputs<'a>>,
     /// Current moment callbacks; absent remains unsupported when a request is reached.
     pub history: Option<stock::History<'a>>,
+    pub research: Option<ResearchInputs<'a>>,
 }
 impl<'a, P> Runtime<'a, P> {
     /// Bind current City placement callbacks independently of Unit creation.
@@ -271,18 +279,40 @@ impl<P> creation::Effects for Runtime<'_, P> {
         .map_err(callback)
     }
 }
-impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
-    fn game_unit_created(
+impl<P> Runtime<'_, P> {
+    fn created_research_boost(
         &mut self,
         state: &mut LoadedState,
+        inputs: Option<ResearchInputs<'_>>,
+        owner: i32,
+        index: usize,
+    ) -> Result<(), creation::Error<movement::Error>> {
+        use crate::melee_attack::resolve::completion::boosts::Trigger;
+        let inputs = inputs.ok_or(creation::Error::Missing("UnitCreated research inputs"))?;
+        let mut runtime = self.action_research.take().ok_or(creation::Error::Missing(
+            "UnitCreated canonical research loan",
+        ))?;
+        let result = {
+            let mut effects =
+                super::research::Effects::new(self, &mut runtime, inputs.choices, inputs.culture);
+            crate::melee_attack::resolve::completion::boosts::ResearchTrigger {
+                definitions: inputs.definitions,
+                effects: &mut effects,
+            }
+            .trigger(state, owner, index)
+            .map_err(callback)
+        };
+        self.action_research = Some(runtime);
+        result
+    }
+    fn game_unit_created_current(
+        &mut self,
+        state: &mut LoadedState,
+        input: &State<'_>,
         unit: Option<ComponentId>,
         city: Option<ComponentId>,
     ) -> Result<(), creation::Error<movement::Error>> {
         let gossip_history_empty = self.current_gossip_history_empty();
-        let input = self
-            .unit_creation
-            .as_ref()
-            .ok_or(creation::Error::Missing("Unit creation inputs"))?;
         let civilization = input
             .achievement
             .civilizations
@@ -290,6 +320,74 @@ impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
             .find(|r| Some(r.0) == unit.map(|u| i32::from(u.owner)))
             .map(|r| r.1.as_str())
             .ok_or(creation::Error::Missing("Unit achievement civilization"))?;
+        for consumer in &input.game_consumers {
+            if let stock::Consumer::Boost { kind, row } = *consumer {
+                let reference = UnitReference::from_component_id(
+                    unit.ok_or(creation::Error::Missing("nonnull stock UnitCreated Unit"))?,
+                );
+                if let Some(index) = input
+                    .signals
+                    .boost_created(state, input.combat, input.build_maps, kind, row, reference)
+                    .map_err(callback)?
+                {
+                    self.created_research_boost(state, input.research, reference.player(), index)?;
+                }
+                continue;
+            }
+            let modifier = self
+                .modifier_owners
+                .as_mut()
+                .ok_or(creation::Error::Missing("canonical modifier owners"))?;
+            let movement = self
+                .movement
+                .as_mut()
+                .ok_or(creation::Error::Missing("current movement callbacks"))?;
+            let mut effects = CollectionEffects {
+                definitions: input.definitions,
+                tags: input.tags,
+                moved: &mut movement.signal,
+                reporting: &mut self.reporting,
+                reporting_suspended: movement.reporting_suspended,
+            };
+            let mut owners = collections::Owners {
+                state,
+                effects: &mut modifier.effects,
+                requirements: &mut modifier.requirements,
+                collections: &mut modifier.collections,
+            };
+            let inputs = stock::Inputs {
+                definitions: input.definitions,
+                signals: input.signals,
+                combat: input.combat,
+                build_maps: input.build_maps,
+                levels: crate::movement_placement_state::CurrentCivilizationLevels {
+                    binding: &self.binding,
+                    values: input.levels,
+                },
+                scratch: &input.scratch,
+                quests: &input.quests,
+                achievements: signals::AchievementInputs {
+                    context_present: input.achievement.context_present,
+                    integrity: input.achievement.integrity,
+                    editor: input.achievement.editor,
+                    ruleset: &input.achievement.ruleset,
+                    civilization,
+                },
+                history: input.history.as_ref(),
+                gossip_history_empty,
+            };
+            stock::game_created(
+                &mut owners,
+                &mut modifier.unit_created,
+                &mut effects,
+                &mut self.script,
+                &inputs,
+                std::slice::from_ref(consumer),
+                unit,
+                city,
+            )
+            .map_err(callback)?;
+        }
         let modifier = self
             .modifier_owners
             .as_mut()
@@ -311,38 +409,6 @@ impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
             requirements: &mut modifier.requirements,
             collections: &mut modifier.collections,
         };
-        let inputs = stock::Inputs {
-            definitions: input.definitions,
-            signals: input.signals,
-            combat: input.combat,
-            build_maps: input.build_maps,
-            levels: crate::movement_placement_state::CurrentCivilizationLevels {
-                binding: &self.binding,
-                values: input.levels,
-            },
-            scratch: &input.scratch,
-            quests: &input.quests,
-            achievements: signals::AchievementInputs {
-                context_present: input.achievement.context_present,
-                integrity: input.achievement.integrity,
-                editor: input.achievement.editor,
-                ruleset: &input.achievement.ruleset,
-                civilization,
-            },
-            history: input.history.as_ref(),
-            gossip_history_empty,
-        };
-        stock::game_created(
-            &mut owners,
-            &mut modifier.unit_created,
-            &mut effects,
-            &mut self.script,
-            &inputs,
-            &input.game_consumers,
-            unit,
-            city,
-        )
-        .map_err(callback)?;
         // Policy-created PlayerUnits subscriptions append after the imported
         // current Game.UnitCreated ring, in actual factory registration order.
         let routes = modifier.unit_created.policy_unit_subscriptions().to_vec();
@@ -360,6 +426,22 @@ impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
             }
         }
         Ok(())
+    }
+}
+impl<P> creation::PlayerCreationEffects for Runtime<'_, P> {
+    fn game_unit_created(
+        &mut self,
+        state: &mut LoadedState,
+        unit: Option<ComponentId>,
+        city: Option<ComponentId>,
+    ) -> Result<(), creation::Error<movement::Error>> {
+        let input = self
+            .unit_creation
+            .take()
+            .ok_or(creation::Error::Missing("Unit creation inputs"))?;
+        let result = self.game_unit_created_current(state, &input, unit, city);
+        self.unit_creation = Some(input);
+        result
     }
     fn player_unit_created(
         &mut self,

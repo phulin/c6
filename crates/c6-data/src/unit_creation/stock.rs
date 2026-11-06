@@ -146,17 +146,25 @@ pub fn game_created<P, E: collections::Effects>(
                 signals::train_quests_created(owners.state, inputs.levels.binding, inputs.quests)
                     .map_err(Error::Signal)?
             }
-            Consumer::Boost { kind, row } => inputs
-                .signals
-                .boost_created(
-                    owners.state,
-                    inputs.combat,
-                    inputs.build_maps,
-                    kind,
-                    row,
-                    reference,
-                )
-                .map_err(Error::Signal)?,
+            Consumer::Boost { kind, row } => {
+                if inputs
+                    .signals
+                    .boost_created(
+                        owners.state,
+                        inputs.combat,
+                        inputs.build_maps,
+                        kind,
+                        row,
+                        reference,
+                    )
+                    .map_err(Error::Signal)?
+                    .is_some()
+                {
+                    // The stock backend executes this continuation between the
+                    // surrounding consumers on its canonical research owner.
+                    return Err(Error::Missing("UnitCreated research continuation"));
+                }
+            }
             Consumer::Collection(route) => collections::on_unit_created(
                 owners,
                 collection_runtime,
