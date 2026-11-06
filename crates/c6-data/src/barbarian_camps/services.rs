@@ -473,10 +473,7 @@ impl<P> Services<P> for Current<'_> {
             // temporary PlotYields instance consumes a canonical identity.
             let p = &state.world().map().plots[plot];
             if p.improvement_hash != self.camp_hash
-                || p.improvement_owner != -1
-                || p.city_attributes
-                    .as_ref()
-                    .is_some_and(|a| a.player != -1 || a.owning_city != u32::MAX)
+                || p.city_attributes.as_ref().is_some_and(|a| a.player != -1)
             {
                 return Err(Error::Unsupported("camp added report owning city"));
             }
