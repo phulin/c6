@@ -776,6 +776,15 @@ impl Manager {
             .as_mut()
             .filter(|r| r.authoritative)
             .ok_or(Error::Unsupported("first meeting close routing"))?;
+        if routing.metadata.len() != 1
+            || self.open_sessions.len() != 1
+            || routing.metadata[0].header != plan.decision.session
+            || routing.active != Some(plan.decision.session.handle)
+            || !self.open_sessions[0].pending.is_empty()
+            || !routing.metadata[0].queued.is_empty()
+        {
+            return Err(Error::Statement(statement::Error::Conflict));
+        }
         let closed = routing
             .closed
             .as_mut()
@@ -795,7 +804,6 @@ impl Manager {
         self.invalidate_drain_plans();
         // Native HandleCloseSession calls Manager.Process after the report. This
         // profile has no open sessions, so that continuation has no subtype work.
-        let _ = plan;
         Ok(())
     }
 }
