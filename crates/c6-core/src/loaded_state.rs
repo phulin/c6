@@ -11,6 +11,7 @@ pub mod barbarian_camp_placement;
 pub mod city_initialization;
 pub mod combat_boosts;
 pub mod combat_proposals;
+pub mod first_contact;
 pub mod game_eras;
 pub mod game_grievances;
 pub mod game_history;
