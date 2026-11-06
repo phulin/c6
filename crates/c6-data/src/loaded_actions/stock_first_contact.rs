@@ -13,6 +13,8 @@ pub mod diplomacy;
 pub mod government_modifier;
 #[path = "stock_first_contact/history.rs"]
 pub mod history;
+#[path = "stock_first_contact/opinion_callbacks.rs"]
+pub mod opinion_callbacks;
 #[path = "stock_first_contact/random_modifier.rs"]
 pub mod random_modifier;
 #[path = "stock_first_contact/requirements.rs"]
