@@ -21,35 +21,35 @@ use c6_core::{
 
 pub mod arena;
 pub mod choose_tech;
-pub mod city_range_attack;
 pub mod city_disposition_actions;
+pub mod city_range_attack;
 pub mod command_units;
 pub mod configuration;
-pub mod declare_war;
 pub mod culture_notifications;
 #[path = "loaded_actions/aftermath.rs"]
 pub mod current_aftermath;
 pub mod current_city_domains;
+pub mod declare_war;
 pub mod diplomacy_pending_deals;
-pub mod handlers;
+mod fortify;
 pub mod government_actions;
 pub mod governor_actions;
-mod fortify;
+pub mod handlers;
 pub mod move_to;
 pub mod notifications;
-pub mod policy_actions;
 pub mod pantheon_actions;
 pub mod pillage;
-pub mod purchase_actions;
-pub mod upgrade_actions;
+pub mod policy_actions;
 pub mod promotion_actions;
-pub mod trade_route_actions;
+pub mod purchase_actions;
 pub mod reporting;
 pub mod scripting;
 pub mod session;
 pub mod stock_notifications;
 pub mod stock_script;
+pub mod trade_route_actions;
 pub mod transition;
+pub mod upgrade_actions;
 
 const OPERATION: i32 = 0x490cc8e1;
 const AWAKE: i32 = 0x6b25012e;
@@ -234,9 +234,11 @@ pub(super) enum HandlerAuthority<'a, 'capture> {
 }
 type RangeHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, c6_core::unit::PlotCoord, bool, &mut Q) -> Result<bool, Error>
     + 'a;
-type FarmHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, u32, bool, &mut Q) -> Result<bool, Error> + 'a;
+type FarmHandler<'a, Q> =
+    dyn FnMut(&LoadedState, &Unit, u32, bool, &mut Q) -> Result<bool, Error> + 'a;
 type FortifyHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, &mut Q) -> Result<bool, Error> + 'a;
-type TradeHandler<'a, Q> = dyn FnMut(&LoadedState, &Unit, OperationParameters, bool, &mut Q) -> Result<bool, Error> + 'a;
+type TradeHandler<'a, Q> =
+    dyn FnMut(&LoadedState, &Unit, OperationParameters, bool, &mut Q) -> Result<bool, Error> + 'a;
 struct Queries<'a, 'd, 'q, 'h, 'capture, Q> {
     state: &'a LoadedState,
     expected_actor: &'a Unit,
@@ -266,14 +268,22 @@ impl TypedParameters for () {
 }
 impl TypedParameters for OperationParameters {
     fn trade_route(&self) -> Result<OperationParameters, Error> {
-        match self { Self::MakeTradeRoute { .. } => Ok(self.clone()),
-            _ => Err(Error::Unsupported("MakeTradeRoute parameter type")) }
+        match self {
+            Self::MakeTradeRoute { .. } => Ok(self.clone()),
+            _ => Err(Error::Unsupported("MakeTradeRoute parameter type")),
+        }
     }
     fn improvement(&self) -> Result<u32, Error> {
         match self {
-            Self::BuildImprovement { improvement_hash, .. }
-            | Self::Pillage { improvement_hash, .. }
-            | Self::Repair { improvement_hash, .. } => Ok(*improvement_hash),
+            Self::BuildImprovement {
+                improvement_hash, ..
+            }
+            | Self::Pillage {
+                improvement_hash, ..
+            }
+            | Self::Repair {
+                improvement_hash, ..
+            } => Ok(*improvement_hash),
             _ => Err(Error::Unsupported("BuildImprovement parameter type")),
         }
     }
@@ -496,26 +506,67 @@ where
         }
         if h.identity().operation_hash == OperationHash(c6_core::unit::MAKE_TRADE_ROUTE_HASH) {
             let parameters = s.operation.parameters.trade_route()?;
-            return self.trade_handler.as_mut().ok_or(Error::Unsupported("MakeTradeRoute handler composition"))?(
-                self.state, s.unit, parameters, visible_only, self.external);
+            return self
+                .trade_handler
+                .as_mut()
+                .ok_or(Error::Unsupported("MakeTradeRoute handler composition"))?(
+                self.state,
+                s.unit,
+                parameters,
+                visible_only,
+                self.external,
+            );
         }
         if h.identity().operation_hash == OperationHash(c6_core::unit::FORTIFY_HASH) {
-            return self.fortify_handler.as_mut().ok_or(Error::Unsupported("Fortify handler composition"))?(self.state, s.unit, self.external);
+            return self
+                .fortify_handler
+                .as_mut()
+                .ok_or(Error::Unsupported("Fortify handler composition"))?(
+                self.state,
+                s.unit,
+                self.external,
+            );
         }
         if h.identity().operation_hash == OperationHash(c6_core::unit::REMOVE_FEATURE_HASH) {
-            return self.pillage_handler.as_mut().ok_or(Error::Unsupported("RemoveFeature handler composition"))?(
-                self.state,s.unit,u32::MAX,visible_only,self.external);
+            return self
+                .pillage_handler
+                .as_mut()
+                .ok_or(Error::Unsupported("RemoveFeature handler composition"))?(
+                self.state,
+                s.unit,
+                u32::MAX,
+                visible_only,
+                self.external,
+            );
         }
-        if matches!(h.identity().operation_hash.0, c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH) {
+        if matches!(
+            h.identity().operation_hash.0,
+            c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH
+        ) {
             let improvement = s.operation.parameters.improvement()?;
-            return self.pillage_handler.as_mut().ok_or(Error::Unsupported("Pillage handler composition"))?(
-                self.state,s.unit,improvement,visible_only,self.external);
+            return self
+                .pillage_handler
+                .as_mut()
+                .ok_or(Error::Unsupported("Pillage handler composition"))?(
+                self.state,
+                s.unit,
+                improvement,
+                visible_only,
+                self.external,
+            );
         }
         if h.identity().operation_hash == OperationHash(c6_core::unit::BUILD_IMPROVEMENT_HASH) {
             let improvement = s.operation.parameters.improvement()?;
-            return self.farm_handler.as_mut()
+            return self
+                .farm_handler
+                .as_mut()
                 .ok_or(Error::Unsupported("BuildImprovement handler composition"))?(
-                    self.state, s.unit, improvement, visible_only, self.external);
+                self.state,
+                s.unit,
+                improvement,
+                visible_only,
+                self.external,
+            );
         }
         if h.identity().operation_hash == OperationHash(c6_core::unit::RANGE_ATTACK_HASH) {
             let destination = s
@@ -736,8 +787,17 @@ pub(crate) fn can_start_typed_with_range<
     found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
 ) -> Result<bool, Error> {
-    can_start_typed_with_handlers(state, reference, inputs, external, handlers, operation,
-        found_city, range_handler, None)
+    can_start_typed_with_handlers(
+        state,
+        reference,
+        inputs,
+        external,
+        handlers,
+        operation,
+        found_city,
+        range_handler,
+        None,
+    )
 }
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn can_start_typed_with_handlers<
@@ -754,28 +814,59 @@ pub(crate) fn can_start_typed_with_handlers<
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
     farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
 ) -> Result<bool, Error> {
-    can_start_typed_with_fortify(state, reference, inputs, external, handlers, operation,
-        found_city, range_handler, farm_handler, None)
+    can_start_typed_with_fortify(
+        state,
+        reference,
+        inputs,
+        external,
+        handlers,
+        operation,
+        found_city,
+        range_handler,
+        farm_handler,
+        None,
+    )
 }
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn can_start_typed_with_fortify<'q,
-    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>>(
-    state: &mut LoadedState, reference: UnitReference, inputs: &Inputs<'_, '_>,
-    external: &'q mut Q, handlers: &handlers::BoundHandlers<'_>,
+pub(crate) fn can_start_typed_with_fortify<
+    'q,
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+>(
+    state: &mut LoadedState,
+    reference: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &'q mut Q,
+    handlers: &handlers::BoundHandlers<'_>,
     operation: &mut ManagerOperation<OperationParameters>,
     found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
     farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
     fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
 ) -> Result<bool, Error> {
-    can_start_typed_with_trade(state, reference, inputs, external, handlers, operation,
-        found_city, range_handler, farm_handler, fortify_handler, None)
+    can_start_typed_with_trade(
+        state,
+        reference,
+        inputs,
+        external,
+        handlers,
+        operation,
+        found_city,
+        range_handler,
+        farm_handler,
+        fortify_handler,
+        None,
+    )
 }
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn can_start_typed_with_trade<'q,
-    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>>(
-    state: &mut LoadedState, reference: UnitReference, inputs: &Inputs<'_, '_>,
-    external: &'q mut Q, handlers: &handlers::BoundHandlers<'_>,
+pub(crate) fn can_start_typed_with_trade<
+    'q,
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+>(
+    state: &mut LoadedState,
+    reference: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &'q mut Q,
+    handlers: &handlers::BoundHandlers<'_>,
     operation: &mut ManagerOperation<OperationParameters>,
     found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
@@ -783,20 +874,38 @@ pub(crate) fn can_start_typed_with_trade<'q,
     fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
     trade_handler: Option<&'q mut TradeHandler<'q, Q>>,
 ) -> Result<bool, Error> {
-    can_start_typed_with_pillage(state,reference,inputs,external,handlers,operation,found_city,range_handler,farm_handler,fortify_handler,trade_handler,None)
+    can_start_typed_with_pillage(
+        state,
+        reference,
+        inputs,
+        external,
+        handlers,
+        operation,
+        found_city,
+        range_handler,
+        farm_handler,
+        fortify_handler,
+        trade_handler,
+        None,
+    )
 }
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn can_start_typed_with_pillage<'q,
-    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>>(
-    state: &mut LoadedState, reference: UnitReference, inputs: &Inputs<'_, '_>,
-    external: &'q mut Q, handlers: &handlers::BoundHandlers<'_>,
+pub(crate) fn can_start_typed_with_pillage<
+    'q,
+    Q: ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+>(
+    state: &mut LoadedState,
+    reference: UnitReference,
+    inputs: &Inputs<'_, '_>,
+    external: &'q mut Q,
+    handlers: &handlers::BoundHandlers<'_>,
     operation: &mut ManagerOperation<OperationParameters>,
     found_city: Option<(&crate::found_city::Definitions, &crate::Rules)>,
     range_handler: Option<&'q mut RangeHandler<'q, Q>>,
     farm_handler: Option<&'q mut FarmHandler<'q, Q>>,
     fortify_handler: Option<&'q mut FortifyHandler<'q, Q>>,
     trade_handler: Option<&'q mut TradeHandler<'q, Q>>,
-    pillage_handler: Option<&'q mut FarmHandler<'q,Q>>,
+    pillage_handler: Option<&'q mut FarmHandler<'q, Q>>,
 ) -> Result<bool, Error> {
     handlers
         .validate_execution(state, inputs.handlers, inputs.operations)

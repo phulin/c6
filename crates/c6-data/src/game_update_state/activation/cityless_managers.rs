@@ -221,7 +221,10 @@ impl Definitions {
                 "WORLD_CONGRESS_MIN_TIME_BETWEEN_SPECIAL_SESSIONS",
             )?,
             binding: state.binding().clone(),
-            governors: crate::loaded_actions::governor_actions::Definitions::from_rules(state, rules).map_err(|e| format!("{e:?}")),
+            governors: crate::loaded_actions::governor_actions::Definitions::from_rules(
+                state, rules,
+            )
+            .map_err(|e| format!("{e:?}")),
             units,
             traders,
             resources,
@@ -409,7 +412,12 @@ pub struct Queries<'a> {
     pub game_speed_type: u32,
 }
 pub trait Effects {
-    fn governor_turn(&mut self, _state: &mut LoadedState, _definitions: &crate::loaded_actions::governor_actions::Definitions, _owner: i32) -> Result<(), Error> {
+    fn governor_turn(
+        &mut self,
+        _state: &mut LoadedState,
+        _definitions: &crate::loaded_actions::governor_actions::Definitions,
+        _owner: i32,
+    ) -> Result<(), Error> {
         Err(missing("current Governor lifecycle effects"))
     }
 
@@ -756,7 +764,13 @@ pub fn after_units<E: Effects>(
 ) -> Result<(), Error> {
     defs.validate(state)?;
     if !player(state, owner)?.governors.entries.is_empty() {
-        e.governor_turn(state, defs.governors.as_ref().map_err(|_| missing("governor lifecycle definitions"))?, owner)?;
+        e.governor_turn(
+            state,
+            defs.governors
+                .as_ref()
+                .map_err(|_| missing("governor lifecycle definitions"))?,
+            owner,
+        )?;
     }
     let units = state
         .world()

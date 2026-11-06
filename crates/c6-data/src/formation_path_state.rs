@@ -6,7 +6,6 @@
 pub mod breadth_first;
 mod shore;
 mod visible_units;
-pub use visible_units::has_visible_enemy_unit;
 use crate::{
     city_movement::NativeTerrainDefinitions,
     formation_movement_cost as cost, formation_rules, movement_placement_state as placement,
@@ -29,6 +28,7 @@ use c6_core::{
     unit::{Formation, PlotCoord},
     world,
 };
+pub use visible_units::has_visible_enemy_unit;
 
 #[derive(Debug)]
 pub enum Error {

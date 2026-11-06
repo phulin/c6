@@ -33,10 +33,11 @@ impl LoadedState {
         if self.observed_snapshot.as_ref() != Some(witness) {
             return Err(Error::Binding);
         }
-        self.game_relations.as_mut().ok_or(Error::Binding)?
+        self.game_relations
+            .as_mut()
+            .ok_or(Error::Binding)?
             .initialize_current_war_consequences(tension, log)
             .map_err(|_| Error::Binding)?;
         self.advance_admission_generation()
     }
-
 }

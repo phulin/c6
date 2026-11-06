@@ -90,11 +90,24 @@ impl Static {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        if terrains.is_empty() { return Err(Error::Missing("ordinary improvement terrain references")); }
-        let hills = rules.gameplay().table("Terrains").ok_or(Error::Missing("Terrain definitions"))?.rows()
-            .filter(|r|r.integer("Hills").ok()==Some(1))
-            .map(|r|r.text("TerrainType").map(|v|linux_type_hash(v.as_bytes())).map_err(|error|Error::Effect{stage:"TerrainType",error}))
-            .collect::<Result<Vec<_>,_>>()?;
+        if terrains.is_empty() {
+            return Err(Error::Missing("ordinary improvement terrain references"));
+        }
+        let hills = rules
+            .gameplay()
+            .table("Terrains")
+            .ok_or(Error::Missing("Terrain definitions"))?
+            .rows()
+            .filter(|r| r.integer("Hills").ok() == Some(1))
+            .map(|r| {
+                r.text("TerrainType")
+                    .map(|v| linux_type_hash(v.as_bytes()))
+                    .map_err(|error| Error::Effect {
+                        stage: "TerrainType",
+                        error,
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(Self { terrains, hills })
     }
 }
@@ -141,15 +154,41 @@ pub fn can_start(
     if visible_only {
         return Ok(true);
     }
-    let player = state.retained().players.iter().find(|p|p.header.owner==unit.e_owner)
+    let player = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == unit.e_owner)
         .ok_or(Error::Missing("improvement prerequisite player"))?;
     use c6_core::yields::{PrerequisiteKind, PrerequisiteState};
-    for (reference, flags, kind) in [(defs.prerequisite_technology, &player.techs.has_tech.pairs, PrerequisiteKind::Technology),
-        (defs.prerequisite_civic, &player.culture.has_civic.pairs, PrerequisiteKind::Civic)] {
-        if let Some((reference,index)) = reference {
-            if !state.world().globally_available(kind,index).map_err(|_|Error::Missing("current improvement prerequisite availability"))? {return Ok(false);}
-            if !flags.iter().rfind(|r|r.definition_hash==reference)
-                .ok_or(Error::Missing("current improvement prerequisite flag"))?.value { return Ok(false); }
+    for (reference, flags, kind) in [
+        (
+            defs.prerequisite_technology,
+            &player.techs.has_tech.pairs,
+            PrerequisiteKind::Technology,
+        ),
+        (
+            defs.prerequisite_civic,
+            &player.culture.has_civic.pairs,
+            PrerequisiteKind::Civic,
+        ),
+    ] {
+        if let Some((reference, index)) = reference {
+            if !state
+                .world()
+                .globally_available(kind, index)
+                .map_err(|_| Error::Missing("current improvement prerequisite availability"))?
+            {
+                return Ok(false);
+            }
+            if !flags
+                .iter()
+                .rfind(|r| r.definition_hash == reference)
+                .ok_or(Error::Missing("current improvement prerequisite flag"))?
+                .value
+            {
+                return Ok(false);
+            }
         }
     }
     // ClimateData stores active drought object IDs, not one ID per plot.

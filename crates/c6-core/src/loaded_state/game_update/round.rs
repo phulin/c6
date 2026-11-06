@@ -38,24 +38,39 @@ pub fn game_turn_complete_prefix(state: &mut LoadedState, owner: i32) -> Result<
 /// Autoplay.EndTurn2824910 inactive branch still sets EndTurnSignaled=true.
 pub fn inactive_autoplay_end(runtime: &mut Runtime) -> Result<(), Error> {
     match runtime.inputs.autoplay.active {
-        Some(false) => { runtime.inputs.autoplay.end_turn_signaled = Some(true); Ok(()) },
-        Some(true) => Err(Error::Unsupported("active Autoplay.EndTurn counters/script")),
+        Some(false) => {
+            runtime.inputs.autoplay.end_turn_signaled = Some(true);
+            Ok(())
+        }
+        Some(true) => Err(Error::Unsupported(
+            "active Autoplay.EndTurn counters/script",
+        )),
         None => Err(Error::Unsupported("current Autoplay active state")),
     }
 }
 
 /// Game.DoAutomation2a0cae0 over already-processed players. Unprocessed
 /// players require the existing unit-automation continuation before proceeding.
-pub fn processed_automation_pass(state: &LoadedState, mut mode: impl FnMut(&LoadedState)->Result<u32,Error>) -> Result<(), Error> {
+pub fn processed_automation_pass(
+    state: &LoadedState,
+    mut mode: impl FnMut(&LoadedState) -> Result<u32, Error>,
+) -> Result<(), Error> {
     for &owner in &state.retained.core.game_processor.turn_order {
-        if !state.world.player_is_valid(owner).map_err(super::missing)? { continue; }
-        let index = usize::try_from(owner).ok().filter(|&v|v<64)
+        if !state.world.player_is_valid(owner).map_err(super::missing)? {
+            continue;
+        }
+        let index = usize::try_from(owner)
+            .ok()
+            .filter(|&v| v < 64)
             .ok_or(Error::Unsupported("automation current player index"))?;
         if !state.retained.core.player_processor.automation_processed[index] {
             return Err(Error::Unsupported("phase unprocessed player automation"));
         }
         if !super::activation::is_simultaneous(state, owner, &mut mode)?
-            && state.turn_active(owner).map_err(super::missing)? { break; }
+            && state.turn_active(owner).map_err(super::missing)?
+        {
+            break;
+        }
     }
     Ok(())
 }
@@ -71,7 +86,9 @@ pub fn end_player_culture(state: &mut LoadedState, owner: i32) -> Result<(), Err
         .position(|p| p.requested_owner == owner)
         .ok_or(Error::Unsupported("current end-turn Culture owner"))?;
     changed(state)?;
-    state.retained.players[index].culture.civic_completed_this_turn = false;
+    state.retained.players[index]
+        .culture
+        .civic_completed_this_turn = false;
     Ok(())
 }
 
@@ -97,7 +114,11 @@ pub trait TurnEffects {
     /// Game signals +708 (begin) or +750 (end), with current turn reread.
     fn turn_signal(&mut self, state: &mut LoadedState, begin: bool, turn: i32)
         -> Result<(), Error>;
-    fn activate_at_turn_start(&mut self, state: &mut LoadedState, runtime: &mut Runtime) -> Result<(), Error>;
+    fn activate_at_turn_start(
+        &mut self,
+        state: &mut LoadedState,
+        runtime: &mut Runtime,
+    ) -> Result<(), Error>;
     fn autoplay_end(&mut self, state: &mut LoadedState, runtime: &mut Runtime)
         -> Result<(), Error>;
 }
@@ -305,7 +326,9 @@ pub enum PhaseAdvance {
 pub fn unprocessed_automation(state: &LoadedState, alive: &[i32]) -> Result<i32, Error> {
     let mut count = 0i32;
     for &owner in alive {
-        let index = usize::try_from(owner).ok().filter(|&i| i < 64)
+        let index = usize::try_from(owner)
+            .ok()
+            .filter(|&i| i < 64)
             .ok_or(Error::Unsupported("round automation player slot"))?;
         let players = &state.retained.core.player_processor;
         if !players.automation_processed[index] && !players.game_complete[index] {
@@ -317,9 +340,24 @@ pub fn unprocessed_automation(state: &LoadedState, alive: &[i32]) -> Result<i32,
 
 /// SetTurnSegmentDisabled2a55380 ignores INVALID, index zero and indices past
 /// the current list. The admitted registry supplies the actual native index.
-pub fn set_segment_disabled(state: &mut LoadedState, hash: u32, native_index: i32, disabled: bool) -> Result<(), Error> {
-    if native_index <= 0 || native_index as usize >= state.retained.core.phase_processor.turn_segments.len() { return Ok(()); }
-    let index = state.retained.core.phase_processor.turn_segments.iter().position(|s|s.hash == hash)
+pub fn set_segment_disabled(
+    state: &mut LoadedState,
+    hash: u32,
+    native_index: i32,
+    disabled: bool,
+) -> Result<(), Error> {
+    if native_index <= 0
+        || native_index as usize >= state.retained.core.phase_processor.turn_segments.len()
+    {
+        return Ok(());
+    }
+    let index = state
+        .retained
+        .core
+        .phase_processor
+        .turn_segments
+        .iter()
+        .position(|s| s.hash == hash)
         .ok_or(Error::Unsupported("current phase segment remap"))?;
     changed(state)?;
     state.retained.core.phase_processor.turn_segments[index].disabled = disabled;
@@ -572,7 +610,11 @@ mod tests {
         fn turn_signal(&mut self, _: &mut LoadedState, _: bool, _: i32) -> Result<(), Error> {
             panic!("unreached")
         }
-        fn activate_at_turn_start(&mut self, _: &mut LoadedState, _: &mut Runtime) -> Result<(), Error> {
+        fn activate_at_turn_start(
+            &mut self,
+            _: &mut LoadedState,
+            _: &mut Runtime,
+        ) -> Result<(), Error> {
             panic!("unreached")
         }
         fn autoplay_end(&mut self, _: &mut LoadedState, _: &mut Runtime) -> Result<(), Error> {

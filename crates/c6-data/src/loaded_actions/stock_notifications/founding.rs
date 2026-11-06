@@ -376,7 +376,8 @@ impl<'a, E: Effects<'a>> c6_core::city_initialization::Context for Start<'_, '_,
             c6_core::city_build_initialization::Inputs::bind(self.state, owner, initialized);
         let build = c6_core::city_build_initialization::create(self.state, owner, city.id, &inputs)
             .map_err(text)?;
-        self.effects.city_build_initialized(self.state, city, build)?;
+        self.effects
+            .city_build_initialized(self.state, city, build)?;
         Ok(build)
     }
 }

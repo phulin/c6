@@ -8,7 +8,7 @@ use crate::unit_movement_state::{self, Inputs};
 mod change_moves;
 pub use change_moves::change_unit_moves;
 mod finish;
-pub use finish::{finish_unit_moves,finish_formation_moves};
+pub use finish::{finish_formation_moves, finish_unit_moves};
 mod activation;
 pub use activation::activate_unit;
 mod alert;
@@ -26,7 +26,7 @@ use c6_core::{
 };
 pub use operations::{
     clear_current_formation_path, clear_unit_operations, complete_unit_movement,
-    pop_front_operation, pop_front_expired_trade_route, set_unit_activity, OperationReports,
+    pop_front_expired_trade_route, pop_front_operation, set_unit_activity, OperationReports,
 };
 
 /// Identity of a retained collection slot, independent of mutable Unit ID/owner.

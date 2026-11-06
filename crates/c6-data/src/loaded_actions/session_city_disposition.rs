@@ -142,11 +142,21 @@ impl<'a, P> Session<'_, 'a, P> {
             self.context
                 .notifications
                 .update(issuer, budget)
-                .map_err(|e| action::error(action::Stage::Blocking, (e, self.context.notifications.failure())))?;
+                .map_err(|e| {
+                    action::error(
+                        action::Stage::Blocking,
+                        (e, self.context.notifications.failure()),
+                    )
+                })?;
             self.context
                 .notifications
                 .update(issuer, budget)
-                .map_err(|e| action::error(action::Stage::Blocking, (e, self.context.notifications.failure())))?;
+                .map_err(|e| {
+                    action::error(
+                        action::Stage::Blocking,
+                        (e, self.context.notifications.failure()),
+                    )
+                })?;
             self.context
                 .messages_processed()
                 .map_err(|e| action::error(action::Stage::MessagesProcessed, e))?;

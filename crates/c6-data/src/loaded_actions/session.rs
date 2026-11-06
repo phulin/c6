@@ -18,45 +18,45 @@ use c6_core::{
 };
 
 pub mod advance;
-pub mod stock_turn_services;
-pub mod combat;
-pub mod city_strike;
-pub mod initialized;
-pub mod founding;
-#[path = "session_policy.rs"]
-pub mod policy;
-#[path = "session_governor.rs"]
-pub mod governor;
-#[path = "session_government.rs"]
-pub mod government;
-#[path = "session_purchase.rs"]
-pub mod purchase;
-#[path = "session_plot_purchase.rs"]
-pub mod plot_purchase;
-#[path = "session_district.rs"]
-pub mod district;
-#[path = "session_upgrade.rs"]
-pub mod upgrade;
 #[path = "session_chop.rs"]
 pub mod chop;
-#[path = "session_repair.rs"]
-pub mod repair;
-#[path = "session_pillage.rs"]
-pub mod pillage;
-#[path = "session_promotion.rs"]
-pub mod promotion;
-#[path = "session_trade_route.rs"]
-pub mod trade_route;
-#[path = "session_declare_war.rs"]
-pub mod declare_war;
-#[path = "session_pantheon.rs"]
-pub mod pantheon;
 #[path = "session_citizens.rs"]
 pub mod citizens;
-#[path = "session_city_raze.rs"]
-pub mod city_raze;
 #[path = "session_city_disposition.rs"]
 pub mod city_disposition;
+#[path = "session_city_raze.rs"]
+pub mod city_raze;
+pub mod city_strike;
+pub mod combat;
+#[path = "session_declare_war.rs"]
+pub mod declare_war;
+#[path = "session_district.rs"]
+pub mod district;
+pub mod founding;
+#[path = "session_government.rs"]
+pub mod government;
+#[path = "session_governor.rs"]
+pub mod governor;
+pub mod initialized;
+#[path = "session_pantheon.rs"]
+pub mod pantheon;
+#[path = "session_pillage.rs"]
+pub mod pillage;
+#[path = "session_plot_purchase.rs"]
+pub mod plot_purchase;
+#[path = "session_policy.rs"]
+pub mod policy;
+#[path = "session_promotion.rs"]
+pub mod promotion;
+#[path = "session_purchase.rs"]
+pub mod purchase;
+#[path = "session_repair.rs"]
+pub mod repair;
+pub mod stock_turn_services;
+#[path = "session_trade_route.rs"]
+pub mod trade_route;
+#[path = "session_upgrade.rs"]
+pub mod upgrade;
 
 #[derive(Debug)]
 pub enum Error<E> {
@@ -68,6 +68,8 @@ pub enum Error<E> {
     /// Finish the captured city's external disposition decision before any
     /// further action or turn progression. The completed melee is retained.
     PendingCityDisposition(c6_core::unit::ComponentId),
+    /// The initial diplomacy statement has reached an external response choice.
+    PendingFirstMeeting(c6_core::diplomacy_first_meeting::PendingDecision),
     /// This request does not belong to the current ordinary player-action site.
     DecisionBoundary(&'static str),
     Action(E),
@@ -122,6 +124,9 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
     pub fn pending_choice(&self) -> Option<&PolicyChoice> {
         self.context.notifications.backend.pending_policy_choice()
     }
+    pub fn pending_first_meetings(&self) -> &[c6_core::diplomacy_first_meeting::PendingDecision] {
+        self.context.notifications.backend.pending_first_meetings()
+    }
     pub fn failure(&self) -> Option<&str> {
         self.failed.as_deref()
     }
@@ -134,7 +139,13 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         crate::research::Runtime,
         data::deactivation::VisibilityHistory,
     ) {
-        (self.context, self.update, self.research.expect("action research loan restored before Session returns"), self.visibility)
+        (
+            self.context,
+            self.update,
+            self.research
+                .expect("action research loan restored before Session returns"),
+            self.visibility,
+        )
     }
     /// Move the sole current research owner into synchronous movement callbacks.
     /// Entry refuses a nested loan before taking either owner.
@@ -142,19 +153,30 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         if self.context.notifications.backend.action_research.is_some() {
             return Err(Error::DecisionBoundary("research owner already loaned"));
         }
-        let owner = self.research.take().ok_or(Error::DecisionBoundary(
-            "research owner temporarily loaned",
-        ))?;
+        let owner = self
+            .research
+            .take()
+            .ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?;
         self.context.notifications.backend.action_research = Some(owner);
         Ok(())
     }
     fn end_action_research<E>(&mut self) -> Result<(), Error<E>> {
-        let owner = self.context.notifications.backend.action_research.take()
-            .ok_or(Error::DecisionBoundary("movement research owner unavailable"))?;
+        let owner = self
+            .context
+            .notifications
+            .backend
+            .action_research
+            .take()
+            .ok_or(Error::DecisionBoundary(
+                "movement research owner unavailable",
+            ))?;
         self.research = Some(owner);
         Ok(())
     }
     fn check<E>(&self) -> Result<(), Error<E>> {
+        if let Some(decision) = self.pending_first_meetings().first() {
+            return Err(Error::PendingFirstMeeting(*decision));
+        }
         match &self.failed {
             Some(failure) => Err(Error::Failed(failure.clone())),
             None => match self.pending_city_disposition() {
@@ -272,7 +294,9 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         let result = turn_loop::execute(
             &mut self.context,
             &mut self.update,
-            self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
+            self.research
+                .as_mut()
+                .ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
             inputs,
             &mut self.visibility,
             player,
@@ -323,7 +347,9 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         let result = turn_loop::resume_end_turn(
             &mut self.context,
             &mut self.update,
-            self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
+            self.research
+                .as_mut()
+                .ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
             inputs,
             &mut self.visibility,
             budget,
@@ -375,7 +401,9 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
             &mut self.visibility,
             budget,
             definitions,
-            self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
+            self.research
+                .as_mut()
+                .ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
             choices,
             culture,
             index,
@@ -400,25 +428,52 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
     /// Unsupported handlers return an error and retain any completed prefix.
     #[allow(clippy::too_many_arguments)]
     pub fn operation(
-        &mut self, issuer: i32, actor: (i32, u32),
-        request: super::move_to::OperationRequest, inputs: &Inputs<'_, '_>,
-        handlers: &handlers::BoundHandlers<'_>, runtime: &mut super::move_to::Runtime<'_>,
-        movement: &mut super::move_to::ComputedMovement<'_, '_>, budget: &mut usize,
+        &mut self,
+        issuer: i32,
+        actor: (i32, u32),
+        request: super::move_to::OperationRequest,
+        inputs: &Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>,
+        runtime: &mut super::move_to::Runtime<'_>,
+        movement: &mut super::move_to::ComputedMovement<'_, '_>,
+        budget: &mut usize,
     ) -> Result<super::move_to::ActionOutcome, Error<MoveToError>> {
         self.ordinary_player_action(issuer)?;
         let result = super::move_to::execute_operation_active_request(
-            &mut self.context, issuer, actor, request, inputs, handlers, runtime, movement, budget);
+            &mut self.context,
+            issuer,
+            actor,
+            request,
+            inputs,
+            handlers,
+            runtime,
+            movement,
+            budget,
+        );
         self.retain(result, true)
     }
     /// Ordinary Fortify; later-turn progression is performed by queue activation.
     #[allow(clippy::too_many_arguments)]
     pub fn fortify(
-        &mut self, issuer: i32, actor: (i32, u32), inputs: &Inputs<'_, '_>,
-        handlers: &handlers::BoundHandlers<'_>, runtime: &mut super::move_to::Runtime<'_>,
-        movement: &mut super::move_to::ComputedMovement<'_, '_>, budget: &mut usize,
+        &mut self,
+        issuer: i32,
+        actor: (i32, u32),
+        inputs: &Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>,
+        runtime: &mut super::move_to::Runtime<'_>,
+        movement: &mut super::move_to::ComputedMovement<'_, '_>,
+        budget: &mut usize,
     ) -> Result<super::move_to::ActionOutcome, Error<MoveToError>> {
-        self.operation(issuer, actor, super::move_to::OperationRequest::Fortify,
-            inputs, handlers, runtime, movement, budget)
+        self.operation(
+            issuer,
+            actor,
+            super::move_to::OperationRequest::Fortify,
+            inputs,
+            handlers,
+            runtime,
+            movement,
+            budget,
+        )
     }
     /// Execute an explicit MoveTo using the existing computed path/placement
     /// composition (including joined civilian capture), stock callbacks and aftermath.
@@ -455,8 +510,12 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
         self.begin_action_research()?;
         // Unit creation reached by this action reads the live Session history;
         // it does not inherit an unavailable turn-activation-only scope.
-        let previous_history = self.context.notifications.backend
-            .action_gossip_history_empty.replace(self.visibility.history.is_empty());
+        let previous_history = self
+            .context
+            .notifications
+            .backend
+            .action_gossip_history_empty
+            .replace(self.visibility.history.is_empty());
         let result = super::move_to::execute_active_request(
             &mut self.context,
             issuer,
@@ -468,7 +527,10 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
             movement,
             budget,
         );
-        self.context.notifications.backend.action_gossip_history_empty = previous_history;
+        self.context
+            .notifications
+            .backend
+            .action_gossip_history_empty = previous_history;
         self.end_action_research()?;
         self.retain(result, true)
     }
@@ -485,36 +547,55 @@ impl Session<'_, '_, c6_core::unit::OperationParameters> {
     /// state, stock services, visibility and HeadlessMessagesProcessed boundary.
     #[allow(clippy::too_many_arguments)]
     pub fn build_improvement(
-        &mut self, issuer: i32, actor: (i32, u32), improvement_hash: u32,
-        modifiers: u32, inputs: &Inputs<'_, '_>, handlers: &handlers::BoundHandlers<'_>,
+        &mut self,
+        issuer: i32,
+        actor: (i32, u32),
+        improvement_hash: u32,
+        modifiers: u32,
+        inputs: &Inputs<'_, '_>,
+        handlers: &handlers::BoundHandlers<'_>,
         runtime: &mut super::move_to::Runtime<'_>,
         dispatcher: &mut crate::builder_improvement::stock::Dispatcher<'_, '_>,
         budget: &mut usize,
     ) -> Result<super::move_to::ActionOutcome, Error<BuildImprovementError>> {
         self.check()?;
-        if matches!(self.pending_choice().map(|c|c.kind),Some(PolicyKind::Research(_))) {
+        if matches!(
+            self.pending_choice().map(|c| c.kind),
+            Some(PolicyKind::Research(_))
+        ) {
             return Err(Error::PendingResearch);
         }
         // The session's current visibility history is the canonical Gossip
         // owner. Reborrow all other services instead of copying/replacing them.
         let mut current = crate::builder_improvement::stock::Dispatcher {
             death: dispatcher.death,
-            definitions: dispatcher.definitions, cached: dispatcher.cached,
+            definitions: dispatcher.definitions,
+            cached: dispatcher.cached,
             services: &mut *dispatcher.services,
             legality: crate::builder_improvement::legality::Inputs {
                 fallout_turns: dispatcher.legality.fallout_turns,
                 drought_ids: dispatcher.legality.drought_ids,
                 national_parks: dispatcher.legality.national_parks,
             },
-            sight_definitions: dispatcher.sight_definitions, upkeep: dispatcher.upkeep,
+            sight_definitions: dispatcher.sight_definitions,
+            upkeep: dispatcher.upkeep,
             gossip_history: &self.visibility.history,
             alive_major_ids: dispatcher.alive_major_ids,
             reports: &mut *dispatcher.reports,
             worker_reports: &mut *dispatcher.worker_reports,
         };
         let result = super::move_to::execute_build_improvement_active_request(
-            &mut self.context, issuer, actor, improvement_hash, modifiers,
-            inputs, handlers, runtime, &mut current, budget);
+            &mut self.context,
+            issuer,
+            actor,
+            improvement_hash,
+            modifiers,
+            inputs,
+            handlers,
+            runtime,
+            &mut current,
+            budget,
+        );
         self.retain(result, true)
     }
 }
@@ -601,7 +682,14 @@ impl<P> Session<'_, '_, P> {
         culture: Option<&stock_notifications::research::CultureInputs<'_>>,
     ) -> Result<(), Error<ResearchError>> {
         self.ordinary_player_action(player)?;
-        let mut effects = stock_notifications::research::Effects::new(&mut self.context.notifications.backend, self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?, choices, culture);
+        let mut effects = stock_notifications::research::Effects::new(
+            &mut self.context.notifications.backend,
+            self.research
+                .as_mut()
+                .ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
+            choices,
+            culture,
+        );
         let mut research = crate::research::Context {
             state: self.context.notifications.state,
             definitions,
@@ -631,22 +719,34 @@ impl<P> Session<'_, '_, P> {
     /// Select an ordinary Unit on the same live City and stock services.
     /// Legality precedes queue writes; failures retain the exact partial state.
     pub fn choose_unit(
-        &mut self,owner:i32,city:u32,unit_hash:u32,
-        definitions:&crate::city_production_turn::unit_selection::Definitions,
-        current:&crate::city_production_turn::unit_selection::Current<'_>,
-    )->Result<Vec<stock_notifications::city_production::unit::Record>,Error<crate::city_production_turn::Error>>{
+        &mut self,
+        owner: i32,
+        city: u32,
+        unit_hash: u32,
+        definitions: &crate::city_production_turn::unit_selection::Definitions,
+        current: &crate::city_production_turn::unit_selection::Current<'_>,
+    ) -> Result<
+        Vec<stock_notifications::city_production::unit::Record>,
+        Error<crate::city_production_turn::Error>,
+    > {
         self.ordinary_player_action(owner)?;
-        let before=self.state().action_stamp();
-        let (result,reports)={
-            let mut effects=stock_notifications::city_production::unit::Selection{
-                runtime:&mut self.context.notifications.backend,definitions,
-                current:crate::city_production_turn::unit_selection::Current{build_maps:current.build_maps,fallout_turns:current.fallout_turns,civilization_levels:current.civilization_levels},reports:Vec::new(),
+        let before = self.state().action_stamp();
+        let (result, reports) = {
+            let mut effects = stock_notifications::city_production::unit::Selection {
+                runtime: &mut self.context.notifications.backend,
+                definitions,
+                current: crate::city_production_turn::unit_selection::Current {
+                    build_maps: current.build_maps,
+                    fallout_turns: current.fallout_turns,
+                    civilization_levels: current.civilization_levels,
+                },
+                reports: Vec::new(),
             };
-            let result=effects.choose(self.context.notifications.state,owner,city,unit_hash);
-            (result,effects.reports)
+            let result = effects.choose(self.context.notifications.state, owner, city, unit_hash);
+            (result, effects.reports)
         };
-        let partial_failure=self.state().action_stamp()!=before;
-        self.retain(result.map(|()|reports),partial_failure)
+        let partial_failure = self.state().action_stamp() != before;
+        self.retain(result.map(|()| reports), partial_failure)
     }
     /// Append an explicit building choice using the same stock runtime and
     /// already-bound current city queries. Legality runs before queue writes;

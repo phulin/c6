@@ -3,12 +3,12 @@
 //! answers. Missing captured payloads remain explicit dependencies.
 use crate::loaded_actions::city_range_attack;
 use c6_core::{
-    plot_adjacent_owner_requirement::Requirement,
     core_player::initialization::WireBinding,
     geometry,
     loaded_state::LoadedState,
     map::UnitReference,
     movement_world, plot_adjacent_owner_requirement as kernel,
+    plot_adjacent_owner_requirement::Requirement,
     unit::{ComponentId, PlotCoord},
 };
 use std::collections::BTreeMap;

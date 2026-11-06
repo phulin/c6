@@ -173,9 +173,13 @@ fn no_nearby_effects(state: &LoadedState, owner: i32) -> Result<(), Error> {
     let p = player(state, owner)?;
     if p.governors.entries.iter().any(|s| {
         let g = &s.governor;
-        g.domestic_identity_pressure != 0 || g.foreign_identity_pressure != 0
-            || g.domestic_identity_pressure_once_per_city != 0 || g.foreign_identity_pressure_once_per_city != 0
-    }) { return Err(Error::Unsupported("nearby governor identity")); }
+        g.domestic_identity_pressure != 0
+            || g.foreign_identity_pressure != 0
+            || g.domestic_identity_pressure_once_per_city != 0
+            || g.foreign_identity_pressure_once_per_city != 0
+    }) {
+        return Err(Error::Unsupported("nearby governor identity"));
+    }
     let c = &p.cultural_identity;
     if c.foreign_identity_per_turn_from_nearby_great_works_raw != 0
         || c.domestic_identity_per_turn_from_nearby_great_works_raw != 0
@@ -275,10 +279,17 @@ pub fn identity_for(
             return Err(Error::Unsupported("domestic trade-route identity"));
         }
         if let Some(g) = p.governors.entries.iter().map(|s| &s.governor).find(|g| {
-            g.assigned_city.owner as i32 == owner && g.assigned_city.component_type == 2 && g.assigned_city.id == id
+            g.assigned_city.owner as i32 == owner
+                && g.assigned_city.component_type == 2
+                && g.assigned_city.id == id
         }) {
-            let titles = g.promotions.iter().fold(0i32, |n,p| n.wrapping_add(i32::from(p.earned)));
-            let pressure = g.cultural_pressure.wrapping_add(g.identity_per_title.wrapping_mul(titles));
+            let titles = g
+                .promotions
+                .iter()
+                .fold(0i32, |n, p| n.wrapping_add(i32::from(p.earned)));
+            let pressure = g
+                .cultural_pressure
+                .wrapping_add(g.identity_per_title.wrapping_mul(titles));
             result = result.wrapping_add(pressure.wrapping_shl(8));
         }
         if !free {

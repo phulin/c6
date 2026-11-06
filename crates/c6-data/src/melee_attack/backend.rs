@@ -4,9 +4,9 @@
 use super::proposals;
 pub mod allocation;
 pub mod city_creation;
-pub mod pantheon;
 pub mod emergency;
 pub mod improvement;
+pub mod pantheon;
 pub mod requirements;
 use crate::{
     loaded_actions::{configuration::RawGameConfiguration, culture_notifications as calendar},

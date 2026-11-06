@@ -389,10 +389,7 @@ impl Definitions {
             definitions: self,
             culture: &player.culture,
             current_turn: state.retained().core.current_turn,
-            current_game_era: state
-                .game_eras()
-                .ok()
-                .and_then(|eras| eras.current_era()),
+            current_game_era: state.game_eras().ok().and_then(|eras| eras.current_era()),
             human: state
                 .player_slot_status(owner)
                 .ok()
@@ -451,7 +448,9 @@ impl GameCulture {
     }
     /// Original node order, retaining duplicates and exact stored active bytes.
     /// Current original graph traversal, preserving order and duplicates.
-    pub fn iteration(&self) -> &[i32] { &self.ordered_types }
+    pub fn iteration(&self) -> &[i32] {
+        &self.ordered_types
+    }
     pub fn nodes(&self) -> &[CivicNode] {
         &self.nodes
     }

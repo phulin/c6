@@ -504,7 +504,8 @@ impl EffectRuntime {
             if level == 0x253718b0
                 && recipes.iter().any(|r| {
                     r.effect == crate::research::attached_modifiers::Effect::GovernorPoints
-                }) && state.governor_current(owner).is_none()
+                })
+                && state.governor_current(owner).is_none()
             {
                 return Err(Error::Missing("current major governor maximum"));
             }
@@ -599,7 +600,16 @@ impl EffectRuntime {
                     // Positive major deltas update points up to the actual
                     // unsaved maximum, and the external title-decision flag. Negative
                     // Remove still reports but does not subtract native points.
-                    state.change_governor_points(owner, is_major, if remove { amount.wrapping_neg() } else { amount })
+                    state
+                        .change_governor_points(
+                            owner,
+                            is_major,
+                            if remove {
+                                amount.wrapping_neg()
+                            } else {
+                                amount
+                            },
+                        )
                         .map_err(|_| Error::Missing("current Governor points and maximum"))?;
                     // da3ef23d is a stock Player.Governors cache publication;
                     // appointment and promotion remain explicit player choices.

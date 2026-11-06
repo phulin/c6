@@ -147,23 +147,44 @@ pub fn set<C: Context>(
 }
 /// Source flags1 and invalid old location, retaining the complete shared tail.
 pub fn set_initial<C: InitialContext>(
-    c: &mut C, destination: PlotCoord, validation_flags: u32,
+    c: &mut C,
+    destination: PlotCoord,
+    validation_flags: u32,
 ) -> Result<i32, Error<E<C>>> {
-    set_impl(c, destination, validation_flags, true, |c, membership, maximum| {
-        let team_visible = if c.definition_team_visibility().map_err(Error::Context)? {
-            let observer = InitialContext::local_observer(c).map_err(Error::Context)?;
-            let owner = unit(c)?.e_owner;
-            c.same_team(observer, owner).map_err(Error::Context)?
-        } else { true };
-        let location = unit(c)?.k_location;
-        report(c, 0xb8515a41, membership.identity, PlacementPayload::Initial {
-            location, layer: membership.layer as i32, maximum_charges: maximum,
-            embark_event: membership.embark_event, team_visible,
-        })
-    })
+    set_impl(
+        c,
+        destination,
+        validation_flags,
+        true,
+        |c, membership, maximum| {
+            let team_visible = if c.definition_team_visibility().map_err(Error::Context)? {
+                let observer = InitialContext::local_observer(c).map_err(Error::Context)?;
+                let owner = unit(c)?.e_owner;
+                c.same_team(observer, owner).map_err(Error::Context)?
+            } else {
+                true
+            };
+            let location = unit(c)?.k_location;
+            report(
+                c,
+                0xb8515a41,
+                membership.identity,
+                PlacementPayload::Initial {
+                    location,
+                    layer: membership.layer as i32,
+                    maximum_charges: maximum,
+                    embark_event: membership.embark_event,
+                    team_visible,
+                },
+            )
+        },
+    )
 }
 fn set_impl<C: Context>(
-    c: &mut C, destination: PlotCoord, validation_flags: u32, initial: bool,
+    c: &mut C,
+    destination: PlotCoord,
+    validation_flags: u32,
+    initial: bool,
     mut initial_report: impl FnMut(&mut C, &PlacementMembership, i32) -> Result<(), Error<E<C>>>,
 ) -> Result<i32, Error<E<C>>> {
     let validation = c
@@ -192,7 +213,9 @@ fn set_impl<C: Context>(
     } else {
         unit(c)?.k_religion.i_spread_charges
     };
-    if initial { initial_report(c, &m, maximum)?; }
+    if initial {
+        initial_report(c, &m, maximum)?;
+    }
     let owner = i32::from(m.identity.owner);
     let viewer = c.local_player().map_err(Error::Context)?;
     let shared = viewer == owner
@@ -232,9 +255,11 @@ fn set_impl<C: Context>(
     })
     .map_err(Error::State)?;
     let air = PlacementMembershipContext::domain(c).map_err(Error::Context)? == 1;
-    if !initial && (air
-        || c.plot_distance(m.old_location, unit(c)?.k_location)
-            .map_err(Error::Context)? == 1)
+    if !initial
+        && (air
+            || c.plot_distance(m.old_location, unit(c)?.k_location)
+                .map_err(Error::Context)?
+                == 1)
     {
         edit(c)?.b_needs_movement_completion = true;
         let position = unit(c)?.k_location;

@@ -201,21 +201,38 @@ pub fn set_simultaneous(state: &mut LoadedState, owner: i32, value: bool) -> Res
 }
 
 /// Player.IsSimultaneousTurns without NeedsTurnActivate's separate guard.
-pub fn is_simultaneous(state: &LoadedState, owner: i32, mut mode: impl FnMut(&LoadedState) -> Result<u32, Error>) -> Result<bool, Error> {
-    if state.player_slot_status(owner).map_err(super::missing)? != 3 { return Ok(false); }
+pub fn is_simultaneous(
+    state: &LoadedState,
+    owner: i32,
+    mut mode: impl FnMut(&LoadedState) -> Result<u32, Error>,
+) -> Result<bool, Error> {
+    if state.player_slot_status(owner).map_err(super::missing)? != 3 {
+        return Ok(false);
+    }
     Ok(match mode(state)? {
         0xfd4af2d1 => true,
-        0xbe9088c4 => state.retained.players.iter().find(|p|p.header.owner==owner)
-            .ok_or(Error::Unsupported("simultaneous current player"))?.header.saved_simultaneous_turns(),
+        0xbe9088c4 => state
+            .retained
+            .players
+            .iter()
+            .find(|p| p.header.owner == owner)
+            .ok_or(Error::Unsupported("simultaneous current player"))?
+            .header
+            .saved_simultaneous_turns(),
         _ => false,
     })
 }
 
 /// ActivateNextPlayer2a0c034 suffix after a phase has begun. Simultaneous
 /// players may already be active; this scan has no active-count precondition.
-pub fn next_sequential_in_phase(state: &LoadedState, mut mode: impl FnMut(&LoadedState)->Result<u32,Error>) -> Result<Option<i32>,Error> {
+pub fn next_sequential_in_phase(
+    state: &LoadedState,
+    mut mode: impl FnMut(&LoadedState) -> Result<u32, Error>,
+) -> Result<Option<i32>, Error> {
     for &owner in &state.retained.core.game_processor.turn_order {
-        if state.world.player_is_valid(owner).map_err(super::missing)? && sequential(state, owner, &mut mode)? {
+        if state.world.player_is_valid(owner).map_err(super::missing)?
+            && sequential(state, owner, &mut mode)?
+        {
             return Ok(Some(owner));
         }
     }

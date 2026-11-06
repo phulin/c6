@@ -6,29 +6,29 @@ use crate::formation_initialization::FormationRuntime;
 use crate::loaded_components::{self, OwnedCore, RetainedPlayer};
 use crate::unit_initialization::{InitializationInputs, UnitRuntime};
 use crate::{map, unit, world};
-pub mod combat_proposals;
-pub mod combat_boosts;
-pub mod city_initialization;
-pub mod influence_map_update;
-pub mod game_update;
-pub mod game_sync;
-pub mod game_statistics;
-pub mod game_history;
-pub mod game_eras;
-pub mod player_social;
-pub mod game_religion;
-pub mod player_governors;
 pub mod activation_managers;
-pub mod player_treasury;
-pub mod notification_snapshot;
+pub mod barbarian_camp_placement;
+pub mod city_initialization;
+pub mod combat_boosts;
+pub mod combat_proposals;
+pub mod game_eras;
 pub mod game_grievances;
-pub mod war_actions;
+pub mod game_history;
+pub mod game_religion;
+pub mod game_statistics;
+pub mod game_sync;
+pub mod game_update;
+pub mod influence_map_update;
+pub mod notification_snapshot;
 pub mod observed_controls;
+pub mod player_governors;
+pub mod player_social;
+pub mod player_treasury;
 pub mod research;
 pub mod turn_completion;
 pub mod typed_components;
-pub mod barbarian_camp_placement;
 pub mod unit_creation_control;
+pub mod war_actions;
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
@@ -524,24 +524,32 @@ mod tests {
 
     #[test]
     fn observed_team_refinement_updates_both_views_and_rejects_conflicts_atomically() {
-        let mut state=state();
-        let mut input:PartialControlInputs=controls(&state).into();
-        let owner=input.players[0].owner;
-        input.players[0].team=None;
-        let source=witness(&state);
-        state.bind_observed_snapshot_partial_controls(source.clone(),input).unwrap();
-        let before=state.action_stamp();
-        assert!(observed_controls::extend_teams(&mut state,&source,&[(owner,7),(owner,8)]).is_err());
-        assert_eq!(state.action_stamp(),before);
+        let mut state = state();
+        let mut input: PartialControlInputs = controls(&state).into();
+        let owner = input.players[0].owner;
+        input.players[0].team = None;
+        let source = witness(&state);
+        state
+            .bind_observed_snapshot_partial_controls(source.clone(), input)
+            .unwrap();
+        let before = state.action_stamp();
+        assert!(
+            observed_controls::extend_teams(&mut state, &source, &[(owner, 7), (owner, 8)])
+                .is_err()
+        );
+        assert_eq!(state.action_stamp(), before);
         assert!(state.player_team(owner).is_err());
-        observed_controls::extend_teams(&mut state,&source,&[(owner,7)]).unwrap();
-        assert_eq!(state.player_team(owner).unwrap(),7);
-        assert_eq!(state.world.player(owner).unwrap().team,Some(7));
-        let bound=state.action_stamp();
-        assert!(observed_controls::extend_teams(&mut state,&source,&[(owner,8)]).is_err());
-        assert_eq!(state.action_stamp(),bound);
+        observed_controls::extend_teams(&mut state, &source, &[(owner, 7)]).unwrap();
+        assert_eq!(state.player_team(owner).unwrap(), 7);
+        assert_eq!(state.world.player(owner).unwrap().team, Some(7));
+        let bound = state.action_stamp();
+        assert!(observed_controls::extend_teams(&mut state, &source, &[(owner, 8)]).is_err());
+        assert_eq!(state.action_stamp(), bound);
         state.world_mut().unwrap();
-        assert!(matches!(observed_controls::extend_teams(&mut state,&source,&[(owner,7)]),Err(Error::NotPristine)));
+        assert!(matches!(
+            observed_controls::extend_teams(&mut state, &source, &[(owner, 7)]),
+            Err(Error::NotPristine)
+        ));
     }
 
     // Source-only complete typed actor; no native initialization is inferred.
@@ -2739,22 +2747,37 @@ mod tests {
         let mut s = state();
         let witness = ObservedSnapshotWitness {
             source_role: core_player::initialization::WireRole::SavedOutputCore,
-            snapshot_sha256: [1; 32], snapshot_bytes: 1,
-            capture_runtime_sha256: [2; 32], capture_facts_sha256: [3; 32],
+            snapshot_sha256: [1; 32],
+            snapshot_bytes: 1,
+            capture_runtime_sha256: [2; 32],
+            capture_facts_sha256: [3; 32],
             capture_configuration_sha256: [4; 32],
         };
-        let graph = || crate::trade_graph_state::GraphState::from_graph(
-            crate::trade::Graph::new(17, vec![]).unwrap()).unwrap();
-        assert!(matches!(s.initialize_current_trade_graph(&witness, graph()), Err(Error::Binding)));
+        let graph = || {
+            crate::trade_graph_state::GraphState::from_graph(
+                crate::trade::Graph::new(17, vec![]).unwrap(),
+            )
+            .unwrap()
+        };
+        assert!(matches!(
+            s.initialize_current_trade_graph(&witness, graph()),
+            Err(Error::Binding)
+        ));
         s.observed_snapshot = Some(witness.clone());
         s.initialize_current_trade_graph(&witness, graph()).unwrap();
         assert_eq!(s.trade_graph().unwrap().graph().total_edges_created(), 17);
         assert!(s.trade_graph_source().is_none());
-        assert!(matches!(s.initialize_current_trade_graph(&witness, graph()), Err(Error::AlreadyBound)));
+        assert!(matches!(
+            s.initialize_current_trade_graph(&witness, graph()),
+            Err(Error::AlreadyBound)
+        ));
         let mut late = state();
         late.observed_snapshot = Some(witness.clone());
         late.revision += 1;
-        assert!(matches!(late.initialize_current_trade_graph(&witness, graph()), Err(Error::NotPristine)));
+        assert!(matches!(
+            late.initialize_current_trade_graph(&witness, graph()),
+            Err(Error::NotPristine)
+        ));
     }
     fn trade_graph_carrier(frame: &[u8]) -> (LoadedState, ComponentSnapshotWitness, [u8; 32]) {
         use sha2::{Digest, Sha256};
@@ -5383,12 +5406,17 @@ impl LoadedState {
         // formationID0 but a NULL pointer until AddUnit/OnFormationIDChanged;
         // unrelated slot0 records do not automatically attach it.
         if let Some(saved) = row.units[index].value.formation {
-            let current = self.world.player(owner).map_err(Error::World)?
-                .formation(found.record.formation_id).map_err(Error::World)?;
+            let current = self
+                .world
+                .player(owner)
+                .map_err(Error::World)?
+                .formation(found.record.formation_id)
+                .map_err(Error::World)?;
             match current {
-                Some(actual) if saved.owner == actual.record.owner
-                    && saved.requested_id == actual.requested_id
-                    && saved.resolved_id == actual.resolved_id => {},
+                Some(actual)
+                    if saved.owner == actual.record.owner
+                        && saved.requested_id == actual.requested_id
+                        && saved.resolved_id == actual.resolved_id => {}
                 _ => return Err(Error::RuntimeDependenciesChanged),
             }
         }
@@ -5501,8 +5529,8 @@ pub mod city_build_initialization;
 
 mod object_pairing_current;
 
+pub mod unit_arrays;
 pub mod unit_creation;
 pub mod unit_removal;
-pub mod unit_arrays;
 
 pub mod climate_effects;

@@ -7,34 +7,34 @@ use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fmt, fs, path::Path};
 
 pub mod city_initialization;
-pub mod city_power;
 pub mod city_movement;
-pub mod city_turn;
-pub mod luxury_allocation;
+pub mod city_power;
 pub mod city_production_turn;
+pub mod city_turn;
 pub mod combat_defender;
-pub mod formation_rules;
-pub mod formation_movement_cost;
 pub mod formation_move_to;
+pub mod formation_movement_cost;
 pub mod formation_path_state;
-pub mod game_relations;
+pub mod formation_rules;
 pub mod game_parameters;
+pub mod game_relations;
 pub mod geographic_names;
 pub mod loaded_actions;
 pub mod loaded_upkeep;
+pub mod luxury_allocation;
 pub mod melee_attack;
 pub mod movement;
 pub mod movement_placement_state;
 pub mod registry;
-pub mod research_unit_costs;
 pub mod research;
+pub mod research_unit_costs;
 pub mod resource_binding;
 pub mod unit_initialization_definitions;
-pub mod unit_movement_state;
+pub mod unit_moved_achievement;
 pub mod unit_moved_requirements;
+pub mod unit_movement_state;
 pub mod unit_operation_manager;
 pub mod unit_sight_state;
-pub mod unit_moved_achievement;
 pub mod world_congress_options;
 pub mod world_congress_rules;
 
@@ -853,35 +853,34 @@ pub mod unit_placement_services;
 pub mod plot_adjacent_friendly_unit_tag_requirement;
 pub mod plot_adjacent_owner_requirement;
 
-
 pub mod game_update_state;
-pub mod unit_near_religious_city_requirement;
 pub mod unit_modifier_effect;
+pub mod unit_near_religious_city_requirement;
 
-pub mod found_city;
-pub mod district_initialization;
 pub mod district_actions;
+pub mod district_initialization;
+pub mod found_city;
 pub mod unit_kill;
 
-pub mod city_territory;
 pub mod city_plot_purchase;
+pub mod city_territory;
 pub mod influence_map_update;
 
 pub mod found_city_requirement_queries;
 
-pub mod unit_creation;
 pub mod barbarian_activation;
-pub mod barbarian_camps;
 pub mod barbarian_camp_placement;
 pub mod barbarian_camp_units;
+pub mod barbarian_camps;
+pub mod unit_creation;
 
-pub mod ranged_attack;
 pub mod city_strike;
+pub mod ranged_attack;
 
+pub mod builder_chop;
 pub mod builder_improvement;
 pub mod builder_repair;
-pub mod builder_chop;
 
 pub mod city_capture;
-pub mod civilian_capture;
 pub mod city_destroy;
+pub mod civilian_capture;

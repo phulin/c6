@@ -8,7 +8,11 @@ impl LoadedState {
         owner: i32,
     ) -> Result<&mut crate::player_components::Bonuses, Error> {
         self.world.player(owner).map_err(Error::World)?;
-        let index = self.retained.players.iter().position(|p| p.header.owner == owner)
+        let index = self
+            .retained
+            .players
+            .iter()
+            .position(|p| p.header.owner == owner)
             .ok_or(Error::Missing(MissingInput::Player(owner)))?;
         self.revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
         Ok(&mut self.retained.players[index].bonuses)

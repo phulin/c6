@@ -560,9 +560,9 @@ impl GameDiplomaticRelations {
                 current_friendships: None,
                 current_permanent_alliances: None,
                 current_grievances: None,
-            current_war_aggressors: None,
-            current_defensive_pacts: None,
-            current_war_consequences: None,
+                current_war_aggressors: None,
+                current_defensive_pacts: None,
+                current_war_consequences: None,
                 read_prefix: Some(ReadPrefixFields {
                     at_c8,
                     at_f0,

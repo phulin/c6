@@ -26,7 +26,9 @@ impl<'a, P> Session<'_, 'a, P> {
         let result = war::execute(
             self.context.notifications.state,
             &mut self.context.notifications.backend,
-            self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
+            self.research
+                .as_mut()
+                .ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
             &mut self.visibility,
             issuer,
             target,

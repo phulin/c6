@@ -1,0 +1,3 @@
+#!/bin/sh
+# Git supplies its prospective index here, including for git commit --only.
+exec python3 "$(git rev-parse --show-toplevel)/tools/check/staged_rustfmt.py"

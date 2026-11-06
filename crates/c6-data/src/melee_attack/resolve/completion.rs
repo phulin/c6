@@ -5,9 +5,9 @@ pub mod boosts;
 pub mod eras;
 pub mod history;
 pub mod mayhem;
-pub mod targets;
-pub mod stock_guards;
 pub mod stock;
+pub mod stock_guards;
+pub mod targets;
 use super::{post_yields::RequiresCombatAftermath, GeneratedMembers};
 use c6_core::{loaded_state::LoadedState, map::UnitReference};
 #[derive(Debug)]

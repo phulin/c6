@@ -120,12 +120,25 @@ pub fn overlay<T: Copy>(
 
 /// Fresh Reset writes native slots directly; Read's hash overlay is different
 /// when two definition slots share a hash (notably operation defaults).
-fn created_values<T:Copy>(pairs:&[HashValue<T>],definitions:&dyn DefinitionLookup)->Result<Vec<T>,Error>{
-    if pairs.len()!=definitions.count() || pairs.len()>i32::MAX as usize {return Err(Error::ArrayStorage);}
-    if pairs.iter().enumerate().any(|(index,pair)|definitions.type_hash(index)!=Some(pair.definition_hash)){return Err(Error::DefinitionIndex);}
-    let mut values=Vec::new();
-    values.try_reserve_exact(pairs.len()).map_err(|_|Error::ResourceLimit)?;
-    values.extend(pairs.iter().map(|pair|pair.value));
+fn created_values<T: Copy>(
+    pairs: &[HashValue<T>],
+    definitions: &dyn DefinitionLookup,
+) -> Result<Vec<T>, Error> {
+    if pairs.len() != definitions.count() || pairs.len() > i32::MAX as usize {
+        return Err(Error::ArrayStorage);
+    }
+    if pairs
+        .iter()
+        .enumerate()
+        .any(|(index, pair)| definitions.type_hash(index) != Some(pair.definition_hash))
+    {
+        return Err(Error::DefinitionIndex);
+    }
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(pairs.len())
+        .map_err(|_| Error::ResourceLimit)?;
+    values.extend(pairs.iter().map(|pair| pair.value));
     Ok(values)
 }
 
@@ -208,11 +221,15 @@ impl UnitRuntime {
         inputs: &InitializationInputs<'_>,
         (definition_index, domain): (i32, i32),
         formation: Option<FormationReference>,
-        fresh:bool,
+        fresh: bool,
     ) -> Result<Self, Error> {
         macro_rules! array {
-            ($pairs:expr,$definitions:expr,$default:expr $(,)?)=>{
-                if fresh {created_values($pairs,$definitions)}else{reset_overlay($pairs,$definitions,$default)}
+            ($pairs:expr,$definitions:expr,$default:expr $(,)?) => {
+                if fresh {
+                    created_values($pairs, $definitions)
+                } else {
+                    reset_overlay($pairs, $definitions, $default)
+                }
             };
         }
         Ok(Self {
@@ -242,11 +259,7 @@ impl UnitRuntime {
                 inputs.great_person_classes,
                 0,
             )?,
-            operations_disabled: array!(
-                &unit.k_operations_disabled,
-                inputs.operations,
-                false,
-            )?,
+            operations_disabled: array!(&unit.k_operations_disabled, inputs.operations, false,)?,
         })
     }
 }
@@ -400,13 +413,34 @@ mod tests {
     fn created_defaults_preserve_equal_hash_slots_without_read_remapping() {
         struct Duplicate;
         impl DefinitionLookup for Duplicate {
-            fn count(&self)->usize{2}
-            fn find_index(&self,key:u32)->Option<usize>{if key==99 {Some(1)}else{None}}
-            fn type_hash(&self,index:usize)->Option<u32>{(index<2).then_some(99)}
+            fn count(&self) -> usize {
+                2
+            }
+            fn find_index(&self, key: u32) -> Option<usize> {
+                if key == 99 {
+                    Some(1)
+                } else {
+                    None
+                }
+            }
+            fn type_hash(&self, index: usize) -> Option<u32> {
+                (index < 2).then_some(99)
+            }
         }
-        let pairs=[HashValue{definition_hash:99,value:true},HashValue{definition_hash:99,value:false}];
-        assert_eq!(created_values(&pairs,&Duplicate).unwrap(),[true,false]);
-        assert_eq!(reset_overlay(&pairs,&Duplicate,false).unwrap(),[false,false]);
+        let pairs = [
+            HashValue {
+                definition_hash: 99,
+                value: true,
+            },
+            HashValue {
+                definition_hash: 99,
+                value: false,
+            },
+        ];
+        assert_eq!(created_values(&pairs, &Duplicate).unwrap(), [true, false]);
+        assert_eq!(
+            reset_overlay(&pairs, &Duplicate, false).unwrap(),
+            [false, false]
+        );
     }
-
 }

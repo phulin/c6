@@ -356,8 +356,13 @@ pub fn pop_front_operation<E: OperationReports>(
         // XP2 Pillage slot3b03ac8 (basePillage3affca8) binds the same body.
         // XP2 Repair relocation slot3b03dc8 also binds BaseHandler2d964c0.
         // XP2 RemoveFeature slot3b03bc8 inherits the same verified body.
-        SKIP_TURN_HASH | FORTIFY_HASH | c6_core::unit::RANGE_ATTACK_HASH
-        | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH | c6_core::unit::REMOVE_FEATURE_HASH => {}
+        SKIP_TURN_HASH
+        | FORTIFY_HASH
+        | c6_core::unit::RANGE_ATTACK_HASH
+        | c6_core::unit::BUILD_IMPROVEMENT_HASH
+        | c6_core::unit::PILLAGE_HASH
+        | c6_core::unit::REPAIR_HASH
+        | c6_core::unit::REMOVE_FEATURE_HASH => {}
         MOVE_TO_HASH => {
             complete_unit_movement(state, owner, id, effects)?;
         }

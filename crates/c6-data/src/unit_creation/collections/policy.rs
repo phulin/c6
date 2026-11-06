@@ -37,11 +37,13 @@ pub fn enact<E: Effects>(
         .map_err(|_| Error::Missing("PlayerUnits current ordered records"))?
         .iter()
         .filter(|r| !r.value.b_delayed_death)
-        .map(|r| UnitReference::from_component_id(c6_core::unit::ComponentId {
-            owner: owner as i16,
-            component_type: 1,
-            id: r.value.id,
-        }))
+        .map(|r| {
+            UnitReference::from_component_id(c6_core::unit::ComponentId {
+                owner: owner as i16,
+                component_type: 1,
+                id: r.value.id,
+            })
+        })
         .collect::<Vec<_>>();
     let instance = owners
         .effects

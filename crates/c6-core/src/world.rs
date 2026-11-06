@@ -392,7 +392,12 @@ impl World {
 
     /// Canonical area count edits performed by improvement construction.
     pub fn area_mut(&mut self, id: i32) -> Option<&mut crate::map::Area> {
-        self.map.areas.entries.iter_mut().find(|a| a.value.id == id).map(|a| &mut a.value)
+        self.map
+            .areas
+            .entries
+            .iter_mut()
+            .find(|a| a.value.id == id)
+            .map(|a| &mut a.value)
     }
     /// Serialized own visibility layers and the common revealed-state array.
     /// Shared visibility counts are separate live state, absent from Map wire.

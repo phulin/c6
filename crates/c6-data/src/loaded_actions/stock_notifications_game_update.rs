@@ -51,7 +51,8 @@ impl<P> Effects for Runtime<'_, P> {
                 // slot and does broadcast; it is not reached by these calls.
                 // Core callers retain their original last-processed writes
                 // before/after this return, including their distinct ordering.
-                self.reached.push("stock turn-request integer sink returned");
+                self.reached
+                    .push("stock turn-request integer sink returned");
                 Ok(())
             }
             _ => Err(Error::Unsupported("stock unknown turn-request event")),

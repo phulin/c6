@@ -216,7 +216,9 @@ pub struct GameTechs {
     nodes: Vec<TechNode>,
 }
 impl GameTechs {
-    pub fn binding(&self) -> &WireBinding { &self.binding }
+    pub fn binding(&self) -> &WireBinding {
+        &self.binding
+    }
     pub fn from_complete_native(
         binding: WireBinding,
         ordered_types: Vec<i32>,

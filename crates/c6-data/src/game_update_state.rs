@@ -1,17 +1,17 @@
 //! Partial Game.Update services using the current shared player-list owner and
 //! existing concrete UnitCounts queries. No complete end-turn support implied.
+pub mod activation;
 pub mod automation;
 pub mod deactivation;
-pub mod activation;
-pub mod round_units;
 pub mod round_cities;
-pub mod round_trade;
-pub mod round_religion;
-pub mod round_eras;
 pub mod round_climate;
+pub mod round_emergency;
+pub mod round_eras;
 pub mod round_map;
 pub mod round_phase;
-pub mod round_emergency;
+pub mod round_religion;
+pub mod round_trade;
+pub mod round_units;
 use crate::{
     loaded_actions::{command_units, reporting},
     unit_placement_services,
@@ -194,8 +194,8 @@ pub mod round_random_events;
 
 pub mod round_great_people;
 
-pub mod round_quests;
 pub mod round_congress;
+pub mod round_quests;
 
 pub mod round_fallout;
 

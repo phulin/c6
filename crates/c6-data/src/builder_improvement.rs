@@ -5,12 +5,12 @@
 //! required current-state service has completed; this module alone does not
 //! establish native action parity or support arbitrary improvements.
 use crate::{registry::linux_type_hash, Rules, SqlValue};
+pub mod death;
 pub mod legality;
 pub mod placement;
 pub mod services;
-pub mod workers;
 pub mod stock;
-pub mod death;
+pub mod workers;
 
 use c6_core::{
     core_player::initialization::WireBinding,
@@ -36,10 +36,16 @@ impl<E: std::fmt::Debug> std::fmt::Display for Error<E> {
 impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Kind { Farm, Mine }
+pub enum Kind {
+    Farm,
+    Mine,
+}
 impl Kind {
     pub fn type_name(self) -> &'static str {
-        match self { Self::Farm => "IMPROVEMENT_FARM", Self::Mine => "IMPROVEMENT_MINE" }
+        match self {
+            Self::Farm => "IMPROVEMENT_FARM",
+            Self::Mine => "IMPROVEMENT_MINE",
+        }
     }
 }
 /// Immutable source inputs, prepared once for the admitted rules identity.
@@ -57,7 +63,11 @@ impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error<crate::Error>> {
         Self::for_kind(state, rules, Kind::Farm)
     }
-    pub fn for_kind(state: &LoadedState, rules: &Rules, kind: Kind) -> Result<Self, Error<crate::Error>> {
+    pub fn for_kind(
+        state: &LoadedState,
+        rules: &Rules,
+        kind: Kind,
+    ) -> Result<Self, Error<crate::Error>> {
         if !matches!(
             rules.profile(),
             crate::RulesProfile::LinuxXp2Base | crate::RulesProfile::LinuxXp2ActivatedDiagnostic
@@ -105,16 +115,29 @@ impl Definitions {
                 return Err(Error::Unsupported("Farm prerequisite/trait"));
             }
         }
-        let prerequisite = |key| match row.get(key).map_err(|error|Error::Effect {stage:key,error})? {
-            SqlValue::Null => Ok(None), SqlValue::Text(value) => {
-                let (table, column) = if key=="PrereqTech" {("Technologies","TechnologyType")} else {("Civics","CivicType")};
-                let registry=crate::unit_initialization_definitions::collection(rules,table,column)
-                    .map_err(|_|Error::Missing("improvement prerequisite definitions"))?;
-                let hash=linux_type_hash(value);
-                let index=registry.find_index(hash).ok_or(Error::Missing("improvement prerequisite definition"))?;
-                Ok(Some((hash,index as i32)))
-            },
-            _ => Err(Error::Unsupported("ordinary improvement prerequisite reference")),
+        let prerequisite = |key| match row
+            .get(key)
+            .map_err(|error| Error::Effect { stage: key, error })?
+        {
+            SqlValue::Null => Ok(None),
+            SqlValue::Text(value) => {
+                let (table, column) = if key == "PrereqTech" {
+                    ("Technologies", "TechnologyType")
+                } else {
+                    ("Civics", "CivicType")
+                };
+                let registry =
+                    crate::unit_initialization_definitions::collection(rules, table, column)
+                        .map_err(|_| Error::Missing("improvement prerequisite definitions"))?;
+                let hash = linux_type_hash(value);
+                let index = registry
+                    .find_index(hash)
+                    .ok_or(Error::Missing("improvement prerequisite definition"))?;
+                Ok(Some((hash, index as i32)))
+            }
+            _ => Err(Error::Unsupported(
+                "ordinary improvement prerequisite reference",
+            )),
         };
         let prerequisite_technology = prerequisite("PrereqTech")?;
         let prerequisite_civic = prerequisite("PrereqCivic")?;
@@ -157,7 +180,10 @@ impl Definitions {
             return Err(Error::Unsupported("Farm charge rule"));
         }
         Ok(Self {
-            binding: state.binding().clone(), kind, prerequisite_technology, prerequisite_civic,
+            binding: state.binding().clone(),
+            kind,
+            prerequisite_technology,
+            prerequisite_civic,
             improvement_hash,
             improvement_index: index as i32,
             builder_hash: linux_type_hash(b"UNIT_BUILDER"),

@@ -247,7 +247,8 @@ pub fn finish_completed_human_pass<P>(
             {
                 data::automation::IdleProgress::Advanced => units_advanced += 1,
                 data::automation::IdleProgress::RequiresQueuedHandler => {
-                    backend.continue_queued_operation(c.state, &mut frame, inputs.readiness)
+                    backend
+                        .continue_queued_operation(c.state, &mut frame, inputs.readiness)
                         .map_err(Error::QueuedOperation)?;
                     units_advanced += 1;
                 }
@@ -270,9 +271,12 @@ pub fn finish_completed_human_pass<P>(
         let visibility_records = if inputs
             .configuration
             .civilization_level_type_id(owner)
-            .map_err(Error::Configuration)? == 0x253718b0
+            .map_err(Error::Configuration)?
+            == 0x253718b0
         {
-            visibility.record(c.state, owner).map_err(Error::Visibility)?
+            visibility
+                .record(c.state, owner)
+                .map_err(Error::Visibility)?
         } else {
             0
         };
@@ -281,18 +285,28 @@ pub fn finish_completed_human_pass<P>(
                 c.state,
                 owner,
                 |state, owner, _priority| {
-                    let services = inputs.npc_services.as_ref().ok_or(
-                        game_update::Error::Unsupported("current human priority signal services"),
-                    )?;
+                    let services =
+                        inputs
+                            .npc_services
+                            .as_ref()
+                            .ok_or(game_update::Error::Unsupported(
+                                "current human priority signal services",
+                            ))?;
                     let sight = services.visibility.try_borrow().map_err(|_| {
-                        game_update::Error::Unsupported("current human priority signal sight borrow")
+                        game_update::Error::Unsupported(
+                            "current human priority signal sight borrow",
+                        )
                     })?;
                     super::human_activation::knowledge::refresh_visible_units(
                         state,
                         owner,
                         services.maintenance.maintenance.unit_registry(),
                         &sight,
-                        c.services.effects.movement().ok().map(|m|m.definitions.formation),
+                        c.services
+                            .effects
+                            .movement()
+                            .ok()
+                            .map(|m| m.definitions.formation),
                     )
                 },
             )

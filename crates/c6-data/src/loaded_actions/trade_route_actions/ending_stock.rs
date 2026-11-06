@@ -157,8 +157,11 @@ impl<P> completion::Effects for Current<'_, '_, '_, P> {
         origin: ComponentId,
         destination: ComponentId,
     ) -> Result<(), String> {
-        if state.trade_graph().map_err(|e| format!("{e:?}"))?
-            .city_path(origin, destination).is_some()
+        if state
+            .trade_graph()
+            .map_err(|e| format!("{e:?}"))?
+            .city_path(origin, destination)
+            .is_some()
         {
             super::update_cities_along_path::<()>(state, origin, destination, -1)
                 .map_err(|e| format!("{e:?}"))?;

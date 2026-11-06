@@ -3,9 +3,9 @@
 //! This is the state immediately after Formation/collection Read, not a claim
 //! about global load completion. Sync-manager acceptance and gameplay report
 //! subscribers are separate live inputs; no subscriber is synthesized here.
-use crate::unit::{ComponentId, Formation};
 #[cfg(test)]
 use crate::unit::PlotCoord;
+use crate::unit::{ComponentId, Formation};
 use std::collections::BTreeSet;
 
 pub const FORMATION_COMPONENT_TYPE: i16 = 44;
@@ -213,11 +213,18 @@ impl FormationRuntime {
     pub fn from_created(formation: &Formation) -> Self {
         Self {
             archive: LogicalArchive::new(
-                ComponentId { owner: formation.owner as i16, component_type: FORMATION_COMPONENT_TYPE, id: formation.id },
+                ComponentId {
+                    owner: formation.owner as i16,
+                    component_type: FORMATION_COMPONENT_TYPE,
+                    id: formation.id,
+                },
                 &FORMATION_FIELDS,
                 DirtyBaseline::Unavailable,
             ),
-            owner: OwnerBinding::Lookup { requested: formation.owner, resolved: Some(formation.owner) },
+            owner: OwnerBinding::Lookup {
+                requested: formation.owner,
+                resolved: Some(formation.owner),
+            },
             evaluating_operation: false,
         }
     }

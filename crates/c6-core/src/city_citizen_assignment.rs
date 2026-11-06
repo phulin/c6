@@ -364,7 +364,9 @@ pub fn remove_all_without_forced(
         return Err(Error::CurrentArrayShape);
     }
     let mut previous = Vec::new();
-    previous.try_reserve_exact(citizens.working_plot.len()).map_err(|_| Error::AllocationLimit)?;
+    previous
+        .try_reserve_exact(citizens.working_plot.len())
+        .map_err(|_| Error::AllocationLimit)?;
     previous.extend_from_slice(&citizens.working_plot);
     citizens.num_unassigned_citizens = population.max(0);
     citizens.num_citizens_working_plots = 0;
@@ -382,17 +384,32 @@ mod tests {
     #[test]
     fn reallocation_retains_previous_order_and_free_center_worker() {
         let mut citizens = Citizens {
-            working_plot: vec![0, 2, -1, 1], forced_working_plot: vec![0; 4],
-            favored_yields: vec![], disfavored_yields: vec![],
-            num_unassigned_citizens: -3, num_citizens_working_plots: 3,
+            working_plot: vec![0, 2, -1, 1],
+            forced_working_plot: vec![0; 4],
+            favored_yields: vec![],
+            disfavored_yields: vec![],
+            num_unassigned_citizens: -3,
+            num_citizens_working_plots: 3,
             force_update_plot_appeal: false,
         };
-        assert_eq!(remove_all_without_forced(&mut citizens, 2), Ok(vec![0, 2, -1, 1]));
+        assert_eq!(
+            remove_all_without_forced(&mut citizens, 2),
+            Ok(vec![0, 2, -1, 1])
+        );
         assert_eq!(citizens.working_plot, [1, 0, -1, 0]);
-        assert_eq!((citizens.num_unassigned_citizens, citizens.num_citizens_working_plots), (2, 0));
+        assert_eq!(
+            (
+                citizens.num_unassigned_citizens,
+                citizens.num_citizens_working_plots
+            ),
+            (2, 0)
+        );
         citizens.forced_working_plot[1] = 1;
         let original = citizens.clone();
-        assert_eq!(remove_all_without_forced(&mut citizens, 1), Err(Error::CurrentArrayShape));
+        assert_eq!(
+            remove_all_without_forced(&mut citizens, 1),
+            Err(Error::CurrentArrayShape)
+        );
         assert_eq!(citizens, original);
     }
     #[test]

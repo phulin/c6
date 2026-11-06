@@ -2,8 +2,8 @@
 //! This internal action pipeline preserves completed callback effects on errors;
 //! complete outer message, diplomacy/notification and RNG parity is separate.
 mod alert;
-mod fortify;
 pub mod combat;
+mod fortify;
 mod trade;
 
 use c6_core::{
@@ -133,28 +133,83 @@ pub trait Movement<E: OperationReports> {
         Ok(None)
     }
     /// Optional ordinary Farm handler over the caller's retained rule/runtime owners.
-    fn pillage_can_start(&mut self, _state:&LoadedState, _unit:&Unit, _visible_only:bool, _effects:&E)
-        ->Result<Option<bool>,Self::Error> {Ok(None)}
-    fn start_pillage(&mut self,_state:&mut LoadedState,_visibility:&mut unit_sight_state::Runtime,
-        _actor:(i32,u32),_node:&OperationNode,_effects:&mut E)
-        ->Result<Option<skip_turn::StartData>,Self::Error> {Ok(None)}
-    fn chop_can_start(&mut self, _state:&LoadedState, _unit:&Unit, _visible_only:bool, _effects:&E)
-        ->Result<Option<bool>,Self::Error> {Ok(None)}
-    fn start_chop(&mut self,_state:&mut LoadedState,_visibility:&mut unit_sight_state::Runtime,
-        _actor:(i32,u32),_node:&OperationNode,_effects:&mut E)
-        ->Result<Option<skip_turn::StartData>,Self::Error> {Ok(None)}
-    fn repair_can_start(&mut self, _state:&LoadedState, _unit:&Unit, _visible_only:bool, _effects:&E)
-        ->Result<Option<bool>,Self::Error> {Ok(None)}
-    fn start_repair(&mut self,_state:&mut LoadedState,_visibility:&mut unit_sight_state::Runtime,
-        _actor:(i32,u32),_node:&OperationNode,_effects:&mut E)
-        ->Result<Option<skip_turn::StartData>,Self::Error> {Ok(None)}
-    fn farm_can_start(&mut self, _state: &LoadedState, _unit: &Unit,
-        _improvement: u32, _visible_only: bool, _effects: &E)
-        -> Result<Option<bool>, Self::Error> { Ok(None) }
-    fn start_farm(&mut self, _state: &mut LoadedState,
-        _visibility: &mut unit_sight_state::Runtime, _actor: (i32, u32),
-        _node: &OperationNode, _effects: &mut E)
-        -> Result<Option<skip_turn::StartData>, Self::Error> { Ok(None) }
+    fn pillage_can_start(
+        &mut self,
+        _state: &LoadedState,
+        _unit: &Unit,
+        _visible_only: bool,
+        _effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn start_pillage(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _node: &OperationNode,
+        _effects: &mut E,
+    ) -> Result<Option<skip_turn::StartData>, Self::Error> {
+        Ok(None)
+    }
+    fn chop_can_start(
+        &mut self,
+        _state: &LoadedState,
+        _unit: &Unit,
+        _visible_only: bool,
+        _effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn start_chop(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _node: &OperationNode,
+        _effects: &mut E,
+    ) -> Result<Option<skip_turn::StartData>, Self::Error> {
+        Ok(None)
+    }
+    fn repair_can_start(
+        &mut self,
+        _state: &LoadedState,
+        _unit: &Unit,
+        _visible_only: bool,
+        _effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn start_repair(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _node: &OperationNode,
+        _effects: &mut E,
+    ) -> Result<Option<skip_turn::StartData>, Self::Error> {
+        Ok(None)
+    }
+    fn farm_can_start(
+        &mut self,
+        _state: &LoadedState,
+        _unit: &Unit,
+        _improvement: u32,
+        _visible_only: bool,
+        _effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn start_farm(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime,
+        _actor: (i32, u32),
+        _node: &OperationNode,
+        _effects: &mut E,
+    ) -> Result<Option<skip_turn::StartData>, Self::Error> {
+        Ok(None)
+    }
     fn range_can_start(
         &mut self,
         _state: &LoadedState,
@@ -186,27 +241,64 @@ pub trait Movement<E: OperationReports> {
     ) -> Result<Option<bool>, Self::Error> {
         Ok(None)
     }
-    fn trade_can_start(&mut self, _state: &LoadedState, _unit: &Unit,
-        _parameters: &OperationParameters, _visible_only: bool, _effects: &mut E)
-        -> Result<Option<bool>, Self::Error> { Ok(None) }
-    fn start_trade(&mut self, _state: &mut LoadedState,
-        _actor: (i32, u32), _node: &OperationNode, _effects: &mut E)
-        -> Result<Option<skip_turn::StartData>, Self::Error> { Ok(None) }
+    fn trade_can_start(
+        &mut self,
+        _state: &LoadedState,
+        _unit: &Unit,
+        _parameters: &OperationParameters,
+        _visible_only: bool,
+        _effects: &mut E,
+    ) -> Result<Option<bool>, Self::Error> {
+        Ok(None)
+    }
+    fn start_trade(
+        &mut self,
+        _state: &mut LoadedState,
+        _actor: (i32, u32),
+        _node: &OperationNode,
+        _effects: &mut E,
+    ) -> Result<Option<skip_turn::StartData>, Self::Error> {
+        Ok(None)
+    }
     /// Exact derived Deactivate plus retained operation deletion. None leaves
     /// this reached handler unsupported before its state effects.
-    fn pop_expired_trade_route(&mut self,_state:&mut LoadedState,_actor:(i32,u32),_effects:&mut E)
-        ->Result<Option<()>,Self::Error> {Ok(None)}
+    fn pop_expired_trade_route(
+        &mut self,
+        _state: &mut LoadedState,
+        _actor: (i32, u32),
+        _effects: &mut E,
+    ) -> Result<Option<()>, Self::Error> {
+        Ok(None)
+    }
     /// Exact reached Manager.ExpireRoute, including ordered gameplay effects.
-    fn trade_expire(&mut self, _state: &mut LoadedState,
-        _origin: c6_core::trade::ComponentId, _destination: c6_core::trade::ComponentId,
-        _effects: &mut E) -> Result<Option<()>, Self::Error> { Ok(None) }
+    fn trade_expire(
+        &mut self,
+        _state: &mut LoadedState,
+        _origin: c6_core::trade::ComponentId,
+        _destination: c6_core::trade::ComponentId,
+        _effects: &mut E,
+    ) -> Result<Option<()>, Self::Error> {
+        Ok(None)
+    }
     /// Current Manager.GetEarliestEndTurnForRoute; None leaves later origin
     /// checks incomplete rather than inventing a fixed route duration.
-    fn trade_earliest_end_turn(&self, _state: &LoadedState, _push_turn: i32)
-        -> Result<Option<i32>, Self::Error> { Ok(None) }
-    fn trade_move(&mut self, _state: &mut LoadedState,
-        _visibility: &mut unit_sight_state::Runtime, _formation: (i32,u32),
-        _destination: PlotCoord, _effects: &mut E) -> Result<Option<()>, Self::Error> { Ok(None) }
+    fn trade_earliest_end_turn(
+        &self,
+        _state: &LoadedState,
+        _push_turn: i32,
+    ) -> Result<Option<i32>, Self::Error> {
+        Ok(None)
+    }
+    fn trade_move(
+        &mut self,
+        _state: &mut LoadedState,
+        _visibility: &mut unit_sight_state::Runtime,
+        _formation: (i32, u32),
+        _destination: PlotCoord,
+        _effects: &mut E,
+    ) -> Result<Option<()>, Self::Error> {
+        Ok(None)
+    }
     fn fortify_turn_max(&self) -> i32;
     fn is_fortifyable(&self, state: &LoadedState, actor: (i32, u32)) -> Result<bool, Self::Error>;
     fn alert_enemy_visible(
@@ -512,30 +604,64 @@ where
     if movement.found_city_rules().is_none() {
         return Err(Error::Unsupported("FoundCity composition unavailable"));
     }
-    execute_queued_manager(state, actor, c6_core::unit::FOUND_CITY_HASH,
-        OperationParameters::None, inputs, handlers, runtime, effects, movement)
+    execute_queued_manager(
+        state,
+        actor,
+        c6_core::unit::FOUND_CITY_HASH,
+        OperationParameters::None,
+        inputs,
+        handlers,
+        runtime,
+        effects,
+        movement,
+    )
 }
 /// Ordinary typed BuildImprovement Add/Activate on the same queue and runtime.
 #[allow(clippy::too_many_arguments)]
 pub fn execute_farm_manager<E, M>(
-    state: &mut LoadedState, actor: (i32, u32), improvement_hash: u32,
-    modifiers: u32, inputs: &Inputs<'_, '_>, handlers: &BoundHandlers<'_>,
-    runtime: &mut Runtime<'_>, effects: &mut E, movement: &mut M,
+    state: &mut LoadedState,
+    actor: (i32, u32),
+    improvement_hash: u32,
+    modifiers: u32,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    effects: &mut E,
+    movement: &mut M,
 ) -> Result<Applied, Error<EffectError<E>, M::Error>>
-where E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+where
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
-    execute_queued_manager(state, actor, c6_core::unit::BUILD_IMPROVEMENT_HASH,
-        OperationParameters::BuildImprovement { modifiers, improvement_hash },
-        inputs, handlers, runtime, effects, movement)
+    execute_queued_manager(
+        state,
+        actor,
+        c6_core::unit::BUILD_IMPROVEMENT_HASH,
+        OperationParameters::BuildImprovement {
+            modifiers,
+            improvement_hash,
+        },
+        inputs,
+        handlers,
+        runtime,
+        effects,
+        movement,
+    )
 }
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn execute_queued_manager<E, M>(
-    state: &mut LoadedState, actor: (i32, u32), hash: u32,
-    parameters: OperationParameters, inputs: &Inputs<'_, '_>, handlers: &BoundHandlers<'_>,
-    runtime: &mut Runtime<'_>, effects: &mut E, movement: &mut M,
+    state: &mut LoadedState,
+    actor: (i32, u32),
+    hash: u32,
+    parameters: OperationParameters,
+    inputs: &Inputs<'_, '_>,
+    handlers: &BoundHandlers<'_>,
+    runtime: &mut Runtime<'_>,
+    effects: &mut E,
+    movement: &mut M,
 ) -> Result<Applied, Error<EffectError<E>, M::Error>>
-where E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
+where
+    E: Effects + ManagerQueries<Unit, Parameters = OperationParameters, Error = &'static str>,
     M: Movement<E>,
 {
     handlers
@@ -717,8 +843,17 @@ where
             delete
         } else {
             let node = front(state, actor)?;
-            let target_before = if matches!(node.operation_hash,
-                c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::FORTIFY_HASH | c6_core::unit::SKIP_TURN_HASH | c6_core::unit::MAKE_TRADE_ROUTE_HASH | c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH | c6_core::unit::REMOVE_FEATURE_HASH) {
+            let target_before = if matches!(
+                node.operation_hash,
+                c6_core::unit::FOUND_CITY_HASH
+                    | c6_core::unit::BUILD_IMPROVEMENT_HASH
+                    | c6_core::unit::FORTIFY_HASH
+                    | c6_core::unit::SKIP_TURN_HASH
+                    | c6_core::unit::MAKE_TRADE_ROUTE_HASH
+                    | c6_core::unit::PILLAGE_HASH
+                    | c6_core::unit::REPAIR_HASH
+                    | c6_core::unit::REMOVE_FEATURE_HASH
+            ) {
                 None
             } else {
                 Some(target(&node)?)
@@ -739,50 +874,147 @@ where
                 let mut handler = |state: &LoadedState, unit: &Unit, _effects: &mut E| {
                     fortify::can_start::<E, M>(state, unit, inputs, movement)
                 };
-                super::can_start_typed_with_fortify(state, reference, inputs, effects,
-                    handlers, &mut operation, None, None, None, Some(&mut handler))
+                super::can_start_typed_with_fortify(
+                    state,
+                    reference,
+                    inputs,
+                    effects,
+                    handlers,
+                    &mut operation,
+                    None,
+                    None,
+                    None,
+                    Some(&mut handler),
+                )
             } else if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
-                let mut trade_handler = |state: &LoadedState, unit: &Unit, parameters: OperationParameters,
-                    visible_only: bool, effects: &mut E| {
-                    movement.trade_can_start(state, unit, &parameters, visible_only, effects)
-                        .map_err(|_| super::Error::Unsupported("MakeTradeRoute CanStart dependency"))?
-                        .ok_or(super::Error::Unsupported("MakeTradeRoute CanStart composition"))
+                let mut trade_handler = |state: &LoadedState,
+                                         unit: &Unit,
+                                         parameters: OperationParameters,
+                                         visible_only: bool,
+                                         effects: &mut E| {
+                    movement
+                        .trade_can_start(state, unit, &parameters, visible_only, effects)
+                        .map_err(|_| {
+                            super::Error::Unsupported("MakeTradeRoute CanStart dependency")
+                        })?
+                        .ok_or(super::Error::Unsupported(
+                            "MakeTradeRoute CanStart composition",
+                        ))
                 };
-                super::can_start_typed_with_trade(state, reference, inputs, effects, handlers,
-                    &mut operation, None, None, None, None, Some(&mut trade_handler))
+                super::can_start_typed_with_trade(
+                    state,
+                    reference,
+                    inputs,
+                    effects,
+                    handlers,
+                    &mut operation,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(&mut trade_handler),
+                )
             } else if node.operation_hash == c6_core::unit::REMOVE_FEATURE_HASH {
-                let mut handler=|state:&LoadedState,unit:&Unit,_unused:u32,visible_only:bool,effects:&mut E| {
-                    movement.chop_can_start(state,unit,visible_only,effects)
-                        .map_err(|_|super::Error::Unsupported("RemoveFeature CanStart dependency"))?
-                        .ok_or(super::Error::Unsupported("RemoveFeature CanStart composition"))
+                let mut handler = |state: &LoadedState,
+                                   unit: &Unit,
+                                   _unused: u32,
+                                   visible_only: bool,
+                                   effects: &mut E| {
+                    movement
+                        .chop_can_start(state, unit, visible_only, effects)
+                        .map_err(|_| {
+                            super::Error::Unsupported("RemoveFeature CanStart dependency")
+                        })?
+                        .ok_or(super::Error::Unsupported(
+                            "RemoveFeature CanStart composition",
+                        ))
                 };
-                super::can_start_typed_with_pillage(state,reference,inputs,effects,handlers,&mut operation,
-                    None,None,None,None,None,Some(&mut handler))
+                super::can_start_typed_with_pillage(
+                    state,
+                    reference,
+                    inputs,
+                    effects,
+                    handlers,
+                    &mut operation,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(&mut handler),
+                )
             } else if node.operation_hash == c6_core::unit::REPAIR_HASH {
-                let mut handler=|state:&LoadedState,unit:&Unit,_improvement:u32,visible_only:bool,effects:&mut E| {
-                    movement.repair_can_start(state,unit,visible_only,effects)
-                        .map_err(|_|super::Error::Unsupported("Repair CanStart dependency"))?
+                let mut handler = |state: &LoadedState,
+                                   unit: &Unit,
+                                   _improvement: u32,
+                                   visible_only: bool,
+                                   effects: &mut E| {
+                    movement
+                        .repair_can_start(state, unit, visible_only, effects)
+                        .map_err(|_| super::Error::Unsupported("Repair CanStart dependency"))?
                         .ok_or(super::Error::Unsupported("Repair CanStart composition"))
                 };
-                super::can_start_typed_with_pillage(state,reference,inputs,effects,handlers,&mut operation,
-                    None,None,None,None,None,Some(&mut handler))
+                super::can_start_typed_with_pillage(
+                    state,
+                    reference,
+                    inputs,
+                    effects,
+                    handlers,
+                    &mut operation,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(&mut handler),
+                )
             } else if node.operation_hash == c6_core::unit::PILLAGE_HASH {
-                let mut handler=|state:&LoadedState,unit:&Unit,_improvement:u32,visible_only:bool,effects:&mut E| {
-                    movement.pillage_can_start(state,unit,visible_only,effects)
-                        .map_err(|_|super::Error::Unsupported("Pillage CanStart dependency"))?
+                let mut handler = |state: &LoadedState,
+                                   unit: &Unit,
+                                   _improvement: u32,
+                                   visible_only: bool,
+                                   effects: &mut E| {
+                    movement
+                        .pillage_can_start(state, unit, visible_only, effects)
+                        .map_err(|_| super::Error::Unsupported("Pillage CanStart dependency"))?
                         .ok_or(super::Error::Unsupported("Pillage CanStart composition"))
                 };
-                super::can_start_typed_with_pillage(state,reference,inputs,effects,handlers,&mut operation,
-                    None,None,None,None,None,Some(&mut handler))
+                super::can_start_typed_with_pillage(
+                    state,
+                    reference,
+                    inputs,
+                    effects,
+                    handlers,
+                    &mut operation,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(&mut handler),
+                )
             } else if node.operation_hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
-                let mut farm_handler = |state: &LoadedState, unit: &Unit, improvement: u32,
-                    visible_only: bool, effects: &mut E| {
-                    movement.farm_can_start(state, unit, improvement, visible_only, effects)
+                let mut farm_handler = |state: &LoadedState,
+                                        unit: &Unit,
+                                        improvement: u32,
+                                        visible_only: bool,
+                                        effects: &mut E| {
+                    movement
+                        .farm_can_start(state, unit, improvement, visible_only, effects)
                         .map_err(|_| super::Error::Unsupported("Farm CanStart dependency"))?
                         .ok_or(super::Error::Unsupported("Farm CanStart composition"))
                 };
-                super::can_start_typed_with_handlers(state, reference, inputs, effects,
-                    handlers, &mut operation, None, None, Some(&mut farm_handler))
+                super::can_start_typed_with_handlers(
+                    state,
+                    reference,
+                    inputs,
+                    effects,
+                    handlers,
+                    &mut operation,
+                    None,
+                    None,
+                    Some(&mut farm_handler),
+                )
             } else if is_range {
                 let mut range_handler = |state: &LoadedState,
                                          unit: &Unit,
@@ -848,23 +1080,33 @@ where
                     .map_err(Error::Upkeep)?;
                 // Start selects CURRENT front after activity subscribers.
                 let node = front(state, actor)?;
-                if matches!(node.operation_hash,
-                    c6_core::unit::FOUND_CITY_HASH | c6_core::unit::BUILD_IMPROVEMENT_HASH | c6_core::unit::MAKE_TRADE_ROUTE_HASH | c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH | c6_core::unit::REMOVE_FEATURE_HASH) {
+                if matches!(
+                    node.operation_hash,
+                    c6_core::unit::FOUND_CITY_HASH
+                        | c6_core::unit::BUILD_IMPROVEMENT_HASH
+                        | c6_core::unit::MAKE_TRADE_ROUTE_HASH
+                        | c6_core::unit::PILLAGE_HASH
+                        | c6_core::unit::REPAIR_HASH
+                        | c6_core::unit::REMOVE_FEATURE_HASH
+                ) {
                     let hash = node.operation_hash;
                     let data = if hash == c6_core::unit::REMOVE_FEATURE_HASH {
-                        movement.start_chop(state,runtime.visibility,actor,&node,effects)
+                        movement.start_chop(state, runtime.visibility, actor, &node, effects)
                     } else if hash == c6_core::unit::REPAIR_HASH {
-                        movement.start_repair(state,runtime.visibility,actor,&node,effects)
+                        movement.start_repair(state, runtime.visibility, actor, &node, effects)
                     } else if hash == c6_core::unit::PILLAGE_HASH {
-                        movement.start_pillage(state,runtime.visibility,actor,&node,effects)
+                        movement.start_pillage(state, runtime.visibility, actor, &node, effects)
                     } else if hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
                         movement.start_trade(state, actor, &node, effects)
                     } else if hash == c6_core::unit::BUILD_IMPROVEMENT_HASH {
                         movement.start_farm(state, runtime.visibility, actor, &node, effects)
                     } else {
                         movement.start_found_city(state, runtime.visibility, actor, effects)
-                    }.map_err(Error::Movement)?.ok_or(Error::Unsupported(
-                        "immediate operation Start composition unavailable"))?;
+                    }
+                    .map_err(Error::Movement)?
+                    .ok_or(Error::Unsupported(
+                        "immediate operation Start composition unavailable",
+                    ))?;
                     if !unit(state, actor)?.k_operations.nodes.is_empty()
                         && data.action
                         && state
@@ -891,7 +1133,9 @@ where
                     fortify::start(state, actor, effects)?;
                     // Activate2da2867 rereads activity after Start callbacks;
                     // a depleted unit remains queued/HOLD without looping Start.
-                    if unit(state, actor)?.e_activity != 0x490cc8e1 { return Ok(()); }
+                    if unit(state, actor)?.e_activity != 0x490cc8e1 {
+                        return Ok(());
+                    }
                     false
                 } else if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
                     false
@@ -935,9 +1179,15 @@ where
         if delete {
             // Activate2da2790 still calls PopFront after Continue callbacks
             // remove the current node. PopFront2da1cc0 returns for NULL Front.
-            if unit(state, actor)?.k_operations.nodes.first().is_some_and(|node|
-                node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH) {
-                movement.pop_expired_trade_route(state,actor,effects).map_err(Error::Movement)?
+            if unit(state, actor)?
+                .k_operations
+                .nodes
+                .first()
+                .is_some_and(|node| node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH)
+            {
+                movement
+                    .pop_expired_trade_route(state, actor, effects)
+                    .map_err(Error::Movement)?
                     .ok_or(Error::Unsupported("Trade Deactivate composition"))?;
             } else {
                 loaded_upkeep::pop_front_operation(state, actor.0, actor.1, effects)
@@ -974,7 +1224,14 @@ fn update<E: Effects, M: Movement<E>>(
 ) -> Result<(), Error<EffectError<E>, M::Error>> {
     let node = front(state, actor)?;
     // Pillage inherits BaseHandler.Update2d96890: no state writes or effects.
-    if matches!(node.operation_hash,c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH | c6_core::unit::REMOVE_FEATURE_HASH) { return Ok(()); }
+    if matches!(
+        node.operation_hash,
+        c6_core::unit::PILLAGE_HASH
+            | c6_core::unit::REPAIR_HASH
+            | c6_core::unit::REMOVE_FEATURE_HASH
+    ) {
+        return Ok(());
+    }
     if node.operation_hash == c6_core::unit::RANGE_ATTACK_HASH {
         let (destination, _) = target(&node)?;
         if movement
@@ -1071,12 +1328,16 @@ fn update<E: Effects, M: Movement<E>>(
                             .ok_or(Error::Unsupported("MoveTo complete AttackInto composition"))?;
                         data.delete = true;
                     } else {
-                        let enemy = match movement.enemy_at(state, runtime.visibility, actor, next)
-                            .map_err(Error::Movement)? {
+                        let enemy = match movement
+                            .enemy_at(state, runtime.visibility, actor, next)
+                            .map_err(Error::Movement)?
+                        {
                             Some(value) => value,
                             None => enemy_at(state, next)?,
                         };
-                        if enemy { data.delete = true; }
+                        if enemy {
+                            data.delete = true;
+                        }
                     }
                 }
             }
@@ -1204,7 +1465,13 @@ fn continue_operation<E: Effects, M: Movement<E>>(
                 alert::check_complete(state, actor, &mut data, runtime, effects, movement)?;
             } else if node.operation_hash == c6_core::unit::MAKE_TRADE_ROUTE_HASH {
                 trade::check_complete(state, actor, &node, &mut data, effects, movement)?;
-            } else if matches!(node.operation_hash,c6_core::unit::RANGE_ATTACK_HASH | c6_core::unit::PILLAGE_HASH | c6_core::unit::REPAIR_HASH | c6_core::unit::REMOVE_FEATURE_HASH) {
+            } else if matches!(
+                node.operation_hash,
+                c6_core::unit::RANGE_ATTACK_HASH
+                    | c6_core::unit::PILLAGE_HASH
+                    | c6_core::unit::REPAIR_HASH
+                    | c6_core::unit::REMOVE_FEATURE_HASH
+            ) {
                 // Both inherit BaseHandler.CheckComplete2d95670.
                 data.delete = true;
             } else {
@@ -1251,9 +1518,7 @@ fn continue_operation<E: Effects, M: Movement<E>>(
             evaluating(state, retained, false)?;
             return Ok(true);
         }
-        if !data.stop
-            && formation(state, retained)?.moves_remaining_raw > 0
-        {
+        if !data.stop && formation(state, retained)?.moves_remaining_raw > 0 {
             iteration = iteration.wrapping_add(1);
             continue;
         }
@@ -1627,8 +1892,13 @@ pub enum OperationRequest {
     Pillage,
     Repair,
     RemoveFeature,
-    BuildImprovement { improvement_hash: u32, modifiers: u32 },
-    MakeTradeRoute { destination: PlotCoord },
+    BuildImprovement {
+        improvement_hash: u32,
+        modifiers: u32,
+    },
+    MakeTradeRoute {
+        destination: PlotCoord,
+    },
 }
 #[allow(clippy::too_many_arguments)]
 fn request_operation_active_player<E, M>(
@@ -1718,23 +1988,90 @@ where
         ),
         OperationRequest::MakeTradeRoute { destination } => {
             let origin = unit(state, actor)?.k_location;
-            execute_queued_manager(state, actor, c6_core::unit::MAKE_TRADE_ROUTE_HASH,
-                OperationParameters::MakeTradeRoute { modifiers: 0, location0: destination,
-                    location1: origin, resource_hash: u32::MAX }, inputs, handlers, runtime, effects, movement)
+            execute_queued_manager(
+                state,
+                actor,
+                c6_core::unit::MAKE_TRADE_ROUTE_HASH,
+                OperationParameters::MakeTradeRoute {
+                    modifiers: 0,
+                    location0: destination,
+                    location1: origin,
+                    resource_hash: u32::MAX,
+                },
+                inputs,
+                handlers,
+                runtime,
+                effects,
+                movement,
+            )
         }
-        OperationRequest::RemoveFeature => execute_queued_manager(state,actor,c6_core::unit::REMOVE_FEATURE_HASH,
-            OperationParameters::None,inputs,handlers,runtime,effects,movement),
-        OperationRequest::Repair => execute_queued_manager(state,actor,c6_core::unit::REPAIR_HASH,
-            OperationParameters::Repair{modifiers:0,improvement_hash:u32::MAX},inputs,handlers,runtime,effects,movement),
-        OperationRequest::Pillage => execute_queued_manager(state,actor,c6_core::unit::PILLAGE_HASH,
-            OperationParameters::Pillage{modifiers:0,improvement_hash:u32::MAX},inputs,handlers,runtime,effects,movement),
-        OperationRequest::Fortify => execute_queued_manager(state, actor, c6_core::unit::FORTIFY_HASH,
-            OperationParameters::None, inputs, handlers, runtime, effects, movement),
+        OperationRequest::RemoveFeature => execute_queued_manager(
+            state,
+            actor,
+            c6_core::unit::REMOVE_FEATURE_HASH,
+            OperationParameters::None,
+            inputs,
+            handlers,
+            runtime,
+            effects,
+            movement,
+        ),
+        OperationRequest::Repair => execute_queued_manager(
+            state,
+            actor,
+            c6_core::unit::REPAIR_HASH,
+            OperationParameters::Repair {
+                modifiers: 0,
+                improvement_hash: u32::MAX,
+            },
+            inputs,
+            handlers,
+            runtime,
+            effects,
+            movement,
+        ),
+        OperationRequest::Pillage => execute_queued_manager(
+            state,
+            actor,
+            c6_core::unit::PILLAGE_HASH,
+            OperationParameters::Pillage {
+                modifiers: 0,
+                improvement_hash: u32::MAX,
+            },
+            inputs,
+            handlers,
+            runtime,
+            effects,
+            movement,
+        ),
+        OperationRequest::Fortify => execute_queued_manager(
+            state,
+            actor,
+            c6_core::unit::FORTIFY_HASH,
+            OperationParameters::None,
+            inputs,
+            handlers,
+            runtime,
+            effects,
+            movement,
+        ),
         OperationRequest::FoundCity => {
             execute_found_city_manager(state, actor, inputs, handlers, runtime, effects, movement)
         }
-        OperationRequest::BuildImprovement { improvement_hash, modifiers } => execute_farm_manager(
-            state, actor, improvement_hash, modifiers, inputs, handlers, runtime, effects, movement),
+        OperationRequest::BuildImprovement {
+            improvement_hash,
+            modifiers,
+        } => execute_farm_manager(
+            state,
+            actor,
+            improvement_hash,
+            modifiers,
+            inputs,
+            handlers,
+            runtime,
+            effects,
+            movement,
+        ),
     }
     .map(RequestOutcome::Executed)
 }
@@ -1988,7 +2325,10 @@ where
         context,
         issuer,
         actor,
-        OperationRequest::BuildImprovement { improvement_hash, modifiers },
+        OperationRequest::BuildImprovement {
+            improvement_hash,
+            modifiers,
+        },
         inputs,
         handlers,
         runtime,

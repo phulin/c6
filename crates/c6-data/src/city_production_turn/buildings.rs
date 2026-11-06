@@ -398,7 +398,9 @@ pub enum Report {
     ProductionChanged,
     /// DoNewFrontCheck284dc11 / Add285a904: event92492f56,
     /// subtype d3a03c77 and current queue index.
-    QueueEntryChanged { index: usize },
+    QueueEntryChanged {
+        index: usize,
+    },
     BuildingProgress {
         percent: i32,
     },

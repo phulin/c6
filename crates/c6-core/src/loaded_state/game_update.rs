@@ -882,11 +882,17 @@ mod inactive_tests {
         runtime.fail_player_callback();
         assert!(runtime.matches(&state));
         assert!(runtime.failed());
-        assert!(matches!(runtime.pending(), Some(core::Continuation::BeginTurn)));
+        assert!(matches!(
+            runtime.pending(),
+            Some(core::Continuation::BeginTurn)
+        ));
         runtime.binding.occurrence_id.push(1);
         assert!(!runtime.matches(&state));
         assert!(runtime.failed());
-        assert!(matches!(runtime.pending(), Some(core::Continuation::BeginTurn)));
+        assert!(matches!(
+            runtime.pending(),
+            Some(core::Continuation::BeginTurn)
+        ));
     }
     #[test]
     fn inactive_return_advances_pass_without_active_player_counter_or_blocking_writes() {

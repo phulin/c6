@@ -19,7 +19,10 @@ impl<P> Session<'_, '_, P> {
         let (result, reports) = {
             let mut effects = stock::Effects {
                 backend: &mut self.context.notifications.backend,
-                research_runtime: self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
+                research_runtime: self
+                    .research
+                    .as_mut()
+                    .ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
                 inputs,
                 gossip_history: &self.visibility.history,
                 reports: Vec::new(),

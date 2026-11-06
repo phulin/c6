@@ -47,9 +47,15 @@ pub enum OperationParameters {
         improvement_hash: u32,
     },
     /// Linux Pillage ClassParameters version one.
-    Pillage { modifiers: u32, improvement_hash: u32 },
+    Pillage {
+        modifiers: u32,
+        improvement_hash: u32,
+    },
     /// Linux Repair ClassParameters version one.
-    Repair { modifiers: u32, improvement_hash: u32 },
+    Repair {
+        modifiers: u32,
+        improvement_hash: u32,
+    },
     MakeTradeRoute {
         modifiers: u32,
         location0: PlotCoord,
@@ -186,11 +192,17 @@ impl OperationQueue {
                 }
                 4 => {
                     r.version(1)?;
-                    OperationParameters::Pillage { modifiers:r.u32()?, improvement_hash:r.u32()? }
+                    OperationParameters::Pillage {
+                        modifiers: r.u32()?,
+                        improvement_hash: r.u32()?,
+                    }
                 }
                 5 => {
                     r.version(1)?;
-                    OperationParameters::Repair { modifiers:r.u32()?, improvement_hash:r.u32()? }
+                    OperationParameters::Repair {
+                        modifiers: r.u32()?,
+                        improvement_hash: r.u32()?,
+                    }
                 }
                 _ => unreachable!(),
             };
@@ -256,9 +268,18 @@ impl OperationQueue {
                         word(&mut bytes, v);
                     }
                 }
-                OperationParameters::BuildImprovement { modifiers, improvement_hash }
-                | OperationParameters::Pillage { modifiers, improvement_hash }
-                | OperationParameters::Repair { modifiers, improvement_hash } => {
+                OperationParameters::BuildImprovement {
+                    modifiers,
+                    improvement_hash,
+                }
+                | OperationParameters::Pillage {
+                    modifiers,
+                    improvement_hash,
+                }
+                | OperationParameters::Repair {
+                    modifiers,
+                    improvement_hash,
+                } => {
                     for v in [1, *modifiers, *improvement_hash] {
                         word(&mut bytes, v);
                     }
@@ -712,41 +733,82 @@ mod tests {
     }
     #[test]
     fn remove_feature_has_no_shared_parameters() {
-        let words=[1u32,1,REMOVE_FEATURE_HASH,2,u32::MAX,0,7,0,0,0];
-        let bytes=words.into_iter().flat_map(u32::to_le_bytes).collect::<Vec<_>>();
-        let queue=OperationQueue::decode(&bytes,Limits::default()).unwrap();
-        assert_eq!(queue.nodes[0].parameters,OperationParameters::None);
-        assert_eq!(queue.encode(Limits::default()).unwrap(),bytes);
+        let words = [1u32, 1, REMOVE_FEATURE_HASH, 2, u32::MAX, 0, 7, 0, 0, 0];
+        let bytes = words
+            .into_iter()
+            .flat_map(u32::to_le_bytes)
+            .collect::<Vec<_>>();
+        let queue = OperationQueue::decode(&bytes, Limits::default()).unwrap();
+        assert_eq!(queue.nodes[0].parameters, OperationParameters::None);
+        assert_eq!(queue.encode(Limits::default()).unwrap(), bytes);
     }
     #[test]
     fn build_improvement_queue_uses_modifiers_then_definition_hash() {
         // Linux XP2 ClassParameters::Write writes v1, modifiers, Improvement hash.
-        let words = [1u32, 1, BUILD_IMPROVEMENT_HASH, 2, 0, 0, 7, 0, 0,
-            1, 0x80000000, 0xdeadbeef];
+        let words = [
+            1u32,
+            1,
+            BUILD_IMPROVEMENT_HASH,
+            2,
+            0,
+            0,
+            7,
+            0,
+            0,
+            1,
+            0x80000000,
+            0xdeadbeef,
+        ];
         let bytes: Vec<u8> = words.into_iter().flat_map(u32::to_le_bytes).collect();
         let mut queue = OperationQueue::decode(&bytes, Limits::default()).unwrap();
-        assert_eq!(queue.nodes[0].parameters, OperationParameters::BuildImprovement {
-            modifiers: 0x80000000, improvement_hash: 0xdeadbeef,
-        });
+        assert_eq!(
+            queue.nodes[0].parameters,
+            OperationParameters::BuildImprovement {
+                modifiers: 0x80000000,
+                improvement_hash: 0xdeadbeef,
+            }
+        );
         assert_eq!(queue.encode(Limits::default()).unwrap(), bytes);
         for end in 0..bytes.len() {
             assert!(OperationQueue::decode(&bytes[..end], Limits::default()).is_err());
         }
         queue.nodes[0].operation_hash = MOVE_TO_HASH;
-        assert_eq!(queue.encode(Limits::default()),
-            Err(Error::ParameterHandlerMismatch(MOVE_TO_HASH)));
+        assert_eq!(
+            queue.encode(Limits::default()),
+            Err(Error::ParameterHandlerMismatch(MOVE_TO_HASH))
+        );
     }
     #[test]
     fn pillage_parameters_keep_their_distinct_handler_identity() {
-        let words=[1u32,1,PILLAGE_HASH,2,u32::MAX,0,7,0,0,1,0x80000000,u32::MAX];
-        let bytes:Vec<u8>=words.into_iter().flat_map(u32::to_le_bytes).collect();
-        let mut queue=OperationQueue::decode(&bytes,Limits::default()).unwrap();
-        assert_eq!(queue.nodes[0].parameters,OperationParameters::Pillage {
-            modifiers:0x80000000,improvement_hash:u32::MAX,
-        });
-        assert_eq!(queue.encode(Limits::default()).unwrap(),bytes);
-        queue.nodes[0].operation_hash=BUILD_IMPROVEMENT_HASH;
-        assert_eq!(queue.encode(Limits::default()),Err(Error::ParameterHandlerMismatch(BUILD_IMPROVEMENT_HASH)));
+        let words = [
+            1u32,
+            1,
+            PILLAGE_HASH,
+            2,
+            u32::MAX,
+            0,
+            7,
+            0,
+            0,
+            1,
+            0x80000000,
+            u32::MAX,
+        ];
+        let bytes: Vec<u8> = words.into_iter().flat_map(u32::to_le_bytes).collect();
+        let mut queue = OperationQueue::decode(&bytes, Limits::default()).unwrap();
+        assert_eq!(
+            queue.nodes[0].parameters,
+            OperationParameters::Pillage {
+                modifiers: 0x80000000,
+                improvement_hash: u32::MAX,
+            }
+        );
+        assert_eq!(queue.encode(Limits::default()).unwrap(), bytes);
+        queue.nodes[0].operation_hash = BUILD_IMPROVEMENT_HASH;
+        assert_eq!(
+            queue.encode(Limits::default()),
+            Err(Error::ParameterHandlerMismatch(BUILD_IMPROVEMENT_HASH))
+        );
     }
     #[test]
     fn queue_parameter_wire_is_handler_specific_and_preserves_hashes() {

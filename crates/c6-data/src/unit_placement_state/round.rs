@@ -3,7 +3,11 @@ use super::*;
 use c6_core::unit_healing::{self, UnitHealingContext};
 
 pub trait Effects: super::Effects {
-    fn preflight_unit_healing(&self,state:&LoadedState,actor:(i32,u32)) -> Result<(),EffectsError<Self>>;
+    fn preflight_unit_healing(
+        &self,
+        state: &LoadedState,
+        actor: (i32, u32),
+    ) -> Result<(), EffectsError<Self>>;
     fn set_unit_activity(
         &mut self,
         state: &mut LoadedState,
@@ -83,8 +87,10 @@ impl<E: Effects> UnitHealingContext for Healing<'_, '_, '_, E> {
         Ok(self.rules)
     }
     fn preflight_healing_effects(&self) -> Result<(), Self::Error> {
-        let c=&self.context.sight;
-        c.effects.preflight_unit_healing(c.state,c.actor).map_err(Error::Effect)
+        let c = &self.context.sight;
+        c.effects
+            .preflight_unit_healing(c.state, c.actor)
+            .map_err(Error::Effect)
     }
     fn combat_max_hit_points(&self) -> Result<i32, Self::Error> {
         self.context.combat_max_hit_points()

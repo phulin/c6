@@ -201,8 +201,9 @@ impl GameDiplomaticRelations {
         )
     }
     pub fn war_aggressors(&self) -> Result<&Relationships, Error> {
-        self.current_war_aggressors.as_ref()
-            .or_else(||self.read_prefix.as_ref().map(|p|&p.at_1b8))
+        self.current_war_aggressors
+            .as_ref()
+            .or_else(|| self.read_prefix.as_ref().map(|p| &p.at_1b8))
             .ok_or(Error::MissingWarAggressors)
     }
     /// Mutate both current payloads in source order, including changed turns.
