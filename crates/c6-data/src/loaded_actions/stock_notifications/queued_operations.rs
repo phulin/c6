@@ -12,6 +12,16 @@ use c6_core::{
 };
 
 pub trait Services<P> {
+    fn idle_trade_paths(
+        &mut self,
+        _state: &mut LoadedState,
+        _backend: &mut Runtime<'_, P>,
+        _owner: i32,
+        _actor: u32,
+    ) -> Result<(), String> {
+        Err("current idle Trader path definitions".into())
+    }
+
     fn advance(
         &mut self,
         state: &mut LoadedState,
@@ -93,6 +103,20 @@ impl<'a, P> Runtime<'a, P> {
         self.queued_operations = Some(services);
         Ok(())
     }
+    pub(crate) fn refresh_idle_trade_paths(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        actor: u32,
+    ) -> Result<(), String> {
+        let mut services = self
+            .queued_operations
+            .take()
+            .ok_or("current idle Trader services")?;
+        let result = services.idle_trade_paths(state, self, owner, actor);
+        self.queued_operations = Some(services);
+        result
+    }
     pub(crate) fn continue_queued_operation(
         &mut self,
         state: &mut LoadedState,
@@ -124,6 +148,130 @@ pub struct Trade<'s, 'a, 'r> {
     pub trade_search: &'s std::cell::RefCell<c6_core::pathfinder::TwoLayer>,
 }
 impl Services<OperationParameters> for Trade<'_, '_, '_> {
+    fn idle_trade_paths(
+        &mut self,
+        state: &mut LoadedState,
+        _backend: &mut Runtime<'_, OperationParameters>,
+        owner: i32,
+        actor: u32,
+    ) -> Result<(), String> {
+        use actions::trade_route_actions::path;
+        use c6_core::{trade::ComponentId, trade_graph_state::city_vertex, unit::PlotCoord};
+        let unit = state
+            .world()
+            .player(owner)
+            .map_err(|e| format!("{e:?}"))?
+            .unit(actor)
+            .map_err(|e| format!("{e:?}"))?
+            .ok_or("idle Trader disappeared")?
+            .record;
+        let location = unit.k_location;
+        let origin = state
+            .retained()
+            .players
+            .iter()
+            .flat_map(|p| p.cities.records.entries.iter())
+            .find(|c| {
+                c.value.header.location_x == location.x && c.value.header.location_y == location.y
+            })
+            .map(|c| ComponentId {
+                owner: c.value.header.owner as i16,
+                component_type: 2,
+                id: c.value.header.id,
+            });
+        let Some(origin) = origin.filter(|c| i32::from(c.owner) == unit.e_owner) else {
+            return Ok(());
+        };
+        let major = self
+            .current
+            .queries
+            .civilization_levels
+            .and_then(|rows| rows.iter().find(|r| r.0 == owner))
+            .ok_or("idle Trader current civilization level")?
+            .1
+            == crate::registry::linux_type_hash(b"CIVILIZATION_LEVEL_FULL_CIV");
+        let (water_allowed, domains) = {
+            let placement = self
+                .current
+                .queries
+                .placement_context(state, self.current.placement.placement)
+                .map_err(|e| format!("idle Trader placement {e:?}"))?;
+            (
+                placement
+                    .can_embark(unit)
+                    .map_err(|e| format!("idle Trader embark {e:?}"))?,
+                placement
+                    .city_domain_masks()
+                    .ok_or("idle Trader city domains")?
+                    .to_vec(),
+            )
+        };
+        let mut destinations = Vec::new();
+        for player in &state.retained().players {
+            if !state
+                .player_alive(player.header.owner)
+                .map_err(|e| format!("idle Trader alive player {e:?}"))?
+            {
+                continue;
+            }
+            for city in &player.cities.records.entries {
+                let id = ComponentId {
+                    owner: city.value.header.owner as i16,
+                    component_type: 2,
+                    id: city.value.header.id,
+                };
+                if id != origin {
+                    destinations.push((
+                        id,
+                        PlotCoord {
+                            x: city.value.header.location_x,
+                            y: city.value.header.location_y,
+                        },
+                    ));
+                }
+            }
+        }
+        let mut search = self
+            .trade_search
+            .try_borrow_mut()
+            .map_err(|e| format!("idle Trader search {e}"))?;
+        for (destination, at) in destinations {
+            let active = state
+                .trade_graph()
+                .map_err(|e| format!("{e:?}"))?
+                .graph()
+                .get_edge(city_vertex(origin), city_vertex(destination))
+                .ok_or("idle Trader new graph edge allocation")?
+                .has_active_route;
+            if active {
+                continue;
+            }
+            if let Some(nodes) = path::find(
+                state,
+                self.path_definitions,
+                path::Inputs {
+                    owner,
+                    major,
+                    water_allowed,
+                    domains: &domains,
+                    movement: &self.current.path.units,
+                },
+                &mut search,
+                location,
+                at,
+            )
+            .map_err(|e| format!("idle Trader path {e:?}"))?
+            {
+                state
+                    .trade_graph_mut()
+                    .map_err(|e| format!("{e:?}"))?
+                    .replace_inactive_path(origin, destination, nodes)
+                    .ok_or("idle Trader inactive graph path store")?;
+            }
+        }
+        Ok(())
+    }
+
     fn advance(
         &mut self,
         state: &mut LoadedState,

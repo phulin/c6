@@ -22,4 +22,21 @@ impl GraphState {
         edge.routes_completed = edge.routes_completed.wrapping_add(1);
         Some(route)
     }
+    /// Edge.AddNewPathFromCacheResult2bf94a0 updates only the archived path.
+    /// An active/missing edge is not a completed idle refresh.
+    pub fn replace_inactive_path(
+        &mut self,
+        origin: ComponentId,
+        destination: ComponentId,
+        path: Vec<i32>,
+    ) -> Option<()> {
+        let edge = self
+            .graph
+            .get_edge_mut(city_vertex(origin), city_vertex(destination))?;
+        if edge.has_active_route {
+            return None;
+        }
+        edge.most_recent_path = path;
+        Some(())
+    }
 }

@@ -288,8 +288,13 @@ impl<P> Context<'_, '_, P> {
             }
             .units(owner, units, major)
             .map_err(|e| failure("unit resource activation", e))?;
-            super::cityless_managers::after_units(self.state, self.managers_definitions, owner)
-                .map_err(|e| failure("governors and trade", e))?;
+            super::cityless_managers::after_units(
+                self.state,
+                self.managers_definitions,
+                self.backend,
+                owner,
+            )
+            .map_err(|e| failure("governors and trade", e))?;
         }
         let player = self
             .state

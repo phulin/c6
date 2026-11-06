@@ -383,6 +383,15 @@ pub struct Queries<'a> {
     pub game_speed_type: u32,
 }
 pub trait Effects {
+    fn idle_trade_paths(
+        &mut self,
+        _state: &mut LoadedState,
+        _owner: i32,
+        _actor: u32,
+    ) -> Result<(), Error> {
+        Err(missing("current idle Trader path services"))
+    }
+
     /// Same original ownership0 ChangeResourceAmount service as research.
     fn change_owned_resource(
         &mut self,
@@ -709,19 +718,34 @@ pub fn before_units(
     }
     Ok(())
 }
-pub fn after_units(state: &mut LoadedState, defs: &Definitions, owner: i32) -> Result<(), Error> {
+pub fn after_units<E: Effects>(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    e: &mut E,
+    owner: i32,
+) -> Result<(), Error> {
     defs.validate(state)?;
     if !player(state, owner)?.governors.entries.is_empty() {
         return Err(missing("governor activation countdown"));
     }
-    for slot in state
+    let units = state
         .world()
         .player(owner)
         .map_err(|_| missing("trade Player"))?
         .unit_records()
         .map_err(|_| missing("trade Units"))?
-    {
-        let u = &slot.value;
+        .iter()
+        .map(|s| s.value.id)
+        .collect::<Vec<_>>();
+    for id in units {
+        let u = state
+            .world()
+            .player(owner)
+            .map_err(|_| missing("trade Player"))?
+            .unit(id)
+            .map_err(|_| missing("trade Unit"))?
+            .ok_or(missing("trade current Unit"))?
+            .record;
         if u.b_delayed_death {
             continue;
         }
@@ -768,7 +792,7 @@ pub fn after_units(state: &mut LoadedState, defs: &Definitions, owner: i32) -> R
             {
                 continue;
             }
-            return Err(missing("idle-trader path update"));
+            e.idle_trade_paths(state, owner, id)?;
         }
     }
     Ok(())
