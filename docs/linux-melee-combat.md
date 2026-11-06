@@ -30,7 +30,9 @@ then freezes and rejects later requests. Callers can extract its owners for
 inspection. Native status text and XP display output become typed records in the
 qualified stock scope.
 
-District/religious combat, combat-unit capture, multiplayer combat notification
+[Ordinary land melee against a surviving city](linux-city-melee.md) is also
+supported in its no-wall profile. Other District/religious combat, combat-unit
+capture, multiplayer combat notification
 creation and positive unimplemented rewards, yields, boosts or era-score
 continuations return explicit errors. Missing reached inputs also return errors.
 These limitations do not silently complete the action.
