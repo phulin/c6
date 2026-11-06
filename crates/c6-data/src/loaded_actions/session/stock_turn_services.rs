@@ -342,6 +342,7 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                                 .map(|e| e.order),
                         )
                         .map_err(city_turn::Error::Production)?;
+                        let mut activate_production = |backend: &mut stock::Runtime<'_>, district_research: Option<&mut crate::research::Runtime>| -> std::result::Result<_, city_turn::Error> {
                         // Borrow the actual shared sight owner only on the Train path.
                         // A conflicting loan is an explicit incomplete transition.
                         let mut sight = kind
@@ -391,7 +392,7 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                                 production_dispatch::Effects::District(
                                     crate::district_actions::stock::Effects {
                                         backend,
-                                        research_runtime,
+                                        research_runtime: district_research.ok_or(city_turn::Error::Unsupported("District research owner unavailable"))?,
                                         inputs: district,
                                         gossip_history: &history.history,
                                         reports: vec![],
@@ -467,6 +468,17 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                                 })?;
                         }
                         Ok(outcome)
+                        };
+                        if kind == production_dispatch::Kind::Unit {
+                            backend.with_action_research(research_runtime, |backend| {
+                                activate_production(backend, None)
+                            }).map_err(|error| {
+                                backend.last_error = Some(format!("Unit production research loan: {error:?}"));
+                                city_turn::Error::Unsupported("Unit production research owner")
+                            })?
+                        } else {
+                            activate_production(backend, Some(research_runtime))
+                        }
                     })
                     .map_err(|_| {
                         city_turn::Error::Unsupported("current city modifier requirement owner")
