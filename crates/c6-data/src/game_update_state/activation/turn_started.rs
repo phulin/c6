@@ -5,6 +5,7 @@ use super::{
     relationship_requirements as relationship, requirement_changes as changes,
     victory_requirements as victory,
 };
+use crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::CurrentYields;
 use crate::loaded_actions::{
     stock_notifications::{self as stock, scoring},
     stock_script,
@@ -53,6 +54,7 @@ pub struct Inputs<'a> {
     pub relationship_definitions: &'a relationship::Definitions,
     pub alive_majors: &'a [i32],
     pub victory: Option<VictoryInputs<'a>>,
+    pub opinion_yields: Option<&'a mut dyn CurrentYields>,
 }
 #[derive(Debug)]
 pub enum Continuation {
@@ -98,11 +100,12 @@ pub struct Progress {
     pub completed: usize,
     pub skipped_unsubscribed: usize,
 }
-struct StockServices<'s, 'a, 'r, P> {
+struct StockServices<'s, 'a, 'r, 'q, P> {
+    opinion_yields: &'s mut Option<&'q mut dyn CurrentYields>,
     backend: &'s mut stock::Runtime<'a, P>,
     relationship_definitions: &'r relationship::Definitions,
 }
-impl<P> changes::Services for StockServices<'_, '_, '_, P> {
+impl<P> changes::Services for StockServices<'_, '_, '_, '_, P> {
     type Error = Continuation;
     fn test_requirement(
         &mut self,
@@ -126,7 +129,16 @@ impl<P> changes::Services for StockServices<'_, '_, '_, P> {
                 .backend
                 .with_growth_requirement_effects(state, |_, state, canonical| {
                     canonical.with_opinion_graph(|graph, canonical| {
-                        graph.subject_changed(state, sets, canonical, receiver, set)
+                        graph.subject_changed_with_yields(
+                            state,
+                            sets,
+                            canonical,
+                            receiver,
+                            set,
+                            self.opinion_yields
+                                .as_mut()
+                                .map(|q| &mut **q as &mut dyn CurrentYields),
+                        )
                     })
                 })
                 .map_err(Continuation::TradeRelations)?;
@@ -160,6 +172,9 @@ impl<P> changes::Services for StockServices<'_, '_, '_, P> {
                         canonical,
                         row.receiver,
                         definitions,
+                        self.opinion_yields
+                            .as_mut()
+                            .map(|q| &mut **q as &mut dyn CurrentYields),
                     )
                 });
                 // This row is comparison metadata; canonical graph controls own the
@@ -268,7 +283,7 @@ pub fn dispatch<P>(
     state: &mut LoadedState,
     backend: &mut stock::Runtime<'_, P>,
     requirements: &mut changes::Runtime,
-    inputs: Inputs<'_>,
+    mut inputs: Inputs<'_>,
     owner: i32,
 ) -> Result<Progress, Error> {
     if requirements.binding() != state.binding() || !backend.script.script().matches(state) {
@@ -309,6 +324,7 @@ pub fn dispatch<P>(
                         inputs.alive_majors,
                         requirements,
                         &mut StockServices {
+                            opinion_yields: &mut inputs.opinion_yields,
                             backend,
                             relationship_definitions: inputs.relationship_definitions,
                         },
@@ -343,6 +359,7 @@ pub fn dispatch<P>(
                             .set_state(
                                 state,
                                 &mut StockServices {
+                                    opinion_yields: &mut inputs.opinion_yields,
                                     backend,
                                     relationship_definitions: inputs.relationship_definitions,
                                 },
@@ -426,6 +443,7 @@ pub fn dispatch<P>(
                             inputs.alive_majors,
                             requirements,
                             &mut StockServices {
+                                opinion_yields: &mut inputs.opinion_yields,
                                 backend,
                                 relationship_definitions: inputs.relationship_definitions,
                             },

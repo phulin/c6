@@ -5,6 +5,7 @@
 use super::relationship_requirements as relationship;
 use super::trade_relations_opinion::{self as leaf, Effect};
 use crate::loaded_actions::declare_war::requirement_modifiers::{Modifiers, Subject};
+use crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::CurrentYields;
 use c6_core::unit_moved_signal::modifiers::Context as _;
 use c6_core::{
     loaded_state::LoadedState,
@@ -40,6 +41,9 @@ pub struct Runtime {
 /// Concrete collection/factory continuations. A factory must execute native
 /// predicate initialization and subscriptions, rather than import an answer.
 pub trait Services {
+    fn opinion_yields(&mut self) -> Option<&mut dyn CurrentYields> {
+        None
+    }
     fn collection(
         &mut self,
         state: &mut LoadedState,
@@ -101,6 +105,17 @@ impl Runtime {
         receiver: u64,
         set: u64,
     ) -> Result<bool, &'static str> {
+        self.subject_changed_with_yields(state, sets, canonical, receiver, set, None)
+    }
+    pub fn subject_changed_with_yields<'s>(
+        &'s mut self,
+        state: &'s mut LoadedState,
+        sets: &'s mut sets::Runtime,
+        canonical: &'s mut Modifiers,
+        receiver: u64,
+        set: u64,
+        opinion_yields: Option<&'s mut dyn CurrentYields>,
+    ) -> Result<bool, &'static str> {
         let Some(row) = self.rows.iter_mut().find(|r| r.label == receiver) else {
             return Ok(false);
         };
@@ -115,6 +130,7 @@ impl Runtime {
             canonical,
             row,
             subject,
+            opinion_yields,
         })?;
         Ok(true)
     }
@@ -125,6 +141,7 @@ impl Runtime {
         canonical: &mut Modifiers,
         receiver: u64,
         definitions: &relationship::Definitions,
+        opinion_yields: Option<&mut dyn CurrentYields>,
     ) -> Result<bool, &'static str> {
         let mut profile = self
             .known_major
@@ -138,6 +155,7 @@ impl Runtime {
             &mut RelationshipServices {
                 profile: &mut profile,
                 definitions,
+                opinion_yields,
             },
         );
         self.known_major = Some(profile);
@@ -293,6 +311,7 @@ impl Runtime {
                         canonical,
                         row,
                         subject,
+                        opinion_yields: services.opinion_yields(),
                     }
                     .remove_effects()?;
                 }
@@ -333,6 +352,7 @@ impl Runtime {
                 canonical,
                 row,
                 subject,
+                opinion_yields: services.opinion_yields(),
             }
             .remove_effects()?;
             if let Some(set) = modifier(canonical, receiver)?.tracked[subject]
@@ -395,6 +415,7 @@ impl Runtime {
                 canonical,
                 row,
                 subject,
+                opinion_yields: services.opinion_yields(),
             })?;
         }
         if activating {
@@ -422,6 +443,7 @@ fn key(canonical: &Modifiers, label: u64) -> Result<(i32, i32, i32), &'static st
         .ok_or("canonical opinion Player object")
 }
 struct Apply<'a> {
+    opinion_yields: Option<&'a mut dyn CurrentYields>,
     state: &'a mut LoadedState,
     sets: &'a mut sets::Runtime,
     canonical: &'a mut Modifiers,
@@ -482,7 +504,15 @@ impl modifiers::Context for Apply<'_> {
                 return Err("opinion nonhuman statement concrete guard");
             }
             self.canonical
-                .apply_tracked_effect(self.state, self.sets, self.row.label, self.subject)
+                .apply_tracked_effect_with_yields(
+                    self.state,
+                    self.sets,
+                    self.row.label,
+                    self.subject,
+                    self.opinion_yields
+                        .as_mut()
+                        .map(|q| &mut **q as &mut dyn CurrentYields),
+                )
                 .map_err(|e| match e {
                     crate::loaded_actions::declare_war::requirement_modifiers::Error::Missing(
                         reason,
@@ -717,11 +747,17 @@ impl KnownMajor {
         Ok(())
     }
 }
-struct RelationshipServices<'a> {
+struct RelationshipServices<'a, 'q> {
+    opinion_yields: Option<&'q mut dyn CurrentYields>,
     profile: &'a mut KnownMajor,
     definitions: &'a relationship::Definitions,
 }
-impl Services for RelationshipServices<'_> {
+impl Services for RelationshipServices<'_, '_> {
+    fn opinion_yields(&mut self) -> Option<&mut dyn CurrentYields> {
+        self.opinion_yields
+            .as_mut()
+            .map(|q| &mut **q as &mut dyn CurrentYields)
+    }
     fn collection(
         &mut self,
         state: &mut LoadedState,

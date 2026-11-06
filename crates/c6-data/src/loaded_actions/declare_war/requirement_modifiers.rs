@@ -1,6 +1,7 @@
 //! Canonical current Player diplomacy modifiers reached by declaration callbacks.
 //! This owner holds membership/affected state once; requirement values remain in
 //! the action's shared backend Runtime and blackboard trackers remain in Player.
+use crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::CurrentYields;
 use crate::{
     loaded_actions::government_actions::requirements::Continuations,
     melee_attack::backend::requirements::Runtime,
@@ -367,6 +368,7 @@ impl Modifiers {
             owner: self,
             modifier,
             subject,
+            opinion_yields: None,
         })
         .map(|_| ())
     }
@@ -490,6 +492,16 @@ impl Modifiers {
         label: u64,
         subject: usize,
     ) -> Result<(), Error> {
+        self.apply_tracked_effect_with_yields(state, requirements, label, subject, None)
+    }
+    pub fn apply_tracked_effect_with_yields<'s>(
+        &'s mut self,
+        state: &'s mut LoadedState,
+        requirements: &'s mut sets::Runtime,
+        label: u64,
+        subject: usize,
+        opinion_yields: Option<&'s mut dyn CurrentYields>,
+    ) -> Result<(), Error> {
         if !self.stamp.same_instance(state.action_stamp()) {
             return Err(Error::Missing("diplomacy modifier World identity"));
         }
@@ -507,6 +519,7 @@ impl Modifiers {
             owner: self,
             modifier,
             subject,
+            opinion_yields,
         })
         .map_err(|error| match error {
             modifiers::EffectError::Context(error) => error,
@@ -577,6 +590,7 @@ impl sets::changes::Context for RequirementChange<'_> {
     }
 }
 struct Apply<'a> {
+    opinion_yields: Option<&'a mut dyn CurrentYields>,
     state: &'a mut LoadedState,
     requirements: &'a mut sets::Runtime,
     owner: &'a mut Modifiers,
@@ -832,6 +846,9 @@ impl modifiers::EffectContext for Apply<'_> {
                     subject,
                     m.instance,
                     self.owner.opinion_alive_majors.as_deref(),
+                    self.opinion_yields
+                        .as_mut()
+                        .map(|q| &mut **q as &mut dyn CurrentYields),
                 )
             })
             .transpose()
@@ -854,14 +871,14 @@ impl modifiers::EffectContext for Apply<'_> {
             .iter_mut()
             .find(|a| a.label == m.label)
             .ok_or(Error::Missing("diplomacy activation parameters"))?;
-        let mut values = a.clone();
         if let Some(value) = government_value.or(match opinion_preparation {
             Some(Preparation::Value(value)) => Some(value),
             _ => None,
         }) {
-            values.initial = value;
-            values.maximum = value;
+            a.initial = value;
+            a.maximum = value;
         }
+        let mut values = a.clone();
         let board = &mut self
             .state
             .war_diplomacy_mut(m.owner)

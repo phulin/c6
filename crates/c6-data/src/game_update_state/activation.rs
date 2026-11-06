@@ -3,6 +3,7 @@ pub mod cityless_managers;
 pub mod forced_rebase;
 pub mod maintenance;
 pub mod opinion_subject_graph;
+pub mod opinion_yields;
 pub mod relationship_requirements;
 pub mod requirement_changes;
 pub mod round;

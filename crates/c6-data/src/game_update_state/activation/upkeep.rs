@@ -157,6 +157,17 @@ impl<P> Context<'_, '_, P> {
         let mut progress = self.backend.activation_progress.take();
         let prefix_result = prefix_once(&mut progress, owner, first, || {
             if first {
+                let alive_majors = self
+                    .research
+                    .alive_majors
+                    .clone()
+                    .ok_or_else(|| failure("turn started", "current major order"))?;
+                let mut opinion_yields = super::opinion_yields::Current {
+                    runtime: self.research,
+                    definitions: self.research_definitions,
+                    social_definitions: self.social_definitions,
+                    social_queries: self.social_queries,
+                };
                 super::turn_started::dispatch(
                     self.state,
                     self.backend,
@@ -165,11 +176,8 @@ impl<P> Context<'_, '_, P> {
                         scope: super::turn_started::Scope::StockHeadlessExternalPlayerPolicies,
                         listeners: signal.listeners,
                         relationship_definitions: signal.relationships,
-                        alive_majors: self
-                            .research
-                            .alive_majors
-                            .as_deref()
-                            .ok_or_else(|| failure("turn started", "current major order"))?,
+                        alive_majors: &alive_majors,
+                        opinion_yields: Some(&mut opinion_yields),
                         victory: Some(super::turn_started::VictoryInputs {
                             definitions: signal.victory_definitions,
                             current: signal.victory,
