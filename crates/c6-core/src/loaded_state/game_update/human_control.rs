@@ -95,21 +95,11 @@ pub fn deactivate_with_priority_signal(
     // SetAiController is an archived assignment, without synchronous callbacks.
     release_controller(state, owner, homeland)?;
     release_controller(state, owner, tactical)?;
-    // Destroyable other controls also call FreeUnits. Their unsaved destruction
-    // flags must be supplied if any current unit is still owned by such a control.
-    if state
-        .world()
-        .player(owner)
-        .map_err(|_| Error::Unsupported("current controller player"))?
-        .unit_records()
-        .map_err(|_| Error::Unsupported("current controller units"))?
-        .iter()
-        .any(|u| u.value.ai_controller != u32::MAX)
-    {
-        return Err(Error::Unsupported(
-            "remaining control destruction flags and FreeUnits",
-        ));
-    }
+    // The same full-pass cleanup runs for humans after DoTurnEnd. Persistent
+    // controls (including a Trader's route controller) keep their units when
+    // ShouldDestroy is false; marked controls release units before recycling.
+    // Missing unsaved marks remain an explicit unsupported transition.
+    super::npc_deactivation::cleanup_controllers(state, owner)?;
     Ok(())
 }
 
@@ -168,6 +158,29 @@ mod tests {
                 pause_storage: Some(0),
             })
             .unwrap();
+        let mut unit = crate::loaded_state::tests::commit_fixture_unit();
+        unit.e_owner = owner;
+        unit.id = 0x10000;
+        state.world = crate::world::World::new(
+            state.world.map().clone(),
+            vec![crate::world::Player::new(
+                owner,
+                Some(crate::map::Recycled {
+                    capacity: 1,
+                    entries: vec![crate::map::Slot {
+                        index: 0,
+                        value: unit,
+                    }],
+                    current_id_bits: 0x10000,
+                    free_head: u32::MAX,
+                    free_tail: u32::MAX,
+                    free_links: vec![u32::MAX],
+                }),
+                None,
+            )
+            .unwrap()],
+        )
+        .unwrap();
         let ids = state
             .world()
             .player(owner)
@@ -177,13 +190,17 @@ mod tests {
             .iter()
             .map(|r| r.value.id)
             .collect::<Vec<_>>();
-        for id in ids {
+        for &id in &ids {
             state.unit_mut(owner, id).unwrap().ai_controller = u32::MAX;
         }
         let player = &mut state.retained.players[0];
         let control = player.ai_control.as_mut().unwrap();
         control.player_id = owner;
         control.priority = 4;
+        let retained_controller = control.controls.instances[0].id;
+        for instance in &mut control.controls.instances {
+            instance.should_destroy = Some(false);
+        }
         player.ai_targets.as_mut().unwrap().new_war_started.0 = 0;
         player
             .ai_behavior_tree
@@ -194,6 +211,7 @@ mod tests {
             .clear();
         player.ai_homeland.as_mut().unwrap().control_instance_id = u32::MAX;
         player.ai_tactical.as_mut().unwrap().control_instance_id = u32::MAX;
+        state.unit_mut(owner, ids[0]).unwrap().ai_controller = retained_controller;
         assert!(!super::super::human_activation::is_done_turn(&state, owner).unwrap());
         let mut signals = 0;
         deactivate_with_priority_signal(&mut state, owner, |state, source_owner, priority| {
@@ -208,6 +226,18 @@ mod tests {
         })
         .unwrap();
         assert_eq!(signals, 1);
+        assert_eq!(
+            state
+                .world()
+                .player(owner)
+                .unwrap()
+                .unit(ids[0])
+                .unwrap()
+                .unwrap()
+                .record
+                .ai_controller,
+            retained_controller
+        );
         assert!(super::super::human_activation::is_done_turn(&state, owner).unwrap());
         assert_eq!(
             super::super::human_activation::current_priority(&state, owner).unwrap(),
