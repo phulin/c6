@@ -1008,6 +1008,24 @@ impl<'a> Provider<'a> {
             .map_err(|_| Error::Provider("initial cache Treasury cold route effects"))?;
         self.observe_unit_snapshot(state, reference).map(|_| ())
     }
+    /// Stock84c1fdd6 refreshes the current Unit cache before host44 copies
+    /// identity and the integer's nonzero test. The caller qualifies current
+    /// native consumers, nested275 and host44 callbacks before delivery.
+    pub fn observe_embarked_report(
+        &mut self,
+        state: &LoadedState,
+        reference: UnitReference,
+        report: PlacementReport,
+    ) -> Result<(), Error> {
+        if report.event_hash != 0x84c1fdd6
+            || report.identity != reference.component_id()
+            || report.identity.component_type != 1
+            || !matches!(report.payload, PlacementPayload::Integer(_))
+        {
+            return Err(Error::Provider("embarked report shape"));
+        }
+        self.observe_unit_snapshot(state, reference).map(|_| ())
+    }
     ///9deb82e7 routes through the ordinary Unit update queries; the host22
     /// translator copies identity/coordinate. Current callback qualification is
     /// the caller's responsibility, as for the other report entry points.

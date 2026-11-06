@@ -21,6 +21,7 @@ pub enum Error {
     Placement(placement::Error),
     Script(super::stock_script::Error),
     Requirement(String),
+    ShoreMovement(String),
     UnsupportedPlacementReport(u32),
     RemovalReport(super::turn_reports::Error),
     RequirementChanged { receiver: u64, old: i32, new: i32 },
@@ -274,6 +275,14 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
                     report,
                 )
                 .map_err(Error::Rules),
+            0x84c1fdd6 => self
+                .reporting
+                .observe_embarked_report(
+                    state,
+                    UnitReference::from_component_id(report.identity),
+                    report,
+                )
+                .map_err(Error::Rules),
             0x9deb82e7 => self
                 .reporting
                 .observe_teleported_report(
@@ -320,7 +329,9 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
                     super::turn_reports::Scope::StockPlainHeadlessExternalPoliciesNoAddedConsumers,
                 )
                 .map_err(Error::RemovalReport),
-            0x35597c21 | 0x7274f04b | 0x754cbd1b => self.deliver_combat_placement_report(state, report),
+            0x35597c21 | 0x7274f04b | 0x754cbd1b => {
+                self.deliver_combat_placement_report(state, report)
+            }
             _ => Err(Error::UnsupportedPlacementReport(report.event_hash)),
         }
     }

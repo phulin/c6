@@ -76,6 +76,47 @@ impl near::Context for Near<'_> {
     }
 }
 impl<P> normal::Effects for Runtime<'_, P> {
+    fn embarked_state_change(
+        &mut self,
+        state: &mut LoadedState,
+        _: &mut sight::Runtime,
+        actor: (i32, u32),
+        _: bool,
+        _: bool,
+    ) -> Result<(), normal::Error<Error>> {
+        // Rules.Placement2bef6d0 ignores both flags. Read current remaining
+        // before GetMaxMoves, after completion and SetEmbarked subscribers.
+        let unit = state
+            .world()
+            .player(actor.0)
+            .and_then(|p| p.unit(actor.1))
+            .map_err(normal::Error::World)?
+            .ok_or(normal::Error::Missing("shore movement Unit"))?;
+        let unit = unit.record;
+        let remaining = unit.x_moves_remaining;
+        // This immutable definition binding also serves research-triggered
+        // formation updates; no captured maximum or former-domain value enters.
+        let definitions = self
+            .research_unit_updates
+            .ok_or(normal::Error::Missing("current Unit movement definitions"))?;
+        let inputs = crate::unit_movement_state::Inputs { definitions };
+        let max = crate::unit_movement_state::unit_max_moves(state, unit, &inputs)
+            .map_err(|e| normal::Error::Effect(Error::ShoreMovement(format!("{e:?}"))))?;
+        let excess = remaining.wrapping_sub(max.wrapping_shl(8));
+        if excess > 0 {
+            crate::loaded_upkeep::change_unit_moves(
+                state,
+                actor.0,
+                actor.1,
+                &inputs,
+                self,
+                excess.wrapping_neg(),
+            )
+            .map_err(|e| normal::Error::Effect(Error::ShoreMovement(format!("{e:?}"))))?;
+        }
+        Ok(())
+    }
+
     fn activate_removable_improvement(
         &mut self,
         state: &mut LoadedState,
