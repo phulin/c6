@@ -6,10 +6,11 @@ rules and upkeep between them.
 
 **A bounded early-game gameplay slice is implemented; the complete headless engine
 is not.** The Rust Session supports consecutive actions including founding,
-movement, improvements, production, research, purchases and representative combat,
-plus bounded turn progression. A Linux comparison now follows one Session from
-pre-founding state through research and production choices, Fortify, and three
-ordinary rounds with explicit decisions for every player. Coverage remains
+movement, improvements, ordinary Farm Repair and forest Chop, production,
+research, purchases and representative combat, including nonlethal city-center
+melee without walls, plus bounded turn progression. A Linux comparison now follows
+one Session from pre-founding state through research and production choices,
+Fortify, and three ordinary rounds with explicit decisions for every player. Coverage remains
 specific to supported states, rules and effects; it is not ready for complete-game
 AI evaluation.
 See [current coverage and limits](docs/status.md).

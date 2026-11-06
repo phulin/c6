@@ -1,6 +1,6 @@
 # Working on c6
 
-The objective is an exact headless Civ VI state/action/turn library, checked against original Linux game code. The current Rust implementation covers bounded primitives, wire transport and rules/registry components; complete gameplay state, action execution and turns remain unimplemented. Keep that distinction explicit in code, docs and completion reports.
+The objective is an exact headless Civ VI state/action/turn library, checked against original Linux game code. The current Rust implementation covers bounded early-game actions and turn progression through a persistent Session, alongside primitives, wire transport and rules/registry components; complete gameplay state, arbitrary actions and full turns remain unimplemented. Keep that distinction explicit in code, docs and completion reports.
 
 ## Feature delivery
 

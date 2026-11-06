@@ -18,11 +18,11 @@ does not initialize a new Civ VI game. See the
 | Area | Supported scope | Qualification |
 | --- | --- | --- |
 | Founding and unit orders | FoundCity; MoveTo, SkipTurn, Fortify and healing | Supported initialized states, movement rules and callbacks; not arbitrary terrain, units or effect branches |
-| Development and economy | Farm/Mine construction and builder charges; city yields and growth; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported |
+| Development and economy | Farm/Mine construction, ordinary resource-free Farm Repair and forest Chop, and builder charges; city yields and growth; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported |
 | Production and districts | Natural Scout, Warrior, Monument and Campus completion; Campus placement | Representative Linux cases through supported turn progression and externally supplied production choices; not arbitrary production or district branches |
 | Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and first physical step | Representative Linux cases; not district/building pillage or complete trade-route lifecycle coverage |
 | Research and government | Technology/civic selection and progress; explicit government and policy choices | Bounded definitions, effects and decision paths |
-| Combat and unit progression | Ranged attacks; melee with surviving and killed defenders; promotions and upgrades | Representative Linux cases, including persistent Session melee; not all combat types, modifiers or aftermath branches |
+| Combat and unit progression | Ranged attacks; unit melee with surviving and killed defenders; nonlethal city-center melee without walls; promotions and upgrades | Representative Linux cases, including persistent Session melee; city capture remains under integration and lacks native acceptance; not all combat types, modifiers or aftermath branches |
 | Diplomacy | Direct surprise-war declaration | Bounded cityless case; not complete diplomacy or war consequences in arbitrary worlds |
 | Turns and decisions | FoundCity → explicit research/Monument choices → Fortify → three ordinary rounds on one Session, with human and NPC decisions supplied externally | Compared gameplay state, core processors, global religion, represented requirements and known RNG match; raw annotations/reference differences and incomplete RNG/runtime coverage remain explicit |
 | Supporting components | Explicit RNG records/streams, numerical helpers, typed wire codecs, owned component state and registered SQLite rules profiles | Schema/profile-specific; wire transport is distinct from complete save import or live-world reconstruction |
@@ -38,6 +38,22 @@ The accepted [Farm Pillage](linux-unit-pillage.md) case completes the request
 through `HeadlessMessagesProcessed`, preserving genuine pending player decisions.
 The domestic trade first-step and natural Campus turn-completion comparisons are
 also bounded accepted cases; they do not establish complete subsystem coverage.
+
+The accepted [ordinary Farm Repair](linux-builder-repair.md) restores a pillaged,
+resource-free Farm through the Session and action aftermath without spending a
+Builder charge. The accepted ordinary owned, resource-free forest
+[Chop](../crates/c6-data/src/loaded_actions/session_chop.rs) adds 21 production
+and reduces Builder charges from 3 to 2 in its native comparison; production
+completion and last-charge removal were not exercised natively. These are
+bounded action results, not complete builder coverage.
+
+The accepted [city-center melee](linux-city-melee.md) case attacks a noncapital
+city with no walls and both combatants surviving: 18 attacker damage, 50 city
+damage and 3 XP. It completes genuine action cleanup and preserves the compared
+gameplay effects and ordered GameSync draws. A source-qualified native AI
+targeting tally is omitted and represented by a typed planning observation;
+the raw discrepancy and scope are documented. This does not establish city
+capture or a complete gameplay RNG inventory.
 
 The main remaining gap is generality and integration across a whole game: complete
 initialized gameplay state, all reached action effects and upkeep, full gameplay
