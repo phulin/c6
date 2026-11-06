@@ -71,6 +71,10 @@ pub struct Modifiers {
         Vec<u64>,
         crate::loaded_actions::stock_notifications::first_contact::government_modifier::Definitions,
     )>,
+    opinion_effects: Vec<(
+        u64,
+        crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::Effect,
+    )>,
     modifiers: Vec<Modifier>,
     objects: Vec<Object>,
     opinion_graph: Option<crate::game_update_state::activation::opinion_subject_graph::Runtime>,
@@ -101,6 +105,7 @@ impl Modifiers {
             activations: Vec::new(),
             random_effects: Vec::new(),
             government_effects: None,
+            opinion_effects: Vec::new(),
             modifiers,
             objects,
             opinion_graph: None,
@@ -191,6 +196,29 @@ impl Modifiers {
             }
         }
         self.government_effects = Some((labels, definitions));
+        Ok(self)
+    }
+    /// Bind reached concrete opinion leaves to the same physical controls.
+    pub fn with_opinion_effects(
+        mut self,
+        effects: Vec<(
+            u64,
+            crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::Effect,
+        )>,
+    ) -> Result<Self, Error> {
+        for (at, (label, _)) in effects.iter().enumerate() {
+            if effects[..at].iter().any(|(previous, _)| previous == label)
+                || !self.activations.iter().any(|a| a.label == *label)
+                || self.random_effects.iter().any(|(other, _)| other == label)
+                || self
+                    .government_effects
+                    .as_ref()
+                    .is_some_and(|(labels, _)| labels.contains(label))
+            {
+                return Err(Error::Missing("opinion diplomacy activation receiver"));
+            }
+        }
+        self.opinion_effects = effects;
         Ok(self)
     }
     fn object(&self, label: u64) -> Result<&Object, Error> {
@@ -505,6 +533,14 @@ impl modifiers::Context for Apply<'_> {
         {
             return Ok(());
         }
+        if self
+            .owner
+            .opinion_effects
+            .iter()
+            .any(|(label, effect)| *label == m.label && effect.remove_is_inert())
+        {
+            return Ok(());
+        }
         let subject_owner = self.owner.object(object)?.owner;
         if !self
             .state
@@ -643,6 +679,18 @@ impl modifiers::EffectContext for Apply<'_> {
         if !self.state.player_alive(subject).map_err(Error::State)? && !m.allow_dead {
             return Ok(true);
         }
+        let opinion_preparation = self
+            .owner
+            .opinion_effects
+            .iter_mut()
+            .find(|(label, _)| *label == m.label)
+            .map(|(_, effect)| effect.prepare(self.state, m.owner, subject, m.instance))
+            .transpose()
+            .map_err(Error::Missing)?;
+        use crate::loaded_actions::stock_notifications::first_contact::opinion_callbacks::Preparation;
+        if opinion_preparation == Some(Preparation::Skip) {
+            return Ok(true);
+        }
         let government_value = self
             .owner
             .government_effects
@@ -658,7 +706,10 @@ impl modifiers::EffectContext for Apply<'_> {
             .find(|a| a.label == m.label)
             .ok_or(Error::Missing("diplomacy activation parameters"))?;
         let mut values = a.clone();
-        if let Some(value) = government_value {
+        if let Some(value) = government_value.or(match opinion_preparation {
+            Some(Preparation::Value(value)) => Some(value),
+            _ => None,
+        }) {
             values.initial = value;
             values.maximum = value;
         }
