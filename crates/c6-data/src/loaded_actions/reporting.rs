@@ -1223,6 +1223,16 @@ impl<'a> Provider<'a> {
             return Err(Error::ConfigurationIdentity);
         }
         let (host_event, snapshot) = match report.event {
+            // UnitCaptured translator320bad0 copies the retired Unit identity,
+            // old owner and new owner into host event37, without a Unit cache
+            // snapshot. The admitted stock scope has no synchronous consumers.
+            0x664a37b6
+                if report.subtype == 0
+                    && report.first == Some(i32::from(report.identity.owner))
+                    && report.second.is_some() =>
+            {
+                (37, false)
+            }
             ACTIVITY_CHANGED
                 if report.subtype == 0 && report.first.is_some() && report.second.is_none() =>
             {
@@ -1276,9 +1286,8 @@ impl<'a> Provider<'a> {
             | OPERATIONS_CLEARED
             | OPERATION_ADDED
             | OPERATION_STARTED
-            | OPERATION_SEGMENT_COMPLETE => {
-                return Err(Error::Provider("Unit reporting typed argument shape"))
-            }
+            | OPERATION_SEGMENT_COMPLETE
+            | 0x664a37b6 => return Err(Error::Provider("Unit reporting typed argument shape")),
             _ => {
                 return Err(Error::Provider(
                     "Unit reporting consumer unavailable for this event",
@@ -1475,7 +1484,7 @@ impl<'a> Provider<'a> {
         let (operation, value) = match host_event {
             67 | 68 => (report.subtype as i32, report.first.unwrap_or(0)),
             69 => segment_complete_payload(report)?,
-            70 | 71 => (report.first.unwrap_or(0), report.second.unwrap_or(0)),
+            37 | 70 | 71 => (report.first.unwrap_or(0), report.second.unwrap_or(0)),
             _ => (activity_operation.unwrap_or(0) as i32, -1),
         };
         self.publication_order

@@ -238,7 +238,13 @@ impl<P> loaded_upkeep::OperationReports for Runtime<'_, P> {
     ) -> Result<i32, Error> {
         if !matches!(
             report.event,
-            0xe23b112d | 0xa60328c5 | 0x383669f1 | 0x15c35863 | 0x3d4006f2 | 0xcb0345f1
+            0xe23b112d
+                | 0xa60328c5
+                | 0x383669f1
+                | 0x15c35863
+                | 0x3d4006f2
+                | 0xcb0345f1
+                | 0x664a37b6
         ) {
             return Err(Error::Missing("operation report subscribers"));
         }
