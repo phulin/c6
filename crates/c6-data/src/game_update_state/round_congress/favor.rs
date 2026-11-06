@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 pub struct Definitions {
     binding: WireBinding,
     baseline: i32,
+    trade_partner: i32,
     governments: BTreeMap<u32, i32>,
     government_slot_count: usize,
     co2: Penalty,
@@ -72,6 +73,7 @@ impl Definitions {
         Ok(Self {
             binding: state.binding().clone(),
             baseline: parameter("WORLD_CONGRESS_BASELINE_FAVOR_PER_TURN")?,
+            trade_partner: parameter("WORLD_CONGRESS_TRADE_PARTNER_FAVOR_PER_TURN")?,
             governments,
             government_slot_count: crate::unit_initialization_definitions::collection(
                 rules,
@@ -228,15 +230,41 @@ pub fn calculate(
             add(&mut raw, government);
         }
     }
-    if !state
+    // CalcFavorPerTurnFromTradePartners2b961c0 always counts first, then
+    // multiplies the immutable parameter. CountOutgoingMajorTradingPartners
+    // excludes self and counts each alive major once, irrespective of how
+    // many current city pairs carry a directed active route.
+    let graph = state
         .trade_graph()
         .map_err(|_| Error::Unsupported("favor current Trade graph"))?
-        .graph()
-        .origins()
-        .is_empty()
-    {
-        return Err(Error::Unsupported("current trade partner favor"));
+        .graph();
+    let mut partners = 0i32;
+    if owner != -1 {
+        for &other in alive_majors {
+            if other == owner {
+                continue;
+            }
+            let destination = player(state, other)?;
+            let mut routes = 0i32;
+            for origin in &current.cities.records.entries {
+                for destination in &destination.cities.records.entries {
+                    let key = |c: &c6_core::city::City| c6_core::trade::Vertex {
+                        kind: 0,
+                        data1: c.header.owner,
+                        data2: c.header.id as i32,
+                    };
+                    if graph
+                        .get_edge(key(&origin.value), key(&destination.value))
+                        .is_some_and(|e| e.has_active_route)
+                    {
+                        routes = routes.wrapping_add(1);
+                    }
+                }
+            }
+            partners = partners.wrapping_add(i32::from(routes > 0));
+        }
     }
+    add(&mut raw, partners.wrapping_mul(defs.trade_partner));
     for &other in alive_majors {
         if other != owner
             && state
