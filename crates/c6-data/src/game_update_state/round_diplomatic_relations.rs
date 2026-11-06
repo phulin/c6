@@ -2,7 +2,8 @@
 //!
 //! Executes the source guards against the canonical current relation owner.
 //! The supported branch has no allied alive-major pair, reached friendship timer,
-//! research-alliance boost, or peaceful met ever-major pair. Positive effects
+//! research-alliance boost. Peaceful met pairs support the explicitly qualified
+//! zero-grievance computation; other reached effects
 //! remain explicit continuations, never silently fulfilled by native policy.
 use crate::{
     game_parameters::sql_integer,
@@ -11,6 +12,8 @@ use crate::{
     unit_placement_services::Runtime,
     Rules,
 };
+mod peaceful_grievance_decay;
+
 use c6_core::{
     core_player::initialization::WireBinding, diplomacy_meeting::MAJOR_LEVEL,
     game_diplomatic_relations::GameDiplomaticRelations, loaded_state::LoadedState,
@@ -160,7 +163,8 @@ fn evaluate(
     turn: i32,
     friendship_duration: i32,
     research_alliance: Option<i32>,
-) -> Result<(), Error> {
+) -> Result<Vec<(i32, i32)>, Error> {
+    let mut decay = Vec::new();
     // Native nested loops compare player IDs, rather than list positions.
     for &first in alive {
         for &second in alive {
@@ -222,14 +226,11 @@ fn evaluate(
                     .map_err(Error::Relations)?
                 && relations.has_met(first, second).map_err(Error::Relations)?
             {
-                return Err(Error::Requires(Transition::GrievanceDecay {
-                    first,
-                    second,
-                }));
+                decay.push((first, second));
             }
         }
     }
-    Ok(())
+    Ok(decay)
 }
 
 /// Uses SAME current Player.Manager alive list, canonical diplomacy-manager
@@ -237,7 +238,7 @@ fn evaluate(
 /// world, stale initial contacts, RNG draw, or presentation callback is used.
 /// Reached positive transitions refuse before their first mutation.
 pub fn run(
-    state: &LoadedState,
+    state: &mut LoadedState,
     players: &Runtime,
     definitions: &Definitions,
     game_speed: u32,
@@ -277,14 +278,23 @@ pub fn run(
     }
     // Both durations are computed by the native routine even on early turns.
     let (friendship_duration, _alliance_duration) = definitions.durations(game_speed);
-    evaluate(
+    let decay = evaluate(
         state.game_relations().map_err(Error::State)?,
         &alive,
         &ever,
         state.retained().core.current_turn,
         friendship_duration,
         definitions.research_alliance,
-    )
+    )?;
+    for (first, second) in decay {
+        let change = peaceful_grievance_decay::change(state, first, second)?;
+        state
+            .war_relations_mut()
+            .map_err(Error::State)?
+            .decay_grievance_score(first, second, change)
+            .map_err(Error::Relations)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -330,13 +340,10 @@ mod tests {
                 second: 0
             }))
         ));
-        assert!(matches!(
-            evaluate(&relations(-1, true, false), &[0, 1], &[0, 1], 2, 30, None),
-            Err(Error::Requires(Transition::GrievanceDecay {
-                first: 0,
-                second: 1
-            }))
-        ));
+        assert_eq!(
+            evaluate(&relations(-1, true, false), &[0, 1], &[0, 1], 2, 30, None).unwrap(),
+            vec![(0, 1)]
+        );
         assert!(evaluate(&relations(1, true, false), &[0, 1], &[0, 1], 2, 30, None).is_ok());
         assert!(evaluate(&relations(-1, false, false), &[0, 1], &[0, 1], 2, 30, None).is_ok());
     }
