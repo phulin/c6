@@ -233,12 +233,24 @@ impl<P> Context<'_, '_, P> {
                 ActivationOutcome::Complete => {}
             }
         } else {
+            // Human control's stale-controller traversal also reads current
+            // Units after City work; newly produced Units belong to this list.
+            let current_units = self
+                .state
+                .world()
+                .player(owner)
+                .map_err(|e| failure("human current unit owner", e))?
+                .unit_records()
+                .map_err(|e| failure("human current units", e))?
+                .iter()
+                .map(|row| row.value.id)
+                .collect::<Vec<_>>();
             stock_notifications::human_activation::run(
                 self.state,
                 self.backend,
                 self.maintenance_definitions,
                 tail.human,
-                units,
+                &current_units,
                 major,
                 tail.global_ai_initialized,
                 tail.scout,

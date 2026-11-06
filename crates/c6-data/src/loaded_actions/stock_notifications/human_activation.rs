@@ -83,7 +83,6 @@ struct Effects<'s, 'a, 'i, P> {
     backend: &'s mut Runtime<'a, P>,
     inputs: &'i Inputs,
     definitions: &'i maintenance::Definitions,
-    units: &'i [u32],
     scout: &'i ScoutInputs,
     visibility: &'i crate::unit_sight_state::Runtime,
     major: bool,
@@ -187,12 +186,23 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
                 Kind::Military => {
                     // UpdateOffTurn214a198: AnalyzeForces precedes defenses
                     // and new-operation score evaluation. Preserve its roles.
+                    // AnalyzeExplorers214bd91 reacquires the live Unit list
+                    // after City production, rather than activation-entry IDs.
+                    let units = state
+                        .world()
+                        .player(owner)
+                        .map_err(|_| Error::Unsupported("human military current player"))?
+                        .unit_records()
+                        .map_err(|_| Error::Unsupported("human military current units"))?
+                        .iter()
+                        .map(|row| row.value.id)
+                        .collect::<Vec<_>>();
                     maintenance::Context {
                         state,
                         backend: self.backend,
                         definitions: self.definitions,
                     }
-                    .roles(owner, self.units, self.major, self.initialized, self.scout)
+                    .roles(owner, &units, self.major, self.initialized, self.scout)
                     .map_err(|e| self.fail(e))?;
                 }
                 Kind::Culture
@@ -349,7 +359,6 @@ impl OffTurn<'_> {
                 backend,
                 inputs: self.inputs,
                 definitions: self.definitions,
-                units: self.units,
                 scout: self.scout,
                 visibility: self.visibility,
                 major: self.major,
@@ -385,7 +394,6 @@ pub fn run<P>(
             backend,
             inputs,
             definitions,
-            units,
             scout,
             visibility,
             major,
