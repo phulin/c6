@@ -504,8 +504,10 @@ impl modifiers::EffectContext for Apply<'_> {
             c6_core::player_diplomacy_blackboard::ModifierEntry { key, tracker },
         );
         // SimpleEffect's opinion-table evaluator is omitted at the policy
-        // boundary. The bound effect has no statement flags, so no statement,
-        // MESSAGE_SENT_TURN update, gameplay callback or RNG follows.
+        // boundary. Inputs must qualify a statement guard (both flags clear,
+        // or the human-owner CanSendStatement return) before binding this
+        // continuation. No statement, MESSAGE_SENT_TURN update, gameplay
+        // callback or RNG follows that guard.
         Ok(true)
     }
 }
