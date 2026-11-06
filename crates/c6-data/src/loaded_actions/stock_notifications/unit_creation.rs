@@ -24,6 +24,8 @@ pub struct Achievement {
 pub struct PlacementInputs<'a> {
     pub definitions: &'a crate::unit_creation::placement_effects::Definitions,
     pub properties: &'a [(i32, Vec<(u32, i32)>)],
+    /// Required when occupied-city pressure reaches its current garrison query.
+    pub garrison: Option<&'a crate::loaded_actions::city_range_attack::Definitions>,
 }
 pub struct ControlInputs<'a> {
     pub movement: &'a crate::unit_movement_state::Definitions,
@@ -446,6 +448,40 @@ impl<P> crate::found_city::cultural_identity::Context for CityPlacement<'_, '_, 
                 "current placement civilization level",
             ))
     }
+    fn has_martial_law_garrison(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        city: u32,
+    ) -> Result<bool, crate::city_turn::Error> {
+        let input = self
+            .runtime
+            .city_placement
+            .as_ref()
+            .or_else(|| {
+                self.runtime
+                    .unit_creation
+                    .as_ref()
+                    .and_then(|v| v.placement.as_ref())
+            })
+            .ok_or(crate::city_turn::Error::Unsupported(
+                "current City placement inputs",
+            ))?;
+        let definitions = input.garrison.ok_or(crate::city_turn::Error::Unsupported(
+            "current placement garrison definitions",
+        ))?;
+        let movement = self.runtime.movement().map_err(|_| {
+            crate::city_turn::Error::Unsupported("current placement combat definitions")
+        })?;
+        crate::loaded_actions::city_range_attack::city_has_garrison(
+            state,
+            owner,
+            city,
+            definitions,
+            movement.definitions.formation,
+        )
+        .map_err(|_| crate::city_turn::Error::Unsupported("current placement City garrison"))
+    }
     fn player_property_int(
         &mut self,
         _: &LoadedState,
@@ -516,13 +552,12 @@ impl<P> crate::found_city::cultural_identity::Context for CityPlacement<'_, '_, 
         _: i32,
         changed: Option<bool>,
     ) -> Result<(), crate::city_turn::Error> {
-        if changed == Some(false) {
-            Ok(())
-        } else {
-            Err(crate::city_turn::Error::Unsupported(
-                "placement conversion trend changed report",
-            ))
-        }
+        let _ = changed;
+        // Runtime's fixed stock/no-added-consumers scope admits only the
+        // 0242e68c -> 2717400 derived-cache output. Conversion state was already
+        // written by RecalculateConversionTrends; this report has no gameplay
+        // subscriber or RNG. See the same closure in current_upkeep::Context.
+        Ok(())
     }
 }
 impl<P> Runtime<'_, P> {

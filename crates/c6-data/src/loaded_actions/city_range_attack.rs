@@ -518,6 +518,32 @@ pub fn garrison<'s>(
     .map_err(|_| Error::Unsupported("District.GetGarrisonedUnit current defender"))
 }
 
+/// City.HasGarrisonedUnit: visit current districts in City order and stop at
+/// the first defensible district whose current default defender is combat.
+pub fn city_has_garrison(
+    state: &LoadedState,
+    owner: i32,
+    city: u32,
+    definitions: &Definitions,
+    formation: &crate::formation_rules::Definitions,
+) -> Result<bool, Error> {
+    let city = state.city(owner, city).map_err(Error::State)?;
+    for id in &city.districts.district_ids {
+        if *id == u32::MAX {
+            continue;
+        }
+        let district = state
+            .district(owner, *id)
+            .map_err(|_| Error::Unsupported("current City garrison District"))?;
+        if district_defensible(state, district, definitions)?
+            && garrison(state, district, definitions, formation)?.is_some()
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 /// HasWalls/GetMaxDamage source prefix. No district definition returns zero;
 /// nonpositive/absent District.HitPoints skips City wall HP entirely.
 pub fn attack_strength_q8(
