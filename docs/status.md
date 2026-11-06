@@ -17,7 +17,7 @@ does not initialize a new Civ VI game. See the
 
 | Area | Supported scope | Qualification |
 | --- | --- | --- |
-| Founding and unit orders | FoundCity; MoveTo, SkipTurn, Fortify and healing | Supported initialized states, movement rules and callbacks; not arbitrary terrain, units or effect branches |
+| Founding and unit orders | FoundCity; MoveTo including bounded ordinary Warrior embarkation/disembarkation, SkipTurn, Fortify and healing | Supported initialized states, movement rules and callbacks; actual civilian capture in ordinary MoveTo and arbitrary terrain, units or effect branches remain unsupported |
 | Development and economy | Farm/Mine construction, ordinary resource-free Farm Repair and forest Chop, and builder charges; city yields and growth; ordinary city tile worker locks; gold purchases of units/buildings and tile purchases | Representative Linux cases; reached rules and callbacks must be supported; citizen unlock/clamp and noncanonical wrapped requests lack separate native cases |
 | Production and districts | Natural Scout, Warrior, Monument and Campus completion; ordinary [Granary selection, completion and growth](linux-granary-growth.md); ordinary [Settler completion](linux-settler-production.md) with population consumption; Campus placement | Representative Linux cases through supported turn progression and externally supplied production choices; not arbitrary production or district branches |
 | Pillage and trade | Enemy city-owned Farm Pillage; domestic trade-route initiation and first physical step | Representative Linux cases; not district/building pillage or complete trade-route lifecycle coverage |
