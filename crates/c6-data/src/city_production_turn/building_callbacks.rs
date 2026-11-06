@@ -278,10 +278,12 @@ pub fn achievements(state: &LoadedState, event: Event) -> Result<(), Error> {
     let own = state.city(event.owner, event.city)?;
     // Every sink in28fe130 requires one of its named nonordinary buildings,
     // a wonder count or >11 specialty districts. This bounded early-city path
-    // reaches none; queries before those guards have no gameplay/RNG effects.
+    // reaches none. The final canal check traverses local scratch and can only
+    // publish achievement output; its reached source has no gameplay/RNG writes.
     let allowed = [
         linux_type_hash(b"BUILDING_PALACE"),
         linux_type_hash(b"BUILDING_MONUMENT"),
+        linux_type_hash(b"BUILDING_GRANARY"),
     ];
     for player in &state.retained().players {
         for city in &player.cities.records.entries {

@@ -175,7 +175,9 @@ pub fn can_construct(
     // owner's acquired byte. No automatic research or prerequisite policy runs.
     if let Some(technology) = definition.prerequisite_technology {
         if !super::unit_selection::acquired(state, owner, technology, false)? {
-            return Ok(false);
+            return Err(Error::Unsupported(
+                "unfulfilled building technology prerequisite",
+            ));
         }
     }
     buildings.start_building_progress(state, hash)?; // Reject unimplemented resource reservation before mutation.
