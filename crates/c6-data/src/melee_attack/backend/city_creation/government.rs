@@ -596,8 +596,8 @@ impl EffectRuntime {
             };
             match counter {
                 crate::research::attached_modifiers::Effect::GovernorPoints => {
-                    // Positive major deltas update points, the actual unsaved
-                    // maximum and the external title-decision flag. Negative
+                    // Positive major deltas update points up to the actual
+                    // unsaved maximum, and the external title-decision flag. Negative
                     // Remove still reports but does not subtract native points.
                     state.change_governor_points(owner, is_major, if remove { amount.wrapping_neg() } else { amount })
                         .map_err(|_| Error::Missing("current Governor points and maximum"))?;

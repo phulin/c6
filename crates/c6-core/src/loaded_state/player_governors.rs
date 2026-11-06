@@ -68,13 +68,13 @@ impl LoadedState {
             .ok_or(Error::Missing(MissingInput::Player(owner)))?;
         let current = self
             .governor_current
-            .iter_mut()
+            .iter()
             .find(|r| r.0 == owner)
             .ok_or(Error::RuntimeIdentity)?;
         self.revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
         crate::governor_lifecycle::change_points(
             &mut self.retained.players[index].governors,
-            &mut current.1,
+            &current.1,
             major,
             delta,
         );

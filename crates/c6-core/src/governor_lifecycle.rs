@@ -16,14 +16,14 @@ pub fn points_spent(governors: &Governors) -> i32 {
         .fold(0i32, |n, p| n.wrapping_add(i32::from(p.earned)))
 }
 
-/// ChangeGovernorPoints2b0c6e0. Positive major deltas change saved points and
-/// the unsaved maximum and reset considered. Every major delta reports, even
+/// ChangeGovernorPoints2b0c6e0. Positive major deltas wrapping-add saved points,
+/// cap them at the unsaved maximum and reset considered. Every major delta reports, even
 /// zero/negative; the caller delivers that report after this ordered prefix.
-pub fn change_points(governors: &mut Governors, current: &mut Current, major: bool, delta: i32) {
+pub fn change_points(governors: &mut Governors, current: &Current, major: bool, delta: i32) {
     if major && delta > 0 {
         governors.governor_points = governors.governor_points.wrapping_add(delta);
         if current.maximum_points < governors.governor_points {
-            current.maximum_points = governors.governor_points;
+            governors.governor_points = current.maximum_points;
         }
         governors.title_considered = false;
     }
@@ -225,17 +225,46 @@ mod tests {
     fn positive_points_preserve_maximum_and_nonpositive_only_report() {
         let mut g = empty();
         let mut c = Current { maximum_points: 4 };
-        change_points(&mut g, &mut c, false, 10);
+        change_points(&mut g, &c, false, 10);
         assert_eq!(g.governor_points, 0);
-        change_points(&mut g, &mut c, true, 1);
+        change_points(&mut g, &c, true, 1);
         assert_eq!(
             (g.governor_points, c.maximum_points, g.title_considered),
             (1, 4, false)
         );
-        change_points(&mut g, &mut c, true, -1);
+        change_points(&mut g, &c, true, -1);
         assert_eq!(g.governor_points, 1);
-        change_points(&mut g, &mut c, true, 8);
-        assert_eq!(c.maximum_points, 9);
+        change_points(&mut g, &c, true, 8);
+        assert_eq!((g.governor_points, c.maximum_points), (4, 4));
+        g.governor_points = i32::MAX;
+        c.maximum_points = i32::MAX;
+        change_points(&mut g, &c, true, 1);
+        assert_eq!((g.governor_points, c.maximum_points), (i32::MIN, i32::MAX));
+    }
+    #[test]
+    fn unassigned_turns_retain_one_invalid_city_entry_without_establishing() {
+        let mut governors = empty();
+        appoint(
+            &mut governors,
+            0,
+            &Appointment {
+                definition_hash: 9,
+                name: b"name",
+                identity_pressure: 8,
+                govern_city_state: false,
+                assign_to_major: false,
+                promotions: &[],
+            },
+        )
+        .unwrap();
+        let governor = &mut governors.entries[0].governor;
+        let city = governor.assigned_city.clone();
+        for _ in 0..8 {
+            assert!(!edit_turns_on_site(governor, city.clone(), 1, 5));
+            assert_eq!(turns_on_site(governor, &city), 0);
+            assert_eq!(governor.established_cities.len(), 1);
+            assert_eq!(governor.established_cities[0].value, 1);
+        }
     }
     #[test]
     fn first_city_entry_defers_threshold_and_old_city_decay_preserves_order() {
