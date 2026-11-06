@@ -452,6 +452,7 @@ pub struct Provider<'a> {
     snapshot_effects: Option<hold_cycling::snapshot_effects::Inputs<'a>>,
     placement_queries: Option<&'a crate::movement_placement_state::Context<'a, 'a, 'a>>,
     current_placement_queries: Option<CurrentPlacementQueries<'a>>,
+    placement_capabilities: Option<&'a c6_core::game_capabilities::Membership>,
     combat_placement_queries: Option<(
         &'a crate::formation_rules::Definitions,
         &'a crate::formation_movement_cost::Definitions<'a>,
@@ -489,6 +490,7 @@ impl<'a> Provider<'a> {
             snapshot_effects: None,
             placement_queries: None,
             current_placement_queries: None,
+            placement_capabilities: None,
             combat_placement_queries: None,
         }
     }
@@ -517,6 +519,21 @@ impl<'a> Provider<'a> {
             return Err(Error::Provider("placement queries already bound"));
         }
         self.current_placement_queries = Some(queries);
+        Ok(())
+    }
+
+    /// Supply this initialized instance's complete current capability owner for
+    /// reached placement predicates (including barbarian Clans checks). No
+    /// missing membership is replaced with a stock false flag.
+    pub fn bind_placement_capabilities(
+        &mut self,
+        state: &LoadedState,
+        capabilities: &'a c6_core::game_capabilities::Membership,
+    ) -> Result<(), Error> {
+        if state.binding() != &self.definitions.binding || self.placement_capabilities.is_some() {
+            return Err(Error::Provider("current placement capabilities binding"));
+        }
+        self.placement_capabilities = Some(capabilities);
         Ok(())
     }
 
@@ -1851,6 +1868,9 @@ impl<'a> Provider<'a> {
                 .queries
                 .placement_context(state, queries.definitions)
                 .and_then(|mut context| {
+                    if let Some(capabilities) = self.placement_capabilities {
+                        context = context.with_capabilities(capabilities);
+                    }
                     if let Some((combat, districts)) = self.combat_placement_queries {
                         context = context
                             .with_combat_definitions(combat)
