@@ -190,6 +190,21 @@ impl<'a, P> Runtime<'a, P> {
         self.modifier_owners = Some(owners);
         Ok(result)
     }
+    /// Temporarily transfer the canonical modifier owners to a synchronous
+    /// adapter that requires ownership. The adapter must return those same
+    /// mutated owners with its result, including on a failed operation.
+    pub(crate) fn with_owned_modifier_owners<R>(
+        &mut self,
+        apply: impl FnOnce(&mut Self, ModifierOwners) -> (ModifierOwners, R),
+    ) -> Result<R, movement::Error> {
+        let owners = self
+            .modifier_owners
+            .take()
+            .ok_or(movement::Error::Missing("canonical modifier owners"))?;
+        let (owners, result) = apply(self, owners);
+        self.modifier_owners = Some(owners);
+        Ok(result)
+    }
     /// Execute a synchronous factory scope against the ongoing turn's actual
     /// requirement store. Only immutable factory metadata is joined. All
     /// returned errors preserve mutations and restore the canonical store.
