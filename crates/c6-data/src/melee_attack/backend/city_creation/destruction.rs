@@ -439,3 +439,75 @@ fn tracked_destroyed(
         .retain(|handle| *handle != subject);
     Ok(())
 }
+
+impl EffectRuntime {
+    /// CityD1.SetModifierObject(nullptr) releases the gameplay cache before
+    /// validation and CityBuild destruction. Keep wrappers retained by actual
+    /// modifier/requirement owners; the pool's weak entry itself retains none.
+    pub fn release_destroyed_city_cache(
+        &mut self,
+        state: &LoadedState,
+        requirements: &requirements::Runtime,
+        city: ComponentId,
+    ) -> Result<(), Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        let Some(handle) = self
+            .objects
+            .iter()
+            .find(|(_, r)| r.kind == ContextObject::City(city))
+            .map(|r| r.0)
+        else {
+            // An absent cache is valid only for a source-created City whose
+            // first modifier wrapper was never requested.
+            if self
+                .allocations
+                .has_initial_city(city)
+                .map_err(Error::Query)?
+            {
+                return Err(Error::Missing("initial destroyed City modifier cache"));
+            }
+            return Ok(());
+        };
+        let creation = self
+            .city_creation
+            .as_mut()
+            .ok_or(Error::Missing("destroyed City lifecycle"))?;
+        let object = creation
+            .objects
+            .iter()
+            .find(|r| r.handle == handle)
+            .ok_or(Error::Missing("destroyed City object"))?;
+        let owned = &object
+            .destruction
+            .as_ref()
+            .ok_or(Error::Missing("destroyed City owned projection"))?
+            .owned_modifiers;
+        if !owned.is_empty() || !object.affected.entries().is_empty() {
+            return Err(Error::Missing(
+                "City cache release with surviving owned/affected modifiers",
+            ));
+        }
+        if creation.modifiers.iter().any(|r| {
+            r.owner == handle
+                || r.tracked.iter().any(|s| s.subject == handle)
+                || r.applied_subjects.contains(&handle)
+        }) || self.unit_modifiers.as_ref().is_some_and(|rows| {
+            rows.iter().any(|r| {
+                r.context == handle
+                    || r.tracked.iter().any(|s| s.object == handle)
+                    || r.applied.contains(&handle)
+            })
+        }) || requirements.sets().retains_modifier_object(handle)
+        {
+            return Ok(());
+        }
+        if object.destroyed.ordered_subscribers().next().is_some() {
+            return Err(Error::Missing(
+                "City cache release surviving Destroyed listener ownership",
+            ));
+        }
+        creation.objects.retain(|r| r.handle != handle);
+        self.objects.retain(|r| r.0 != handle);
+        Ok(())
+    }
+}

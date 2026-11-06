@@ -35,6 +35,7 @@ pub struct Definitions {
     building_outer_hit_points: Vec<Option<i32>>,
     district_xp2: LinuxDefinitionRegistry,
     district_range: Vec<i32>,
+    district_canal: Vec<Option<i32>>,
     minimum_strike: i32,
     terrains: LinuxDefinitionRegistry,
     terrain_sight: Vec<i32>,
@@ -142,6 +143,7 @@ impl Definitions {
             buildings: collection("Buildings", "BuildingType")?,
             building_outer_hit_points: values(rules, "Buildings", "OuterDefenseHitPoints")?,
             district_xp2: collection("Districts_XP2", "DistrictType")?,
+            district_canal: values(rules, "Districts_XP2", "Canal")?,
             district_range: values(rules, "Districts_XP2", "AttackRange")?
                 .into_iter()
                 .map(|n| n.ok_or(Error::Unsupported("Districts_XP2.AttackRange")))
@@ -1629,8 +1631,27 @@ fn unit_is_combat(
 }
 
 impl Definitions {
-    /// Current native District.IsInternalOnly property, retaining the same
-    /// authenticated initialized definition index used by combat queries.
+    /// Current optional District_XP2.Canal property. An absent XP2 row
+    /// takes the source null-definition branch.
+    pub fn district_is_canal(
+        &self,
+        state: &LoadedState,
+        district_hash: u32,
+    ) -> Result<bool, Error> {
+        if state.binding() != &self.binding {
+            return Err(Error::ConfigurationIdentity);
+        }
+        let Some(index) = self.district_xp2.find_index(district_hash) else {
+            return Ok(false);
+        };
+        self.district_canal
+            .get(index)
+            .copied()
+            .flatten()
+            .map(|n| n != 0)
+            .ok_or(Error::Unsupported("current District_XP2.Canal definition"))
+    }
+    /// Current native District.IsInternalOnly property at its authenticated index.
     pub fn district_is_internal_only(
         &self,
         state: &LoadedState,

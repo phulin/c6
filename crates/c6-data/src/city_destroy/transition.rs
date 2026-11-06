@@ -17,7 +17,6 @@ pub trait Context {
     fn world_builder_active(&self) -> Result<bool, String>;
     fn mark_name_unused(&mut self, city: ComponentId) -> Result<(), String>;
     fn alive_major_ids(&self) -> Result<&[i32], String>;
-    fn remove_governor(&mut self, owner: i32, city: ComponentId) -> Result<(), String>;
     fn remove_improvement_placement(&mut self, plot: u32) -> Result<(), String>;
     fn remove_buildings(&mut self, city: ComponentId) -> Result<(), String>;
     fn is_shutting_down(&self) -> Result<bool, String>;
@@ -27,7 +26,7 @@ pub trait Context {
     fn district_is_canal(&self, district: ComponentId) -> Result<bool, String>;
     fn remove_canal_domain(&mut self, plot: u32) -> Result<(), String>;
     /// Destruction validation reads the same pool's actual logging priority.
-    fn destroy_district_lifetime(&mut self, district: ComponentId) -> Result<(), String>;
+    fn logging_priority(&self) -> Result<i32, String>;
     fn remove_improvement(&mut self, plot: u32) -> Result<(), String>;
     fn report_city_removed(&mut self, city: ComponentId, event: u32) -> Result<(), String>;
     fn clear_city_plots(&mut self, city: ComponentId) -> Result<(), String>;
@@ -72,6 +71,35 @@ fn purchased(state: &LoadedState, city: ComponentId) -> Vec<u32> {
                 .map(|_| i as u32)
         })
         .collect()
+}
+
+fn district_exists(state: &LoadedState, owner: i32, id: u32) -> Result<bool, Error> {
+    use c6_core::loaded_state::district_initialization::DistrictError;
+    match state.district(owner, id) {
+        Ok(_) => Ok(true),
+        Err(DistrictError::MissingDistrict { .. }) => {
+            let player = state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.header.owner == owner)
+                .ok_or_else(|| err("District owner", "missing"))?;
+            if player
+                .districts
+                .records
+                .entries
+                .iter()
+                .any(|row| row.index as u32 == id & 0xffff)
+            {
+                return Err(err(
+                    "District list identity",
+                    "native low-slot generation mismatch",
+                ));
+            }
+            Ok(false)
+        }
+        Err(error) => Err(err("District lookup", error)),
+    }
 }
 
 pub fn destroy_for_transfer(
@@ -123,7 +151,8 @@ fn destroy(
     }
     let major_ids = call("AliveMajorIDs", context.alive_major_ids())?.to_vec();
     for owner in major_ids {
-        call("remove governor", context.remove_governor(owner, city))?;
+        super::remove_governor_from_city(context.state(), owner, city)
+            .map_err(|e| err("remove governor", e))?;
     }
     // Native rereads the live District list while traversing its numeric index.
     let mut index = 0;
@@ -140,7 +169,7 @@ fn destroy(
             component_type: 3,
             id,
         };
-        if context.state().district(owner, id).is_ok() {
+        if district_exists(context.state(), owner, id)? {
             super::forced_unit_rebase(context.state(), district)
                 .map_err(|e| err("forced District child rebase", e))?;
         }
@@ -199,7 +228,7 @@ fn destroy(
                 component_type: 3,
                 id,
             };
-            if context.state().district(owner, id).is_err() {
+            if !district_exists(context.state(), owner, id)? {
                 context
                     .state_mut()
                     .city_mut(owner, city.id)
@@ -262,10 +291,9 @@ fn destroy(
             if let Some(at) = ids.iter().position(|v| *v == id) {
                 ids.remove(at);
             }
-            call(
-                "District lifetime",
-                context.destroy_district_lifetime(district),
-            )?;
+            let priority = call("GameEffects logging priority", context.logging_priority())?;
+            super::district_lifetime(context.state(), district, priority)
+                .map_err(|e| err("District lifetime", e))?;
             let scalars = RetiredDistrictScalars::before_registry_remove(context.state(), district)
                 .map_err(|e| err("District residual scalars", e))?;
             let records = &mut context

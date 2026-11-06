@@ -3,6 +3,7 @@
 //! Positive unsupported components fail before silently discarding gameplay.
 pub mod callbacks;
 pub mod effects;
+pub mod lifetime;
 pub mod requirements;
 pub mod transition;
 use c6_core::{loaded_state::LoadedState, unit::ComponentId};
@@ -248,6 +249,49 @@ pub fn forced_unit_rebase(state: &LoadedState, parent: ComponentId) -> Result<()
         {
             return Err(Error::Missing("live child Unit forced rebase"));
         }
+    }
+    Ok(())
+}
+
+/// Player.Governors.RemoveGovernorFromCity is inert when the current owner has
+/// no governor assigned to this exact City. Positive removal requires governor
+/// pressure/establishment effects and is never treated as an empty callback.
+pub fn remove_governor_from_city(
+    state: &LoadedState,
+    owner: i32,
+    city: ComponentId,
+) -> Result<(), Error> {
+    let player = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == owner)
+        .ok_or(Error::Missing("City destruction Governor owner"))?;
+    if player.governors.entries.iter().any(|entry| {
+        let assigned = &entry.governor.assigned_city;
+        assigned.owner == city.owner && assigned.id == city.id
+    }) {
+        return Err(Error::Missing("assigned Governor removal effects"));
+    }
+    Ok(())
+}
+
+/// DistrictD1 validates references only with logging priority>=3; remaining
+/// scalar/container FAuto destructors unregister sync metadata and free owned
+/// storage. The transition drops that storage at its immediately following
+/// canonical recycler removal, after capturing the reached residual scalars.
+pub fn district_lifetime(
+    state: &LoadedState,
+    district: ComponentId,
+    logging_priority: i32,
+) -> Result<(), Error> {
+    state
+        .district(i32::from(district.owner), district.id)
+        .map_err(Error::District)?;
+    if logging_priority >= 3 {
+        return Err(Error::Missing(
+            "District destruction diagnostic reference validation",
+        ));
     }
     Ok(())
 }

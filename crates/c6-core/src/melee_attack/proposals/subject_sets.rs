@@ -271,6 +271,18 @@ impl Runtime {
             _ => None,
         }
     }
+    /// Logical strong subject ownership remaining after a factory releases
+    /// its cached modifier object. Expired requirements/sets do not retain it.
+    pub fn retains_modifier_object(&self, handle: u64) -> bool {
+        let subject = Subject::ModifierObject(handle);
+        self.requirements
+            .iter()
+            .any(|r| r.references != 0 && r.subject == subject)
+            || self
+                .sets
+                .iter()
+                .any(|r| r.alive && r.references != 0 && r.subject == subject)
+    }
     pub fn requirement_subject(&self, label: u64) -> Option<Subject> {
         self.requirements
             .iter()
