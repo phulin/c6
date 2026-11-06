@@ -465,6 +465,33 @@ impl<P> Services<P> for Current<'_> {
                     argument
                 },
             });
+        if event == 0xe5b20b82 {
+            // OnImprovementAddedToMap (call return 27bcc05) publishes the center's
+            // improvement contribution before RestoreVisualState updates its
+            // visibility layers. The nonnull camp definition reaches
+            // GetPlayerBonusYieldFromModifiers even on an unowned plot: its
+            // temporary PlotYields instance consumes a canonical identity.
+            let p = &state.world().map().plots[plot];
+            if p.improvement_hash != self.camp_hash
+                || p.improvement_owner != -1
+                || p.city_attributes
+                    .as_ref()
+                    .is_some_and(|a| a.player != -1 || a.owning_city != u32::MAX)
+            {
+                return Err(Error::Unsupported("camp added report owning city"));
+            }
+            let mut territory = self.tiles.territory.write().map_err(|error| {
+                backend.last_error = Some(format!("camp added report territory: {error:?}"));
+                Error::Unsupported("camp added report mutable territory")
+            })?;
+            crate::loaded_actions::pillage::reporting::temporary_plot_yields(
+                &mut territory,
+                plot as u32,
+                None,
+                self.camp_index,
+            )
+            .map_err(Error::Unsupported)?;
+        }
         Ok(())
     }
     fn behavior_threshold(
