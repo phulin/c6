@@ -2,8 +2,15 @@
 //! they do not prevent other civic or technology definitions from being used.
 use super::Kind;
 use crate::{registry::linux_type_hash, Database, Row, Rules, SqlValue};
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Effect {
+    TradeCapacity,
+    GovernorPoints,
+    ReligiousTourismReduction,
+}
 #[derive(Clone, Debug)]
 pub struct Recipe {
+    pub effect: Effect,
     pub id: Vec<u8>,
     pub amount: i32,
 }
@@ -93,9 +100,22 @@ fn compile(db: &Database, kind: Kind, name: &[u8]) -> Result<Vec<Recipe>, String
             .rows()
             .find(|r| text(*r, "ModifierType").ok() == text(row, "ModifierType").ok())
             .ok_or("research DynamicModifier")?;
-        if text(dynamic, "CollectionType")? != b"COLLECTION_OWNER"
-            || text(dynamic, "EffectType")? != b"EFFECT_ADJUST_TRADE_ROUTE_CAPACITY"
-        {
+        let (effect, parameter) = match text(dynamic, "EffectType")? {
+            b"EFFECT_ADJUST_TRADE_ROUTE_CAPACITY" => (Effect::TradeCapacity, b"Amount".as_slice()),
+            b"EFFECT_ADJUST_PLAYER_GOVERNOR_POINTS" => {
+                (Effect::GovernorPoints, b"Delta".as_slice())
+            }
+            b"EFFECT_ADJUST_PLAYER_RELIGIOUS_TOURISM_REDUCTION" => {
+                (Effect::ReligiousTourismReduction, b"Modifier".as_slice())
+            }
+            _ => {
+                return Err(format!(
+                    "unsupported research modifier {}",
+                    String::from_utf8_lossy(&id)
+                ))
+            }
+        };
+        if text(dynamic, "CollectionType")? != b"COLLECTION_OWNER" {
             return Err(format!(
                 "unsupported research modifier {}",
                 String::from_utf8_lossy(&id)
@@ -106,7 +126,7 @@ fn compile(db: &Database, kind: Kind, name: &[u8]) -> Result<Vec<Recipe>, String
             .rows()
             .filter(|r| text(*r, "ModifierId").ok() == Some(id.as_slice()))
         {
-            if text(argument, "Name")? == b"Amount" {
+            if text(argument, "Name")? == parameter {
                 if text(argument, "Type")? != b"ARGTYPE_IDENTITY" {
                     return Err("dynamic research Amount".into());
                 }
@@ -116,7 +136,7 @@ fn compile(db: &Database, kind: Kind, name: &[u8]) -> Result<Vec<Recipe>, String
                     .map_err(|_| "research Amount integer")?;
             }
         }
-        out.push(Recipe { id, amount });
+        out.push(Recipe { id, effect, amount });
     }
     Ok(out)
 }
@@ -151,6 +171,38 @@ mod tests {
         );
         assert_eq!(compile(&db, Kind::Technology, b"T").unwrap()[0].amount, -2);
         assert!(compile(&db, Kind::Civic, b"EMPTY").unwrap().is_empty());
+    }
+    #[test]
+    fn research_counter_families_use_distinct_native_parameter_names() {
+        for (native, parameter, family) in [
+            (
+                "EFFECT_ADJUST_PLAYER_GOVERNOR_POINTS",
+                "Delta",
+                Effect::GovernorPoints,
+            ),
+            (
+                "EFFECT_ADJUST_PLAYER_RELIGIOUS_TOURISM_REDUCTION",
+                "Modifier",
+                Effect::ReligiousTourismReduction,
+            ),
+        ] {
+            let db = database(&format!("UPDATE DynamicModifiers SET EffectType='{native}'; UPDATE ModifierArguments SET Name='{parameter}';"));
+            let recipes = compile(&db, Kind::Civic, b"C").unwrap();
+            assert_eq!(
+                recipes
+                    .iter()
+                    .map(|r| (r.effect, r.amount))
+                    .collect::<Vec<_>>(),
+                [(family, 1), (family, -2)]
+            );
+            let db = database(&format!(
+                "UPDATE DynamicModifiers SET EffectType='{native}';"
+            ));
+            assert!(compile(&db, Kind::Civic, b"C")
+                .unwrap()
+                .iter()
+                .all(|r| r.amount == 0));
+        }
     }
     #[test]
     fn research_attachment_rejects_unimplemented_requirements_flags_and_effects() {

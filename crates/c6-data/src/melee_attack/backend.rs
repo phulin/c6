@@ -246,6 +246,13 @@ pub enum EffectState {
         context: u64,
         amount: i32,
     },
+    /// Ordinary owner research effects; the governor leaf is reached only for
+    /// a byte-verified nonmajor owner and has no counter/reporting effects.
+    ResearchCounter {
+        context: u64,
+        effect: crate::research::attached_modifiers::Effect,
+        amount: i32,
+    },
     TradeRouteCapacity {
         context: u64,
         amount: i32,
@@ -1125,6 +1132,7 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
         let context = match self.effects.effect(effect).map_err(Error::Query)? {
             EffectState::Player { context, .. } | EffectState::Alliance { context, .. } => *context,
             EffectState::City { .. }
+            | EffectState::ResearchCounter { .. }
             | EffectState::TradeRouteCapacity { .. }
             | EffectState::GovernmentBonus { .. } => {
                 return Err(Error::Query(QueryError::Unsupported(
@@ -1147,6 +1155,7 @@ impl<O: loaded_upkeep::OperationReports, R: Requirements> proposals::collection_
             .ok_or(Error::Query(QueryError::MissingEffect(effect)))?;
         match entry {
             EffectState::City { .. }
+            | EffectState::ResearchCounter { .. }
             | EffectState::TradeRouteCapacity { .. }
             | EffectState::GovernmentBonus { .. } => Err(Error::Query(QueryError::Unsupported(
                 "City effect in strength dispatcher",

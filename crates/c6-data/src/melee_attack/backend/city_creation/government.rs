@@ -147,6 +147,7 @@ pub struct ResearchTradeCapacityModifier<'a> {
     pub hash: u32,
     pub definition: &'a [u8],
     pub amount: i32,
+    pub effect: crate::research::attached_modifiers::Effect,
     pub applied: bool,
     pub owner_destroyed_subscription: bool,
     pub tracked_destroyed_subscription: bool,
@@ -239,16 +240,33 @@ impl EffectRuntime {
     pub fn research_trade_capacity_modifiers(
         &self,
     ) -> Result<Vec<ResearchTradeCapacityModifier<'_>>, Error> {
+        Ok(self
+            .research_modifiers()?
+            .into_iter()
+            .filter(|r| r.effect == crate::research::attached_modifiers::Effect::TradeCapacity)
+            .collect())
+    }
+    /// All supported research modifier families share the same instance order,
+    /// affected list and owner/tracked destruction subscriptions.
+    pub fn research_modifiers(&self) -> Result<Vec<ResearchTradeCapacityModifier<'_>>, Error> {
         let creation = self
             .city_creation
             .as_ref()
             .ok_or(Error::Missing("current shared modifier lifecycle"))?;
         let mut out = Vec::new();
         for row in &creation.government.flat {
-            let super::super::EffectState::TradeRouteCapacity { context, amount } =
-                *self.effect(row.effect).map_err(Error::Query)?
-            else {
-                continue;
+            let (context, amount, effect) = match *self.effect(row.effect).map_err(Error::Query)? {
+                super::super::EffectState::TradeRouteCapacity { context, amount } => (
+                    context,
+                    amount,
+                    crate::research::attached_modifiers::Effect::TradeCapacity,
+                ),
+                super::super::EffectState::ResearchCounter {
+                    context,
+                    effect,
+                    amount,
+                } => (context, amount, effect),
+                _ => continue,
             };
             let object = self.object(context).map_err(Error::Query)?;
             let super::super::ContextObject::Research { owner, kind, hash } = object.kind else {
@@ -275,6 +293,7 @@ impl EffectRuntime {
                 hash,
                 definition,
                 amount,
+                effect,
                 applied: row.applied,
                 owner_destroyed_subscription: lifecycle
                     .destroyed
@@ -454,17 +473,32 @@ impl EffectRuntime {
             .applied = true;
         Ok(())
     }
-    pub fn attach_research_trade_capacity(
+    #[allow(clippy::too_many_arguments)]
+    pub fn attach_research_modifiers(
         &mut self,
         state: &mut LoadedState,
         owner: i32,
         kind: crate::research::Kind,
         hash: u32,
         recipes: &[crate::research::attached_modifiers::Recipe],
+        civilization_levels: &[(i32, u32)],
     ) -> Result<(), Error> {
         self.current_owner(state).map_err(Error::Query)?;
         if recipes.is_empty() {
             return Ok(());
+        }
+        if recipes
+            .iter()
+            .any(|r| r.effect == crate::research::attached_modifiers::Effect::GovernorPoints)
+        {
+            let level = civilization_levels
+                .iter()
+                .find(|r| r.0 == owner)
+                .map(|r| r.1)
+                .ok_or(Error::Missing("current governor player civilization level"))?;
+            if level == 0x253718b0 {
+                return Err(Error::Missing("major governor points: maximum, title messaging and reporting consumers unqualified"));
+            }
         }
         let kind = super::super::ContextObject::Research { owner, kind, hash };
         let context = if let Some((h, _)) = self.objects.iter().find(|r| r.1.kind == kind) {
@@ -495,9 +529,18 @@ impl EffectRuntime {
                 state,
                 context,
                 &recipe.id,
-                super::super::EffectState::TradeRouteCapacity {
-                    context,
-                    amount: recipe.amount,
+                match recipe.effect {
+                    crate::research::attached_modifiers::Effect::TradeCapacity => {
+                        super::super::EffectState::TradeRouteCapacity {
+                            context,
+                            amount: recipe.amount,
+                        }
+                    }
+                    effect => super::super::EffectState::ResearchCounter {
+                        context,
+                        effect,
+                        amount: recipe.amount,
+                    },
                 },
             )?;
         }
@@ -509,6 +552,40 @@ impl EffectRuntime {
         effect: u64,
         remove: bool,
     ) -> Result<(), Error> {
+        if let super::super::EffectState::ResearchCounter {
+            context,
+            effect: counter,
+            amount,
+        } = *self.effect(effect).map_err(Error::Query)?
+        {
+            let super::super::ContextObject::Research { owner, .. } =
+                self.object(context).map_err(Error::Query)?.kind
+            else {
+                return Err(Error::Missing("research counter Player interface"));
+            };
+            match counter {
+                crate::research::attached_modifiers::Effect::GovernorPoints => {
+                    // ChangeGovernorPoints returns before all writes/reporting for !IsMajor.
+                    // Major owners are rejected by the acquisition preflight.
+                }
+                crate::research::attached_modifiers::Effect::ReligiousTourismReduction => {
+                    let culture = state
+                        .research_components_mut(owner)
+                        .map_err(|_| Error::Missing("current religious tourism Culture"))?
+                        .1;
+                    culture.religious_tourism_reduction =
+                        culture.religious_tourism_reduction.wrapping_add(if remove {
+                            amount.wrapping_neg()
+                        } else {
+                            amount
+                        });
+                }
+                crate::research::attached_modifiers::Effect::TradeCapacity => {
+                    return Err(Error::Missing("research counter effect family"))
+                }
+            }
+            return Ok(());
+        }
         if let super::super::EffectState::TradeRouteCapacity { context, amount } =
             *self.effect(effect).map_err(Error::Query)?
         {

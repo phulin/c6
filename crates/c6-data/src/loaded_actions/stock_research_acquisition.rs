@@ -684,7 +684,11 @@ impl<P> Effects<'_, '_, P> {
                     let (hash, recipes) = definitions
                         .attached_modifiers(kind, index)
                         .map_err(source_failure)?;
-                    if recipes.iter().any(|r| r.amount != 0) && !capacity_report_cache_only {
+                    if recipes.iter().any(|r| {
+                        r.effect == research::attached_modifiers::Effect::TradeCapacity
+                            && r.amount != 0
+                    }) && !capacity_report_cache_only
+                    {
                         return Err(source_failure(
                             "unqualified trade-capacity reporting consumers".into(),
                         ));
@@ -692,8 +696,13 @@ impl<P> Effects<'_, '_, P> {
                     if !recipes.is_empty() {
                         self.backend
                             .with_modifier_owners(|_, owners| {
-                                owners.effects.attach_research_trade_capacity(
-                                    state, player, kind, hash, recipes,
+                                owners.effects.attach_research_modifiers(
+                                    state,
+                                    player,
+                                    kind,
+                                    hash,
+                                    recipes,
+                                    &self.runtime.civilization_levels,
                                 )
                             })
                             .map_err(|e| source_failure(format!("{e:?}")))?
