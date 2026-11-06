@@ -11,7 +11,13 @@ pub enum PlayerSubscriber {
 pub enum GameSubscriber {
     Gossip,
 }
-/// Explicit stock report dispatcher scope, with no added synchronous consumers.
+/// Stock informational output scope, with no added synchronous consumers.
+#[derive(Clone, Copy, Debug)]
+pub enum RouteUpgradeNoticeScope {
+    /// Actual stock default factory, plain resources and no gameplay consumers.
+    StockPlainHeadlessExternalPoliciesNoAddedConsumers,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum CityReportScope {
     StockHeadlessExternalPoliciesNoAddedConsumers,
@@ -28,6 +34,7 @@ pub struct Inputs {
     game: Vec<GameSubscriber>,
     routes: Option<RouteInputs>,
     city_reports: Option<CityReportScope>,
+    route_upgrade_notice: Option<RouteUpgradeNoticeScope>,
 }
 struct RouteInputs {
     definitions: crate::found_city::routes::Definitions,
@@ -35,6 +42,13 @@ struct RouteInputs {
     terrains: Vec<(u32, bool)>,
 }
 impl Inputs {
+    /// Qualify the default manual 5c608b27 notification path with stock plain
+    /// resources, default callbacks and no added gameplay/report consumers.
+    pub fn with_route_upgrade_notice(mut self, scope: RouteUpgradeNoticeScope) -> Self {
+        self.route_upgrade_notice = Some(scope);
+        self
+    }
+
     pub fn with_city_reports(mut self, scope: CityReportScope) -> Self {
         self.city_reports = Some(scope);
         self
@@ -77,6 +91,7 @@ impl Inputs {
             game,
             routes: None,
             city_reports: None,
+            route_upgrade_notice: None,
         })
     }
 }
@@ -201,7 +216,18 @@ impl<'a, P> Runtime<'a, P> {
                                 .ok_or("era route-upgrade capabilities")?
                                 .has(0x1ea085e4)
                             {
-                                return Err("era route-upgrade notification continuation");
+                                match current.inputs.route_upgrade_notice {
+                                    Some(RouteUpgradeNoticeScope::StockPlainHeadlessExternalPoliciesNoAddedConsumers) => {
+                                        // Send2d4b510 creates a manual default notice,
+                                        // sets its target to Player.Trade component(18, id0) and text,
+                                        // then sends it. Qualified stock OnAdd/supersede
+                                        // and added-report consumers have no gameplay or
+                                        // RNG effects; retain only the semantic output.
+                                        self.publish_notice(state, super::Notice::RoutesUpgraded { owner, era: new })
+                                            .map_err(|e| { self.last_error = Some(format!("{e:?}")); "era route-upgrade notice publication" })?;
+                                    }
+                                    None => return Err("era route-upgrade notification continuation"),
+                                }
                             }
                         }
                         self.reached
