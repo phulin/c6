@@ -392,18 +392,8 @@ impl<P, L: Leaves<P>> core::Effects for Context<'_, '_, P, L> {
                 legal_indices: self.backend.pantheon_options(state, owner)?,
             }));
         }
-        if kind == Kind::Barbarian {
-            let result = self.backend.with_action_research(self.research, |backend| {
-                self.leaves.callback(state, backend, owner, kind, full)
-            });
-            result.map_err(|error| {
-                self.backend.last_error = Some(format!("NPC UnitCreated research loan: {error:?}"));
-                Error::Unsupported("NPC UnitCreated research owner")
-            })??;
-        } else {
-            self.leaves
-                .callback(state, self.backend, owner, kind, full)?;
-        }
+        self.leaves
+            .callback(state, self.backend, owner, kind, full)?;
         if kind == Kind::Barbarian && self.leaves.barbarian_reached(state, owner, full)? {
             let mut effects = stock_research::Effects::new(
                 self.backend,
@@ -419,8 +409,14 @@ impl<P, L: Leaves<P>> core::Effects for Context<'_, '_, P, L> {
             }
             .acquire_barbarian_research(owner)
             .map_err(|error| self.fail(error))?;
-            self.leaves
-                .barbarian_after_research(state, self.backend, runtime, owner)?;
+            let result = self.backend.with_action_research(self.research, |backend| {
+                self.leaves
+                    .barbarian_after_research(state, backend, runtime, owner)
+            });
+            result.map_err(|error| {
+                self.backend.last_error = Some(format!("NPC UnitCreated research loan: {error:?}"));
+                Error::Unsupported("NPC UnitCreated research owner")
+            })??;
             return Ok(core::CallbackProgress::Continue);
         }
         if matches!(kind, Kind::Research | Kind::Culture)
