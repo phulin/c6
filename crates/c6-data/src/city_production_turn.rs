@@ -75,6 +75,19 @@ pub type PopulationAssignment<'a> =
 /// All methods are mandatory: production cannot silently omit legality,
 /// strategic-resource consumption, completion effects or synchronous reports.
 pub trait Effects {
+    /// Culture acquisition resumes the existing territory owner and callbacks.
+    /// Paid-purchase costs, reports and policy selection are separate paths.
+    fn annex_culture_plot(
+        &mut self,
+        _state: &mut LoadedState,
+        _owner: i32,
+        _city: u32,
+        _plot: u32,
+    ) -> Result<(), crate::city_turn::Error> {
+        Err(crate::city_turn::Error::Unsupported(
+            "current culture annexation services",
+        ))
+    }
     /// Borrow the same persistent population/religion callback owner during
     /// city activation. Missing services remain a partial-transition error.
     fn population_services(&mut self) -> Option<&mut dyn crate::city_turn::PopulationEffects> {

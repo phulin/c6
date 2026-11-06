@@ -92,6 +92,16 @@ impl<P> Effects<'_, '_, '_, P> {
     }
 }
 impl<P> production::Effects for Effects<'_, '_, '_, P> {
+    fn annex_culture_plot(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        plot: u32,
+    ) -> Result<(), crate::city_turn::Error> {
+        self.backend
+            .annex_culture_plot(state, owner, city, plot, None)
+    }
     fn population_services(&mut self) -> Option<&mut dyn crate::city_turn::PopulationEffects> {
         Some(self.backend)
     }

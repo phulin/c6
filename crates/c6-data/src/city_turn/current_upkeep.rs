@@ -66,6 +66,47 @@ impl Current<'_> {
         )
     }
 }
+/// Shared worker definitions for a territory callback that already owns the
+/// mutable territory loan. Queries use that same updated runtime.
+pub struct TerritoryWorkers<'a> {
+    pub definitions: &'a yield_calculation::Definitions,
+    pub workers: &'a upkeep::citizens::Definitions,
+    pub appeal: &'a appeal::Definitions,
+    pub fallout: &'a [i32],
+    pub drought_ids: Option<&'a [i32]>,
+    pub capabilities: &'a c6_core::game_capabilities::Membership,
+}
+impl TerritoryWorkers<'_> {
+    pub fn reallocate(
+        &self,
+        state: &mut LoadedState,
+        territory: &crate::city_territory::Runtime,
+        owner: i32,
+        city: u32,
+    ) -> Result<(), CityError> {
+        let current = Current {
+            territory,
+            drought_ids: self.drought_ids,
+            trade: None,
+            capabilities: self.capabilities,
+            current_era_index: None,
+        };
+        let mut calls = Vec::new();
+        upkeep::citizens::reallocate(
+            state,
+            owner,
+            city,
+            &mut workers::Context {
+                definitions: self.definitions,
+                current: &current,
+                workers: self.workers,
+                appeal: self.appeal,
+                fallout: self.fallout,
+                calls: &mut calls,
+            },
+        )
+    }
+}
 pub struct Context<'a, E> {
     pub production: &'a mut E,
     pub definitions: &'a yield_calculation::Definitions,
@@ -388,12 +429,12 @@ impl<E: production::Effects> upkeep::culture::Effects for Context<'_, E> {
     }
     fn annex_plot(
         &mut self,
-        _: &mut LoadedState,
-        _: i32,
-        _: u32,
-        _: u32,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        plot: u32,
     ) -> std::result::Result<(), CityError> {
-        self.missing("positive culture annexation continuation")
+        self.production.annex_culture_plot(state, owner, city, plot)
     }
 }
 impl<E: production::Effects> appeal::Effects for Context<'_, E> {

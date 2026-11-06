@@ -11,7 +11,31 @@ use c6_core::{
     unit::OperationParameters,
 };
 
+/// Territory continuation borrowing the same retained owners as the Session.
+pub trait CultureAnnexation<P> {
+    fn annex(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, P>,
+        owner: i32,
+        city: u32,
+        plot: u32,
+        sight: Option<&mut crate::unit_sight_state::Runtime>,
+    ) -> Result<(), String>;
+}
 pub trait Services<P> {
+    fn annex_culture_plot(
+        &mut self,
+        _state: &mut LoadedState,
+        _backend: &mut Runtime<'_, P>,
+        _owner: i32,
+        _city: u32,
+        _plot: u32,
+        _sight: Option<&mut crate::unit_sight_state::Runtime>,
+    ) -> Result<(), String> {
+        Err("current culture annexation services".into())
+    }
+
     fn population_trade_queries(
         &mut self,
         _state: &LoadedState,
@@ -97,6 +121,28 @@ impl Services<OperationParameters> for Current<'_, '_, '_> {
     }
 }
 impl<'a, P> Runtime<'a, P> {
+    pub(crate) fn annex_culture_plot(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        plot: u32,
+        sight: Option<&mut crate::unit_sight_state::Runtime>,
+    ) -> Result<(), crate::city_turn::Error> {
+        let mut services =
+            self.queued_operations
+                .take()
+                .ok_or(crate::city_turn::Error::Unsupported(
+                    "current culture annexation services",
+                ))?;
+        let result = services.annex_culture_plot(state, self, owner, city, plot, sight);
+        self.queued_operations = Some(services);
+        result.map_err(|error| {
+            self.last_error = Some(format!("Culture AnnexPlot: {error}"));
+            crate::city_turn::Error::Unsupported("current culture AnnexPlot continuation")
+        })
+    }
+
     pub fn bind_queued_operations(
         &mut self,
         state: &LoadedState,
@@ -153,6 +199,7 @@ impl<'a, P> Runtime<'a, P> {
 /// Persistent existing trade orders use the same queue and placement pipeline
 /// as other automation. This never selects a destination or creates an order.
 pub struct Trade<'s, 'a, 'r> {
+    pub annexation: Option<&'s mut dyn CultureAnnexation<OperationParameters>>,
     pub current: Current<'s, 'a, 'r>,
     pub definitions: &'s actions::trade_route_actions::Definitions,
     pub path_definitions: &'s actions::trade_route_actions::path::Definitions,
@@ -166,6 +213,21 @@ pub struct Trade<'s, 'a, 'r> {
     pub trade_search: &'s std::cell::RefCell<c6_core::pathfinder::TwoLayer>,
 }
 impl Services<OperationParameters> for Trade<'_, '_, '_> {
+    fn annex_culture_plot(
+        &mut self,
+        state: &mut LoadedState,
+        backend: &mut Runtime<'_, OperationParameters>,
+        owner: i32,
+        city: u32,
+        plot: u32,
+        sight: Option<&mut crate::unit_sight_state::Runtime>,
+    ) -> Result<(), String> {
+        self.annexation
+            .as_mut()
+            .ok_or("current culture annexation services")?
+            .annex(state, backend, owner, city, plot, sight)
+    }
+
     fn population_trade_queries(&mut self, state: &LoadedState, owner: i32) -> Result<(), String> {
         let graph = state
             .trade_graph()

@@ -2,6 +2,7 @@
 //! Unsaved plot attributes and PlotYields objects remain explicit current state.
 pub mod buyable;
 pub mod lifecycle;
+pub mod stock;
 use crate::{
     loaded_actions::city_range_attack, registry::linux_type_hash, unit_sight_state, Rules,
 };

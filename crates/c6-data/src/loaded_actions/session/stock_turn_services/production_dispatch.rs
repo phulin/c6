@@ -23,6 +23,15 @@ macro_rules! dispatch {
     };
 }
 impl<P> production::Effects for Effects<'_, '_, '_, '_, '_, P> {
+    fn annex_culture_plot(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        city: u32,
+        plot: u32,
+    ) -> Result<(), crate::city_turn::Error> {
+        dispatch!(self, annex_culture_plot(state, owner, city, plot))
+    }
     fn population_services(&mut self) -> Option<&mut dyn crate::city_turn::PopulationEffects> {
         dispatch!(self, population_services())
     }
