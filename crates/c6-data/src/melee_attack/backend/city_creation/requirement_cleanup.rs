@@ -116,6 +116,13 @@ impl State {
     }
 }
 impl EffectRuntime {
+    /// Whether this owner has imported the canonical age/park source rings.
+    pub fn has_requirement_cleanup(&self) -> bool {
+        self.city_creation
+            .as_ref()
+            .is_some_and(|creation| creation.requirement_cleanup.installed)
+    }
+
     /// Concrete OnInitialize registers before the first Test. A newly allocated
     /// requirement supplies a fresh logical listener label in the same ring.
     pub fn subscribe_requirement_cleanup(
