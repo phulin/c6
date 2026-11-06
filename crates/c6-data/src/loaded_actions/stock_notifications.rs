@@ -12,6 +12,7 @@ use super::{
 };
 #[path = "stock_activation.rs"]
 mod activation;
+mod capture_owners;
 pub mod city_production;
 #[path = "stock_combat.rs"]
 pub mod combat;

@@ -32,6 +32,7 @@ pub struct State<'a> {
     pub melee_queries: Option<&'a dyn melee::stock::MovementQueries>,
     pub(super) inputs: Option<backend::Inputs>,
     pub(super) bindings: Option<resolve::completion::stock::Bindings>,
+    pub(super) capture_owners: Option<super::capture_owners::CombatLifecycleOwners>,
     pub observer: Option<i32>,
     pub(crate) configuration: Option<crate::loaded_actions::configuration::RawGameConfiguration>,
     pub promotion: &'a dyn PromotionQuery,
@@ -67,6 +68,7 @@ impl<'a> State<'a> {
             melee_queries: None,
             inputs: None,
             bindings: None,
+            capture_owners: None,
             observer,
             configuration: None,
             promotion,
@@ -101,6 +103,7 @@ impl<'a> State<'a> {
                 origin,
                 inputs: Some(inputs),
                 bindings: Some(bindings),
+                capture_owners: None,
                 observer,
                 promotion,
                 experience_events: Vec::new(),
@@ -278,7 +281,11 @@ impl<'a, P> Runtime<'a, P> {
             .combat
             .take()
             .ok_or_else(|| missing("combat services"))?;
-        if combat.inputs.is_none() || combat.bindings.is_none() || combat.configuration.is_none() {
+        if combat.inputs.is_none()
+            || combat.bindings.is_none()
+            || combat.configuration.is_none()
+            || combat.capture_owners.is_some()
+        {
             self.combat = Some(combat);
             return Err(missing(
                 "melee action services unavailable in cleanup context",
@@ -294,6 +301,10 @@ impl<'a, P> Runtime<'a, P> {
             collections,
             unit_created,
         } = owners;
+        combat.capture_owners = Some(super::capture_owners::CombatLifecycleOwners {
+            collections,
+            unit_created,
+        });
         let backend_inputs = combat
             .inputs
             .take()
@@ -345,6 +356,13 @@ impl<'a, P> Runtime<'a, P> {
         };
         let ((), requirements, effects, backend_inputs) = backend.into_parts();
         combat.inputs = Some(backend_inputs);
+        let super::capture_owners::CombatLifecycleOwners {
+            collections,
+            unit_created,
+        } = combat
+            .capture_owners
+            .take()
+            .expect("combat lifecycle owners retained across Result");
         self.modifier_owners = Some(ModifierOwners {
             effects,
             requirements,
