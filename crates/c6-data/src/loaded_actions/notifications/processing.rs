@@ -329,6 +329,8 @@ impl<'a, B: Backend> Provider<'a, B> {
         .ok_or(Error::Unsupported("notification expiry virtual binding"))?;
         let expected = match record.type_hash {
             choose_tech::TYPE_HASH => Some(choose_tech::VTABLE_ADDRESSPOINT),
+            0xdac0_133b => Some(0x3af5950), // ConsiderRazeCity
+
             0x40fb81ed => Some(0x3af4b80),
             0x9456ed4a => Some(0x3af4ec0),
             super::governors::TYPE_HASH => Some(super::governors::VTABLE_ADDRESSPOINT),
@@ -355,6 +357,23 @@ impl<'a, B: Backend> Provider<'a, B> {
         }
         let owner = i32::from(record.id.owner);
         let survives = match record.type_hash {
+            // ConsiderRazeCity.IsExpired2d2b760 scans ALL current owned
+            // Cities; its saved Component is not the pending-choice identity.
+            // Keep clears the native marker before normal blocker refreshes.
+            0xdac0_133b => self
+                .state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.header.owner == owner)
+                .ok_or(Error::Unsupported(
+                    "current disposition notification Player",
+                ))?
+                .cities
+                .records
+                .entries
+                .iter()
+                .any(|c| c.value.header.just_conquered_from != -1),
             0x9456ed4a => self.backend.pantheon_needed(self.state, owner)?,
             super::governors::TYPE_HASH => !super::governors::is_expired(self.state, owner)?,
             // ChooseCityProduction::IsExpired2d29800. This only queries the
@@ -766,7 +785,9 @@ impl<B: Backend> Notifications for Provider<'_, B> {
                 .ok_or(Error::Unsupported("notification phase virtual binding"))?;
             match vtable {
                 value if base_expiry_and_phase(value) => Ok(true),
-                command_units::VTABLE_ADDRESSPOINT => s
+                // ConsiderRazeCity.IsValidForPhase2d2b820 uses tactical
+                // permission, independently of the Keep command strategic bit.
+                command_units::VTABLE_ADDRESSPOINT | 0x3af5950 => s
                     .inputs
                     .cities
                     .phases
