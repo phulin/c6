@@ -651,6 +651,10 @@ pub(crate) fn active_international_on_graph(
     {
         return Err(Error::Requires("peaceful international yields"));
     }
+    // 2c0ad70 reads destination ally/suzerain additions from the origin
+    // player's Trade, while 2be4120 reads destination multipliers from the
+    // destination player. All four relationship getters (2b967f0/2b968b0/
+    // 2b96970/2b96a30) return only their table value or zero, without defaults.
     if source
         .culture
         .dominant_over
