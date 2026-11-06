@@ -41,8 +41,24 @@ pub struct Modifier {
     pub tracked: Vec<Subject>,
     pub applied: Vec<u64>,
 }
+/// Current concrete DiplomacySimpleEffect parameters for a first activation.
+/// Values are integer effect parameters; the tracker stores Q8 values.
+#[derive(Debug)]
+pub struct Activation {
+    pub label: u64,
+    pub definition: Vec<u8>,
+    pub initial: i32,
+    pub maximum: i32,
+    pub increment: i32,
+    pub increment_turns: i32,
+    pub cooldown_turns: i32,
+    pub reduction: i32,
+    pub name: Vec<u8>,
+    pub visibility: i32,
+}
 pub struct Modifiers {
     stamp: ActionStamp,
+    activations: Vec<Activation>,
     modifiers: Vec<Modifier>,
     objects: Vec<Object>,
 }
@@ -68,6 +84,7 @@ impl Modifiers {
         }
         let result = Self {
             stamp: state.action_stamp(),
+            activations: Vec::new(),
             modifiers,
             objects,
         };
@@ -86,6 +103,21 @@ impl Modifiers {
             }
         }
         Ok(result)
+    }
+    /// Bind parameters for source-qualified simple effects; other positive
+    /// effect families still fail explicitly when reached.
+    pub fn with_activations(mut self, activations: Vec<Activation>) -> Result<Self, Error> {
+        for (at, activation) in activations.iter().enumerate() {
+            if activations[..at]
+                .iter()
+                .any(|a| a.label == activation.label)
+                || !self.modifiers.iter().any(|m| m.label == activation.label)
+            {
+                return Err(Error::Missing("diplomacy activation receiver"));
+            }
+        }
+        self.activations = activations;
+        Ok(self)
     }
     fn object(&self, label: u64) -> Result<&Object, Error> {
         self.objects
@@ -129,13 +161,29 @@ impl modifiers::Context for Apply<'_> {
             .ok_or(Error::Missing("current diplomacy subject set"))
     }
     fn ensure_applied_subject(&mut self) -> Result<(), Error> {
-        Err(Error::Missing("positive diplomacy modifier application"))
+        let object = self.owner.modifiers[self.modifier].tracked[self.subject].object;
+        let key = self.owner.key(object)?;
+        let at = self.owner.modifiers[self.modifier]
+            .applied
+            .partition_point(|p| self.owner.key(*p).is_ok_and(|k| k < key));
+        if self.owner.modifiers[self.modifier]
+            .applied
+            .get(at)
+            .is_none_or(|p| self.owner.key(*p).ok() != Some(key))
+        {
+            self.owner.modifiers[self.modifier]
+                .applied
+                .insert(at, object);
+        }
+        Ok(())
     }
     fn is_repeatable(&self) -> Result<bool, Error> {
         Ok(self.owner.modifiers[self.modifier].repeatable)
     }
     fn apply_effect(&mut self) -> Result<bool, Error> {
-        Err(Error::Missing("positive diplomacy modifier application"))
+        modifiers::apply_effect(self)
+            .map_err(|_| Error::Missing("diplomacy concrete activation"))?;
+        Ok(true)
     }
     fn unsubscribe_subject_requirement(&mut self) -> Result<(), Error> {
         Err(Error::Missing("diplomacy subject impossible-set release"))
@@ -235,6 +283,148 @@ impl modifiers::Context for Apply<'_> {
         // Remaining source path only formats LogModifierDeactivation; no
         // gameplay report, policy call, callback or RNG draw occurs here.
         Ok(())
+    }
+}
+impl modifiers::EffectContext for Apply<'_> {
+    type Error = Error;
+    fn mark_subject_affected(&mut self) -> Result<(), Error> {
+        let m = &self.owner.modifiers[self.modifier];
+        let activation = self
+            .owner
+            .activations
+            .iter()
+            .find(|a| a.label == m.label)
+            .ok_or(Error::Missing("positive diplomacy modifier parameters"))?;
+        let object = m.tracked[self.subject].object;
+        self.owner
+            .objects
+            .iter_mut()
+            .find(|o| o.label == object)
+            .ok_or(Error::Missing("diplomacy affected Player"))?
+            .affected
+            .mark(&activation.definition, m.instance)
+            .map_err(|_| Error::Missing("diplomacy affected order"))
+    }
+    fn suppressed(&self) -> Result<bool, Error> {
+        Ok(self.owner.modifiers[self.modifier].control.suppressed)
+    }
+    fn subject_stack_limit(&self) -> Result<Option<u16>, Error> {
+        Ok(Some(self.owner.modifiers[self.modifier].stack_limit))
+    }
+    fn affected_count(&self) -> Result<i32, Error> {
+        let m = &self.owner.modifiers[self.modifier];
+        let a = self
+            .owner
+            .activations
+            .iter()
+            .find(|a| a.label == m.label)
+            .ok_or(Error::Missing("diplomacy activation parameters"))?;
+        Ok(self
+            .owner
+            .object(m.tracked[self.subject].object)?
+            .affected
+            .count(&a.definition))
+    }
+    fn log_applying(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+    fn log_failed(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+    fn apply_concrete_effect(&mut self) -> Result<bool, Error> {
+        let m = &self.owner.modifiers[self.modifier];
+        let a = self
+            .owner
+            .activations
+            .iter()
+            .find(|a| a.label == m.label)
+            .ok_or(Error::Missing("diplomacy activation parameters"))?;
+        let subject = self.owner.object(m.tracked[self.subject].object)?.owner;
+        if !self.state.player_alive(subject).map_err(Error::State)? && !m.allow_dead {
+            return Ok(true);
+        }
+        let entries = self
+            .state
+            .war_diplomacy_mut(m.owner)
+            .map_err(Error::State)?
+            .blackboard
+            .diplomatic_modifiers
+            .get_mut(usize::try_from(subject).map_err(|_| Error::Missing("diplomacy subject"))?)
+            .ok_or(Error::Missing("diplomacy subject"))?;
+        if entries.windows(2).any(|w| w[0].key >= w[1].key) {
+            return Err(Error::Missing("diplomacy map order"));
+        }
+        let key = m.instance as u32;
+        let at = entries.partition_point(|e| e.key < key);
+        if entries.get(at).is_some_and(|e| e.key == key) {
+            return Err(Error::Missing("existing diplomacy tracker activation"));
+        }
+        // BaseEffect skips Activate when its integer value already equals the
+        // current value (zero for the absent tracker).
+        if a.initial == 0 {
+            return Ok(true);
+        }
+        let tracker = first_tracker(a);
+        entries.insert(
+            at,
+            c6_core::player_diplomacy_blackboard::ModifierEntry { key, tracker },
+        );
+        // SimpleEffect's opinion-table evaluator is omitted at the policy
+        // boundary. The bound effect has no statement flags, so no statement,
+        // MESSAGE_SENT_TURN update, gameplay callback or RNG follows.
+        Ok(true)
+    }
+}
+fn first_tracker(
+    a: &Activation,
+) -> c6_core::player_diplomacy_blackboard::DiplomaticModifierTracker {
+    let initial = a.initial.wrapping_shl(8);
+    let maximum = a.maximum.wrapping_shl(8);
+    let mut increment = a.increment.wrapping_shl(8);
+    let mut reduction = a.reduction.wrapping_shl(8);
+    if (((i64::from(increment) * i64::from(maximum)) >> 8) as i32) < 0 {
+        increment = increment.wrapping_neg();
+    }
+    if (((i64::from(reduction) * i64::from(initial)) >> 8) as i32) > 0 {
+        reduction = reduction.wrapping_neg();
+    }
+    c6_core::player_diplomacy_blackboard::DiplomaticModifierTracker {
+        is_active: true,
+        current_value: initial,
+        initial_value: initial,
+        max_value: maximum,
+        increment,
+        increment_turns: a.increment_turns,
+        cooldown_turns: a.cooldown_turns,
+        accumulation_turn_count: 0,
+        reduction,
+        modifier_name: a.name.clone(),
+        visibility: a.visibility,
+    }
+}
+#[cfg(test)]
+mod activation_tests {
+    use super::*;
+    #[test]
+    fn first_negative_penalty_corrects_increment_and_preserves_reduction() {
+        let a = Activation {
+            label: 1,
+            definition: vec![],
+            initial: -18,
+            maximum: -18,
+            increment: 1,
+            increment_turns: 0,
+            cooldown_turns: 0,
+            reduction: 1,
+            name: b"occupied".to_vec(),
+            visibility: 0,
+        };
+        let t = first_tracker(&a);
+        assert_eq!(
+            (t.current_value, t.increment, t.reduction),
+            (-4608, -256, 256)
+        );
+        assert!(t.is_active);
     }
 }
 impl Continuations for Modifiers {
