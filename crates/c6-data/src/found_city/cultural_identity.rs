@@ -210,7 +210,9 @@ fn capital(state: &LoadedState, owner: i32) -> Result<Option<&City>, Error> {
         .map(|c| &c.value)
         .find(|c| c.header.capital))
 }
-pub(crate) fn identity_for(
+/// Current loyalty rate contributed by one source player, in signed Q8.
+/// Uses the same gameplay queries as conversion trend recalculation.
+pub fn identity_for(
     state: &LoadedState,
     defs: &Definitions,
     cx: &mut impl Context,
@@ -337,7 +339,9 @@ pub(crate) fn identity_for(
     no_nearby_effects(state, source)?;
     Ok(result)
 }
-pub(crate) fn pressure(
+/// Current nearby citizen pressure contribution to loyalty, in signed Q8.
+/// Preserves the native map-ring traversal and fixed point calculation.
+pub fn pressure(
     state: &LoadedState,
     defs: &Definitions,
     cx: &mut impl Context,
@@ -498,7 +502,9 @@ pub(crate) fn pressure(
     ))
 }
 fn occupation_pressure(grievances: i32, multiplier: i32, minimum: i32, maximum: i32) -> i32 {
-    let factor = c6_core::city_production::execution::from_float(multiplier as f32 / 100.0);
+    // Linux 2875a36 divides by the rodata float at 2f215e8 (0x447a0000).
+    // This is per-thousand, before the Q8 conversion and multiplication.
+    let factor = c6_core::city_production::execution::from_float(multiplier as f32 / 1000.0);
     c6_core::city_production::execution::multiply(grievances.wrapping_shl(8), factor)
         .max(minimum)
         .min(maximum)
@@ -726,9 +732,17 @@ mod tests {
     #[test]
     fn occupation_uses_float_factor_before_q8_multiply_and_clamps_before_negation() {
         assert_eq!(occupation_pressure(0, 5, 2560, 5120), -2560);
-        assert_eq!(occupation_pressure(300, 5, 2560, 5120), -3600);
-        assert_eq!(occupation_pressure(1000, 5, 2560, 5120), -5120);
+        assert_eq!(occupation_pressure(300, 50, 2560, 5120), -3600);
+        assert_eq!(occupation_pressure(1000, 50, 2560, 5120), -5120);
         assert_eq!(occupation_pressure(-100, 5, 2560, 5120), -2560);
+        // A multiplier of 5 becomes 1 raw Q8 unit, not 12 (percent scale).
+        assert_eq!(occupation_pressure(1000, 5, 2560, 5120), -2560);
+        assert_eq!(occupation_pressure(3000, 5, 2560, 5120), -3000);
+        assert_eq!(occupation_pressure(10000, 5, 2560, 5120), -5120);
+        // Stock rules use multiplier 25 and a zero minimum. Quantize the
+        // float to 6 Q8 units before multiplying; percent scaling hits the cap.
+        assert_eq!(occupation_pressure(150, 25, 0, 2560), -900);
+        assert_eq!(occupation_pressure(0, 25, 0, 2560), 0);
     }
     #[test]
     fn citizen_pressure_truncates_factor_before_population_multiply() {
