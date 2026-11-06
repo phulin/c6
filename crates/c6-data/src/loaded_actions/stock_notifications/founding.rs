@@ -99,6 +99,14 @@ pub trait Effects<'a>: found_city::placement::Effects + buildings::Effects {
         state: &mut LoadedState,
         city: ComponentId,
     ) -> Result<(), String>;
+    /// Register the new City's current lifetime handles after the same canonical
+    /// CityBuild allocator returns, before placement can dispatch subscribers.
+    fn city_build_initialized(
+        &mut self,
+        state: &mut LoadedState,
+        city: ComponentId,
+        build: Option<u32>,
+    ) -> Result<(), String>;
     fn generate_later_name(
         &mut self,
         state: &mut LoadedState,
@@ -364,8 +372,10 @@ impl<'a, E: Effects<'a>> c6_core::city_initialization::Context for Start<'_, '_,
             .1;
         let inputs =
             c6_core::city_build_initialization::Inputs::bind(self.state, owner, initialized);
-        c6_core::city_build_initialization::create(self.state, owner, city.id, &inputs)
-            .map_err(text)
+        let build = c6_core::city_build_initialization::create(self.state, owner, city.id, &inputs)
+            .map_err(text)?;
+        self.effects.city_build_initialized(self.state, city, build)?;
+        Ok(build)
     }
 }
 impl<'a, E: Effects<'a>> c6_core::found_city::creation::Context for Start<'_, '_, E> {

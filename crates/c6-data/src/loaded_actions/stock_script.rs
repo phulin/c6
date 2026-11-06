@@ -205,6 +205,11 @@ impl<P> Runtime<P> {
     pub fn script_mut(&mut self) -> &mut ScriptState {
         &mut self.script
     }
+    /// Borrow the existing callback registry and its synchronization owner
+    /// together. Neither owner is cloned or reset by a nested domain callback.
+    pub fn callback_parts(&mut self) -> (&mut ScriptState, &mut Synchronization) {
+        (&mut self.script, &mut self.synchronization)
+    }
     pub fn synchronization(&self) -> &Synchronization {
         &self.synchronization
     }

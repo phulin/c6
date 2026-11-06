@@ -96,7 +96,7 @@ impl<'a, P> Runtime<'a, P> {
     /// Loan the SAME canonical owners during a synchronous lifecycle callback.
     /// The provider remains borrowed for reports/sight; no owner is cloned or
     /// rebuilt, and errors restore the mutated owner before returning.
-    pub(crate) fn with_modifier_owners<R>(
+    pub fn with_modifier_owners<R>(
         &mut self,
         apply: impl FnOnce(&mut Self, &mut ModifierOwners) -> R,
     ) -> Result<R, movement::Error> {
