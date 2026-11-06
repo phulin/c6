@@ -241,8 +241,7 @@ pub fn domination_test(
     }
     let mut all_same_team = true;
     for &owner in current.alive {
-        if state.player_alive(owner).map_err(Error::State)?
-            && team(state, owner)? != required_team
+        if state.player_alive(owner).map_err(Error::State)? && team(state, owner)? != required_team
         {
             all_same_team = false;
             break;
@@ -270,6 +269,78 @@ pub fn domination_test(
         }
     }
     Ok(2)
+}
+
+/// OnCityBuilt2aa1df0's ordered guards before distance/incursion/promise work.
+/// The native initializing argument is unused. Actual strategic regions remain
+/// gameplay state even though their containing component is named AI.
+fn forward_settlement_reaches_region(
+    state: &LoadedState,
+    receiver: i32,
+    city: ComponentId,
+) -> Result<bool, Error> {
+    let owner = i32::from(city.owner);
+    let city = state.city(owner, city.id)?;
+    if receiver == owner || city.header.original_capital {
+        return Ok(false);
+    }
+    // Diplomacy.IsAtWarWith2aa4bb0 first checks the other current Player's
+    // validity/alive field, then queries the canonical relations owner.
+    let alive = state
+        .world()
+        .player(owner)
+        .map_err(Error::World)?
+        .is_alive
+        .ok_or(Error::Missing("forward settlement current owner alive"))?;
+    let relations = state
+        .game_relations()
+        .map_err(|e| Error::Effect(format!("{e:?}")))?;
+    if alive
+        && relations
+            .is_at_war(receiver, owner)
+            .map_err(|e| Error::Effect(format!("{e:?}")))?
+    {
+        return Ok(false);
+    }
+    if relations
+        .is_allied(receiver, owner)
+        .map_err(|e| Error::Effect(format!("{e:?}")))?
+    {
+        return Ok(false);
+    }
+    // IsOccupied(true) reads the raw occupied field; it skips the owner's
+    // no-occupation-penalties override used by IsOccupied(false).
+    if city.header.occupied || city.turn_city_founded != state.retained().core.current_turn {
+        return Ok(false);
+    }
+    let primary = &player(state, receiver)?
+        .ai_grand_strategic
+        .as_ref()
+        .ok_or(Error::Missing("forward settlement current primary regions"))?
+        .primary_regions;
+    for &id in primary {
+        if id == u32::MAX {
+            continue;
+        }
+        let map = state.world().map();
+        let Some(plot) = map.plot_at(city.header.location_x, city.header.location_y) else {
+            continue;
+        };
+        let Some(region) = map
+            .regions
+            .entries
+            .iter()
+            .find(|r| r.index == (plot.region_id & 0xffff) as i32)
+        else {
+            continue;
+        };
+        if region.value.id == id {
+            // Preserve the genuine positive branch at the effect boundary;
+            // no incursion or promise update is inferred from a region match.
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Concrete shared services. Requirement invalidation must use the SAME live
@@ -373,10 +444,10 @@ pub fn dispatch_one(
             }
         }
         Listener::Diplomacy { owner: receiver } => {
-            if receiver == owner || state.city(owner, city.id)?.header.original_capital {
-                Ok(())
-            } else {
+            if forward_settlement_reaches_region(state, receiver, city)? {
                 effects.diplomacy_forward_settle(state, receiver, city)
+            } else {
+                Ok(())
             }
         }
         Listener::PlayerEvent { owner: receiver } => {
