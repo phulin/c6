@@ -8,7 +8,7 @@ pub type RangedError<M> = move_to::ActionError<
 >;
 pub type MeleeError<M> = RangedError<M>;
 impl<'s, 'a> Session<'s, 'a> {
-    /// Execute qualified ordinary ranged Unit/Unit combat and its mandatory
+    /// Execute qualified ordinary ranged Unit/Unit or city-center combat and its mandatory
     /// stock aftermath using current state, script, sight and modifier owners.
     /// Unsupported branches retain their reached effects and freeze the session.
     #[allow(clippy::too_many_arguments, clippy::type_complexity)]

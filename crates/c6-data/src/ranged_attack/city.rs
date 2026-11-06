@@ -1,5 +1,5 @@
 //! Ordinary ranged Unit/city combat. The attacker never retaliates or advances.
-//! Generation retains both original ordered game-sync draws, including zero
+//! Generation retains both original ordered game-sync draws, including reduced
 //! inner damage while walls stand. Unsupported branches preserve reached RNG.
 use super::{error, Error, RANGED};
 use crate::{
@@ -56,6 +56,26 @@ where
             return Err(error("city scope", "ordinary major owners required"));
         }
     }
+    let defending_player = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.requested_owner == owner)
+        .ok_or_else(|| error("city owner", "current Player.Cities"))?;
+    if defending_player.cities.urban_defenses > 0 {
+        return Err(error("city scope", "Urban Defenses continuation"));
+    }
+    let ranged = rules
+        .formation
+        .ranged(state, unit)
+        .map_err(|e| error("city type", e))?;
+    let bombard = rules
+        .formation
+        .bombard(state, unit)
+        .map_err(|e| error("city type", e))?;
+    if ranged <= 0 || ranged <= bombard {
+        return Err(error("city scope", "ordinary RANGED combat required"));
+    }
     let location = PlotCoord {
         x: d.location.0,
         y: d.location.1,
@@ -73,6 +93,17 @@ where
         || owning.header.prevent_melee_attack_outer_defenses != 0
     {
         return Err(error("city scope", "special wall prevention modifiers"));
+    }
+    let class = defs
+        .promotion(state, actor)
+        .map_err(|e| error("city bypass class", e))?;
+    if city::adjacent_modifier(state, (location.x, location.y), actor.player(), class, true)
+        .map_err(|e| error("city bypass", e))?
+    {
+        return Err(error(
+            "city scope",
+            "positive bypass outer defenses continuation",
+        ));
     }
     let attacker_strength = rules
         .formation

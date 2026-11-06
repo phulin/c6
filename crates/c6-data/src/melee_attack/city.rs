@@ -116,7 +116,7 @@ impl Definitions {
                 .map_err(|e| error("rules", e))?,
         })
     }
-    fn promotion(&self, state: &LoadedState, unit: UnitReference) -> Result<u32, Error> {
+    pub(crate) fn promotion(&self, state: &LoadedState, unit: UnitReference) -> Result<u32, Error> {
         let unit = super::actor(state, unit).map_err(|e| error("promotion class", e))?;
         self.promotion_classes
             .iter()
@@ -152,7 +152,7 @@ pub struct Generated {
     pub attacker_advances: bool,
     pub game_sync_draws: Vec<damage::RandomDraw>,
 }
-fn adjacent_modifier(
+pub(crate) fn adjacent_modifier(
     state: &LoadedState,
     at: (i32, i32),
     owner: i32,
