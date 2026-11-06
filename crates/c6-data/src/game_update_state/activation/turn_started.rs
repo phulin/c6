@@ -114,13 +114,26 @@ impl<P> changes::Services for StockServices<'_, '_, '_, P> {
     }
     fn modifier_changed(
         &mut self,
-        _: &mut LoadedState,
-        _: &mut subject_sets::Runtime,
+        state: &mut LoadedState,
+        sets: &mut subject_sets::Runtime,
         listener: changes::SetListener,
         set: u64,
         old: i32,
         new: i32,
     ) -> Result<(), Continuation> {
+        if let changes::SetListener::Subject(receiver) = listener {
+            let handled = self
+                .backend
+                .with_growth_requirement_effects(state, |_, state, canonical| {
+                    canonical.with_opinion_graph(|graph, canonical| {
+                        graph.subject_changed(state, sets, canonical, receiver, set)
+                    })
+                })
+                .map_err(Continuation::TradeRelations)?;
+            if handled {
+                return Ok(());
+            }
+        }
         self.backend
             .reached
             .push("turn-start reached requirement-set continuation");
