@@ -2,6 +2,7 @@
 //! The same loaded state, sight, territory and stock creation owners survive
 //! every phase. Mandatory continuations have no successful default.
 pub mod callbacks;
+pub mod emergency;
 use crate::loaded_actions::stock_notifications::founding;
 use c6_core::{
     city_capture::{self as core, Snapshot},
