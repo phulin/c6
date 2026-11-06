@@ -211,7 +211,7 @@ pub(crate) fn request<E>(
         }
     }
     if state.player_slot_status(sender).map_err(Error::State)? != 3
-        || state.player_slot_status(recipient).map_err(Error::State)? != 2
+        || state.player_slot_status(recipient).map_err(Error::State)? != 1
     {
         return Err(Error::Missing(
             "human sender and AI recipient delegation branch",
