@@ -26,6 +26,7 @@ pub struct Definitions {
     districts: LinuxDefinitionRegistry,
     district_city_strength: Vec<i32>,
     militia: i32,
+    buildings: Vec<(u32, i32)>,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
@@ -52,6 +53,20 @@ impl Definitions {
             binding: state.binding().clone(),
             districts,
             district_city_strength,
+            buildings: rules
+                .gameplay()
+                .table("Buildings")
+                .ok_or_else(|| error("Buildings"))?
+                .rows()
+                .map(|r| {
+                    Ok((
+                        crate::registry::linux_type_hash(
+                            r.text("BuildingType").map_err(error)?.as_bytes(),
+                        ),
+                        r.integer("OuterDefenseStrength").map_err(error)? as i32,
+                    ))
+                })
+                .collect::<Result<Vec<_>, Error>>()?,
             militia: super::damage::integer(rules, "COMBAT_GARRISON_MILITIA_MODIFIER")
                 .map_err(error)?,
         })
@@ -140,10 +155,35 @@ pub fn base_defense(
             modifiers = current.wrapping_sub(base);
         }
     }
-    if city::maximum_damage(state, district, city_definitions, levels, true).map_err(error)? > 0 {
-        return Err(error("wall defense strength bonuses"));
-    }
     let owning = city::district_city(state, district).map_err(error)?;
+    let outer_maximum =
+        city::maximum_damage(state, district, city_definitions, levels, true).map_err(error)?;
+    if district.outer_defenses_damage < outer_maximum {
+        let mut wall_strength = 0i32;
+        for &(hash, strength) in &definitions.buildings {
+            let mut rows = owning
+                .buildings
+                .building_locations
+                .iter()
+                .filter(|r| r.definition_hash == hash);
+            let location = rows
+                .next()
+                .ok_or_else(|| error("building location projection"))?;
+            if rows.next().is_some() {
+                return Err(error("duplicate building location projection"));
+            }
+            if location.value >= 0 {
+                wall_strength = wall_strength.wrapping_add(strength);
+            }
+        }
+        if wall_strength > 0 {
+            modifiers = modifiers.wrapping_add(
+                wall_strength
+                    .wrapping_add(owning.combat.outer_defense_strength_modifier)
+                    .wrapping_shl(8),
+            );
+        }
+    }
     let mut districts = 0i32;
     for &id in &owning.districts.district_ids {
         let Some(d) = player
@@ -185,6 +225,32 @@ pub fn attack_modifier(
     defender: ComponentId,
     proposal_id: u32,
 ) -> Result<i32, Error> {
+    attack_modifier_with_kind(
+        state,
+        strength,
+        formation,
+        levels,
+        players,
+        attacker,
+        defender,
+        proposal_id,
+        false,
+        0,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn attack_modifier_with_kind(
+    state: &LoadedState,
+    strength: &shared::Definitions,
+    formation: &crate::formation_rules::Definitions,
+    levels: &[(i32, u32)],
+    players: &shared::CurrentPlayerCombat<'_>,
+    attacker: UnitReference,
+    defender: ComponentId,
+    proposal_id: u32,
+    ranged: bool,
+    ranged_district_penalty: i32,
+) -> Result<i32, Error> {
     let district = state
         .district(i32::from(defender.owner), defender.id)
         .map_err(error)?;
@@ -201,8 +267,21 @@ pub fn attack_modifier(
         c6_core::melee_attack::strength::Side::Attack,
     )
     .map_err(error)?;
-    opening =
-        opening.wrapping_add(shared::amphibious_penalty(state, attacker, Some(at)).map_err(error)?);
+    if !ranged {
+        opening = opening
+            .wrapping_add(shared::amphibious_penalty(state, attacker, Some(at)).map_err(error)?);
+    }
+    let unit = super::actor(state, attacker).map_err(error)?;
+    if ranged
+        && state
+            .unit_runtime(attacker.player(), attacker.id)
+            .map_err(error)?
+            .domain
+            != 0
+        && !unit.k_combat_modifers.b_ignore_ranged_vs_district_penalty
+    {
+        opening = opening.wrapping_add(ranged_district_penalty.wrapping_neg().wrapping_shl(8));
+    }
     let mut bonuses =
         shared::versus_opponent_bonus(state, levels, attacker, owner).map_err(error)?;
     bonuses = bonuses.wrapping_add(shared::territory_bonus(state, attacker, at).map_err(error)?);
@@ -251,6 +330,30 @@ pub fn defense_modifier(
     defender: ComponentId,
     proposal_id: u32,
 ) -> Result<i32, Error> {
+    defense_modifier_with_kind(
+        state,
+        city_definitions,
+        strength,
+        formation,
+        levels,
+        attacker,
+        defender,
+        proposal_id,
+        false,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn defense_modifier_with_kind(
+    state: &LoadedState,
+    city_definitions: &city::Definitions,
+    strength: &shared::Definitions,
+    formation: &crate::formation_rules::Definitions,
+    levels: &[(i32, u32)],
+    attacker: UnitReference,
+    defender: ComponentId,
+    proposal_id: u32,
+    ranged: bool,
+) -> Result<i32, Error> {
     let district = state
         .district(i32::from(defender.owner), defender.id)
         .map_err(error)?;
@@ -276,12 +379,13 @@ pub fn defense_modifier(
         x: district.location.0,
         y: district.location.1,
     };
-    let terrain = shared::terrain_bonus(
+    let terrain = shared::terrain_bonus_with_kind(
         state,
         strength,
         at,
         super::actor(state, attacker).map_err(error)?.k_location,
         attacker,
+        ranged,
     )
     .map_err(error)?;
     let _ = city::district_owner(state, district).map_err(error)?;

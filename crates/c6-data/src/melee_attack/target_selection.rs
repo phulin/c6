@@ -693,19 +693,72 @@ pub fn test_attack_into_with_placement(
 }
 
 /// Ordinary RANGED CanAttackTarget branch, after fresh GetBestDefender flags1/17.
-pub(crate) fn can_attack_ranged(state:&LoadedState, defs:&Definitions, inputs:&Inputs<'_>, actor:UnitReference, defender:UnitReference)->Result<bool,Error>{
+pub(crate) fn can_attack_ranged(
+    state: &LoadedState,
+    defs: &Definitions,
+    inputs: &Inputs<'_>,
+    actor: UnitReference,
+    defender: UnitReference,
+) -> Result<bool, Error> {
     use kernel::Context as _;
-    let mut c=Target {state,defs,inputs,actor,defender};
-    if !c.attack_after_moving()? && c.has_moved()? {return Ok(false);}
-    let _=c.attacker_religious_strength()?;
-    if !c.is_combat()? || (!c.can_target_air()? && c.defender_domain()?==1) {return Ok(false);}
-    if c.ranged()?<=0 && c.bombard()?<=0 {return Ok(false);}
-    let target=lookup(state,defender)?;
-    let class=inputs.combat.formation_class(state,target)?;
+    let mut c = Target {
+        state,
+        defs,
+        inputs,
+        actor,
+        defender,
+    };
+    if !c.attack_after_moving()? && c.has_moved()? {
+        return Ok(false);
+    }
+    let _ = c.attacker_religious_strength()?;
+    if !c.is_combat()? || (!c.can_target_air()? && c.defender_domain()? == 1) {
+        return Ok(false);
+    }
+    if c.ranged()? <= 0 && c.bombard()? <= 0 {
+        return Ok(false);
+    }
+    let target = lookup(state, defender)?;
+    let class = inputs.combat.formation_class(state, target)?;
     // Ordinary combat-class units take the true gate. Civilian/support and
     // embarked bypass/stack queries are separate reached continuations.
-    if class==1 || class==2 || moves::unit_is_embarked(target) {
-        return Err(Error::Unsupported("ranged civilian/support/embarked target"));
+    if class == 1 || class == 2 || moves::unit_is_embarked(target) {
+        return Err(Error::Unsupported(
+            "ranged civilian/support/embarked target",
+        ));
     }
     c.can_attack_player()
+}
+
+/// Original ranged Unit/District CanAttackTarget using current canonical owners.
+pub(crate) fn can_attack_ranged_district(
+    state: &LoadedState,
+    defs: &Definitions,
+    inputs: &Inputs<'_>,
+    actor: UnitReference,
+    district: &c6_core::player_districts::District,
+) -> Result<bool, Error> {
+    use kernel::DistrictContext as _;
+    let mut target = DistrictTarget {
+        state,
+        defs,
+        inputs,
+        actor,
+        district,
+    };
+    if !target.is_combat()? || target.attacker_owner()? == target.district_owner()? {
+        return Ok(false);
+    }
+    if target.embarked()? && !target.fight_while_embarked()? && target.domain()? != 1 {
+        return Ok(false);
+    }
+    if !target.attack_after_moving()? && target.has_moved()? {
+        return Ok(false);
+    }
+    let owner = target.attacker_owner()?;
+    if owner == -1 || !target.district_defensible()? {
+        return Ok(false);
+    }
+    let defender = target.district_owner()?;
+    target.can_attack_player(owner, defender)
 }

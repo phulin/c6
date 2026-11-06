@@ -70,6 +70,9 @@ pub struct Definitions {
     pub weariness: weariness::Definitions,
     promotion_classes: Vec<(u32, u32)>,
     outer_melee_percent: i32,
+    pub(crate) outer_ranged_percent: i32,
+    pub(crate) ranged_penalty: i32,
+    pub(crate) outer_bombard_percent: i32,
     outer_enabled_percent: i32,
 }
 impl Definitions {
@@ -101,6 +104,12 @@ impl Definitions {
             strength: district_strength::Definitions::from_rules(state, rules)
                 .map_err(|e| error("rules", e))?,
             promotion_classes,
+            outer_ranged_percent: damage::integer(rules, "COMBAT_DEFENSE_DAMAGE_PERCENT_RANGED")
+                .map_err(|e| error("rules", e))?,
+            ranged_penalty: damage::integer(rules, "COMBAT_RANGED_VS_DISTRICT_STRENGTH_MODIFIER")
+                .map_err(|e| error("rules", e))?,
+            outer_bombard_percent: damage::integer(rules, "COMBAT_DEFENSE_DAMAGE_PERCENT_BOMBARD")
+                .map_err(|e| error("rules", e))?,
             outer_melee_percent: damage::integer(rules, "COMBAT_DEFENSE_DAMAGE_PERCENT_MELEE")
                 .map_err(|e| error("rules", e))?,
             outer_enabled_percent: damage::integer(rules, "COMBAT_DEFENSE_DAMAGE_PERCENT_BOMBARD")

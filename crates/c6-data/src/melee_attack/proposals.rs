@@ -55,15 +55,29 @@ impl<'a, E: Effects> Context<'a, E> {
         defender: ComponentId,
         location: c6_core::unit::PlotCoord,
     ) -> Result<(u32, kernel::Handle), kernel::DispatchError<Error<E::Error>>> {
+        self.propose_unit_district_with_type(
+            attacker,
+            defender,
+            location,
+            c6_core::melee_attack::results::MELEE,
+        )
+    }
+    pub(crate) fn propose_unit_district_with_type(
+        &mut self,
+        attacker: UnitReference,
+        defender: ComponentId,
+        location: c6_core::unit::PlotCoord,
+        combat_type: u32,
+    ) -> Result<(u32, kernel::Handle), kernel::DispatchError<Error<E::Error>>> {
         super::actor(self.state, attacker)
             .map_err(|e| kernel::DispatchError::Context(Error::Actor(e)))?;
         self.state
             .district(i32::from(defender.owner), defender.id)
             .map_err(|e| kernel::DispatchError::Context(Error::District(e)))?;
-        kernel::propose(
-            self,
-            kernel::Proposal::melee_unit_district(attacker, defender, Some(location)),
-        )
+        let mut proposal =
+            kernel::Proposal::melee_unit_district(attacker, defender, Some(location));
+        proposal.combat_type = combat_type;
+        kernel::propose(self, proposal)
     }
     pub fn propose_units(
         &mut self,

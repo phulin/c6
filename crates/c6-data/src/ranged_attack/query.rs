@@ -24,16 +24,22 @@ pub fn test(
     if ranged <= bombard {
         return Err(error("test", "equal/bombard combat type unsupported"));
     }
-    if melee::target_selection::enemy_defensible_district_with_definitions(
+    if let Some(district) = melee::target_selection::enemy_defensible_district_with_definitions(
         state,
         inputs.districts,
         a.e_owner,
         destination,
     )
     .map_err(|e| error("test", e))?
-    .is_some()
     {
-        return Err(error("test", "District target unsupported"));
+        return melee::target_selection::can_attack_ranged_district(
+            state,
+            definitions,
+            inputs,
+            actor,
+            district,
+        )
+        .map_err(|e| error("test", e));
     }
     let Some(defender) =
         melee::target_selection::ranged_defender(state, inputs, actor, destination)

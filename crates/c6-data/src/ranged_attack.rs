@@ -1,6 +1,7 @@
 //! Ordinary ranged Unit/Unit combat over the current canonical state.
 //! Living and ordinary defender-killed branches retain source-ordered callbacks.
 //! Unsupported branches fail explicitly and retain prior state and gameplay RNG.
+pub mod city;
 pub mod death;
 pub mod query;
 pub mod stock;

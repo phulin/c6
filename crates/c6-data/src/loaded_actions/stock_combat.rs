@@ -41,6 +41,7 @@ pub struct State<'a> {
     pub deaths: Vec<resolve::UnitDeath>,
     pub resolved: Vec<resolve::completion::ResolvedCombat>,
     pub city_melees: Vec<melee::city::resolve::Resolved>,
+    pub city_ranges: Vec<ranged_attack::city::Resolved>,
     pub city_melee_reports: Vec<melee::city::Publication>,
     pub city_melee_report_scope: Option<melee::city::ReportScope>,
     pub city_strikes: Vec<crate::city_strike::Generated>,
@@ -77,6 +78,7 @@ impl<'a> State<'a> {
             deaths: Vec::new(),
             resolved: Vec::new(),
             city_melees: Vec::new(),
+            city_ranges: Vec::new(),
             city_melee_reports: Vec::new(),
             city_melee_report_scope: None,
             city_strikes: Vec::new(),
@@ -111,6 +113,7 @@ impl<'a> State<'a> {
                 deaths: Vec::new(),
                 resolved: Vec::new(),
                 city_melees: Vec::new(),
+                city_ranges: Vec::new(),
                 city_melee_reports: Vec::new(),
                 city_melee_report_scope: None,
                 city_strikes: Vec::new(),
@@ -157,25 +160,44 @@ impl<'a, P> Runtime<'a, P> {
         state: &LoadedState,
         choice: &crate::city_capture::PendingDisposition,
         definitions: &crate::loaded_actions::city_disposition_actions::Definitions,
-        levels: &[(i32,u32)],
+        levels: &[(i32, u32)],
     ) -> Result<(), Error> {
-        if self.combat.as_ref().is_some_and(|combat| combat.capture_owners.is_some()) {
+        if self
+            .combat
+            .as_ref()
+            .is_some_and(|combat| combat.capture_owners.is_some())
+        {
             return Err(Error::Missing("disposition initialization during capture"));
         }
-        let current=crate::loaded_actions::city_disposition_actions::pending_from_current(state,choice.city,definitions,levels)
-            .map_err(|e|Error::Requirement(format!("{e:?}")))?;
-        if &current!=choice {
-            return Err(Error::Missing("initialized disposition differs from current legal decision"));
+        let current = crate::loaded_actions::city_disposition_actions::pending_from_current(
+            state,
+            choice.city,
+            definitions,
+            levels,
+        )
+        .map_err(|e| Error::Requirement(format!("{e:?}")))?;
+        if &current != choice {
+            return Err(Error::Missing(
+                "initialized disposition differs from current legal decision",
+            ));
         }
-        self.queue_city_disposition(state,choice)?;
+        self.queue_city_disposition(state, choice)?;
         self.initialized_completed_dispositions.push(choice.city);
         Ok(())
     }
-    pub(crate) fn completed_city_disposition(&self, choice: &crate::city_capture::PendingDisposition) -> bool {
-        self.initialized_completed_dispositions.contains(&choice.city)
-            || self.combat.as_ref().is_some_and(|combat| combat.city_melees.iter().any(|row| {
-                row.captured.as_ref().is_some_and(|capture|capture.disposition.city==choice.city)
-            }))
+    pub(crate) fn completed_city_disposition(
+        &self,
+        choice: &crate::city_capture::PendingDisposition,
+    ) -> bool {
+        self.initialized_completed_dispositions
+            .contains(&choice.city)
+            || self.combat.as_ref().is_some_and(|combat| {
+                combat.city_melees.iter().any(|row| {
+                    row.captured
+                        .as_ref()
+                        .is_some_and(|capture| capture.disposition.city == choice.city)
+                })
+            })
     }
 
     /// Remove exactly the completed choice after its synchronous disposition
@@ -185,11 +207,16 @@ impl<'a, P> Runtime<'a, P> {
         state: &LoadedState,
         choice: &crate::city_capture::PendingDisposition,
     ) -> Result<(), Error> {
-        self.check(state).map_err(|_| Error::Missing("disposition World"))?;
-        let at = self.capture_dispositions.iter().position(|current| current == choice)
+        self.check(state)
+            .map_err(|_| Error::Missing("disposition World"))?;
+        let at = self
+            .capture_dispositions
+            .iter()
+            .position(|current| current == choice)
             .ok_or(Error::Missing("current completed disposition choice"))?;
         self.capture_dispositions.remove(at);
-        self.initialized_completed_dispositions.retain(|city| *city != choice.city);
+        self.initialized_completed_dispositions
+            .retain(|city| *city != choice.city);
         Ok(())
     }
 
@@ -251,6 +278,36 @@ impl<'a, P> Runtime<'a, P> {
             stage: "stock owners",
             detail: format!("{detail:?}"),
         };
+        let city_target = {
+            let attacker = melee::actor(state, actor).map_err(|e| ranged_attack::Error {
+                stage: "stock city target",
+                detail: format!("{e:?}"),
+            })?;
+            let district = melee::target_selection::enemy_defensible_district_with_definitions(
+                state,
+                Some(inputs.generation.maximum_damage),
+                attacker.e_owner,
+                destination,
+            )
+            .map_err(|e| ranged_attack::Error {
+                stage: "stock city target",
+                detail: format!("{e:?}"),
+            })?;
+            if let Some(d) = district {
+                let owner = crate::loaded_actions::city_range_attack::district_owner(state, d)
+                    .map_err(|e| ranged_attack::Error {
+                        stage: "stock city target owner",
+                        detail: format!("{e:?}"),
+                    })?;
+                Some(c6_core::unit::ComponentId {
+                    owner: owner as i16,
+                    component_type: 3,
+                    id: d.id,
+                })
+            } else {
+                None
+            }
+        };
         let mut combat = self
             .combat
             .take()
@@ -286,35 +343,58 @@ impl<'a, P> Runtime<'a, P> {
         let (backend, result) = match backend {
             Err(backend) => (backend, Err(missing("different combat World"))),
             Ok(backend) => {
-                let ((), mut session) = ranged_attack::Session::from_backend(state, backend);
-                let mut bindings = combat.bindings.take().expect("combat bindings retained");
-                self.combat = Some(combat);
-                let result = session.execute_with_damage(
-                    state,
-                    sight,
-                    self,
-                    damage,
-                    inputs,
-                    &mut bindings,
-                    actor,
-                    destination,
-                );
-                combat = self.combat.take().expect("combat outputs retained");
-                combat.bindings = Some(bindings);
-                let result = result.map(|resolved| {
-                    if let Some(resolved) = resolved {
-                        combat.resolved.push(resolved);
+                if let Some(defender) = city_target {
+                    let mut bindings = combat.bindings.take().expect("combat bindings retained");
+                    self.combat = Some(combat);
+                    let (_, mut backend) = backend.with_reporting(melee::transition::Reports(self));
+                    let result = ranged_attack::city::execute(
+                        state,
+                        sight,
+                        &mut backend,
+                        inputs,
+                        &mut bindings,
+                        actor,
+                        defender,
+                    );
+                    let (_, backend) = backend.with_reporting(());
+                    combat = self.combat.take().expect("combat outputs retained");
+                    combat.bindings = Some(bindings);
+                    let result = result.map(|resolved| {
+                        combat.city_ranges.push(resolved);
                         true
-                    } else {
-                        false
-                    }
-                });
-                (
-                    session
-                        .into_backend()
-                        .expect("ranged backend restored after Result"),
-                    result,
-                )
+                    });
+                    (backend, result)
+                } else {
+                    let ((), mut session) = ranged_attack::Session::from_backend(state, backend);
+                    let mut bindings = combat.bindings.take().expect("combat bindings retained");
+                    self.combat = Some(combat);
+                    let result = session.execute_with_damage(
+                        state,
+                        sight,
+                        self,
+                        damage,
+                        inputs,
+                        &mut bindings,
+                        actor,
+                        destination,
+                    );
+                    combat = self.combat.take().expect("combat outputs retained");
+                    combat.bindings = Some(bindings);
+                    let result = result.map(|resolved| {
+                        if let Some(resolved) = resolved {
+                            combat.resolved.push(resolved);
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                    (
+                        session
+                            .into_backend()
+                            .expect("ranged backend restored after Result"),
+                        result,
+                    )
+                }
             }
         };
         let ((), requirements, effects, backend_inputs) = backend.into_parts();

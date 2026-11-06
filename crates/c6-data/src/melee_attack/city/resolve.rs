@@ -30,7 +30,7 @@ fn current_damage(state: &LoadedState, id: ComponentId, outer: bool) -> Result<i
         district.garrison_damage
     })
 }
-fn change_district_damage<E: Effects>(
+pub(crate) fn change_district_damage<E: Effects>(
     state: &mut LoadedState,
     effects: &mut E,
     id: ComponentId,
