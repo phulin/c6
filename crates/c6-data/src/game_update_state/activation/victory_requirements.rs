@@ -13,6 +13,7 @@ pub enum Error {
     Resources(crate::resource_binding::Error),
     Rules(crate::Error),
     Missing(&'static str),
+    UnitDamage(crate::formation_movement_cost::Error),
 }
 #[derive(Clone, Copy, Debug)]
 pub enum Object {
@@ -96,14 +97,47 @@ fn player(
 }
 /// PlayerDefaultDefeat237d810. The initialized owner and flags belong to the
 /// same Simple requirement; city membership and delayed death are read live.
-/// The positive unit-search branch remains explicit until its caller supplies
-/// the canonical death queries used by the native predicate.
+/// The compatibility entry leaves unit type and damage inputs unavailable.
 pub fn test_default_defeat(
     state: &LoadedState,
     initialized_owner: i32,
     subject: Object,
     no_units_raw: u8,
     no_cities_raw: u8,
+) -> Result<i32, Error> {
+    test_default_defeat_current(
+        state,
+        initialized_owner,
+        subject,
+        no_units_raw,
+        no_cities_raw,
+        None,
+    )
+}
+/// Current native unit search with its initialized definition index and live
+/// dynamic damage properties. u32::MAX is the native wildcard type.
+pub fn test_default_defeat_with_units(
+    state: &LoadedState,
+    binding: (i32, Object, u8, u8),
+    unit_type: u32,
+    movement: &crate::formation_movement_cost::Definitions<'_>,
+) -> Result<i32, Error> {
+    test_default_defeat_current(
+        state,
+        binding.0,
+        binding.1,
+        binding.2,
+        binding.3,
+        Some((unit_type as i32, movement)),
+    )
+}
+fn test_default_defeat_current(
+    state: &LoadedState,
+    initialized_owner: i32,
+    subject: Object,
+    no_units_raw: u8,
+    no_cities_raw: u8,
+    units: Option<(i32, &crate::formation_movement_cost::Definitions<'_>)>,
 ) -> Result<i32, Error> {
     if initialized_owner == -1 {
         return Ok(3);
@@ -128,7 +162,47 @@ pub fn test_default_defeat(
     if no_units_raw != 0 || player.units.peak_units == 0 {
         return Ok(1);
     }
-    Err(Error::Missing("DefaultDefeat current Unit predicate"))
+    let (unit_type, movement) =
+        units.ok_or(Error::Missing("DefaultDefeat current Unit predicate"))?;
+    let records = state
+        .world()
+        .player(owner)
+        .map_err(|_| Error::Missing("DefaultDefeat current Unit owner"))?
+        .unit_records()
+        .map_err(|_| Error::Missing("DefaultDefeat current Unit roster"))?;
+    for entry in records {
+        let unit = &entry.value;
+        // Native IsDead precedes delayed death and GetType, including errors
+        // from unavailable current dynamic-property conversions.
+        let maximum = movement.maximum_damage(unit).map_err(Error::UnitDamage)?;
+        if default_defeat_unit_survives(
+            unit.i_damage,
+            maximum,
+            unit.b_delayed_death,
+            unit_type,
+            || {
+                Ok(state
+                    .unit_runtime(owner, unit.id)
+                    .map_err(Error::State)?
+                    .definition_index)
+            },
+        )? {
+            return Ok(1);
+        }
+    }
+    Ok(2)
+}
+fn default_defeat_unit_survives<E>(
+    damage: i32,
+    maximum: i32,
+    delayed_death: bool,
+    unit_type: i32,
+    current_type: impl FnOnce() -> Result<i32, E>,
+) -> Result<bool, E> {
+    if damage >= maximum || delayed_death {
+        return Ok(false);
+    }
+    Ok(unit_type == -1 || current_type()? == unit_type)
 }
 fn default_defeat_city_result(
     peak_cities: u32,
@@ -357,6 +431,44 @@ mod tests {
         assert_eq!(default_defeat_city_result(0, unread), None);
     }
     #[test]
+    fn default_defeat_units_ignore_dead_delayed_and_wrong_types() {
+        let unavailable = || Err::<i32, _>("type unavailable");
+        assert_eq!(
+            default_defeat_unit_survives(100, 100, false, 0, unavailable),
+            Ok(false)
+        );
+        assert_eq!(
+            default_defeat_unit_survives(0, 100, true, 0, unavailable),
+            Ok(false)
+        );
+        assert_eq!(
+            default_defeat_unit_survives(99, 100, false, -1, unavailable),
+            Ok(true)
+        );
+        assert_eq!(
+            default_defeat_unit_survives(0, 100, false, 0, || Ok::<_, &str>(21)),
+            Ok(false)
+        );
+        assert_eq!(
+            default_defeat_unit_survives(0, 100, false, 0, || Ok::<_, &str>(0)),
+            Ok(true)
+        );
+        assert_eq!(
+            default_defeat_unit_survives(99, 100, false, 0, unavailable),
+            Err("type unavailable")
+        );
+        // Current dynamic maximums may differ from the global rule, including
+        // nonpositive signed values; IsDead still uses the signed comparison.
+        assert_eq!(
+            default_defeat_unit_survives(20, 20, false, -1, unavailable),
+            Ok(false)
+        );
+        assert_eq!(
+            default_defeat_unit_survives(0, -1, false, -1, unavailable),
+            Ok(false)
+        );
+    }
+    #[test]
     fn turn_limit_modes_and_wrapping() {
         assert_eq!(game_end_turn(50, 100, -1), 0);
         assert_eq!(game_end_turn(50, 100, 0xdef9f0afu32 as i32), 101);
@@ -398,13 +510,11 @@ mod tests {
     #[test]
     fn q8_wrapping_can_change_highest_team() {
         assert_eq!(
-            highest_score(
-                &[1, 2],
-                1,
-                &[],
-                Ok::<_, Error>,
-                |p, _| Ok(if p == 1 { 0x00800000 } else { 0 })
-            )
+            highest_score(&[1, 2], 1, &[], Ok::<_, Error>, |p, _| Ok(if p == 1 {
+                0x00800000
+            } else {
+                0
+            }))
             .unwrap(),
             1
         );
