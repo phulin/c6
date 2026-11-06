@@ -43,6 +43,7 @@ pub struct Definitions {
     denounce_by_speed: Vec<(u32, i32)>,
     congress_initial_era: i32,
     special_session_min_turns: i32,
+    available_capacity_output_owners: Vec<i32>,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, Error> {
@@ -210,6 +211,7 @@ impl Definitions {
         }
         let city_resources = resource_cities::Definitions::from_rules(state, rules, &resources)?;
         Ok(Self {
+            available_capacity_output_owners: Vec::new(),
             city_resources,
             luxuries: crate::luxury_allocation::Definitions::from_rules(state, rules)
                 .map_err(|_| missing("luxury allocation definitions"))?,
@@ -226,6 +228,28 @@ impl Definitions {
             casus_prerequisites,
             denounce_by_speed,
         })
+    }
+    /// Admit only the Linux cce487d2 default informational output boundary.
+    ///
+    /// The caller must qualify the actual stock notification manager, absent
+    /// specialized creator, null parameters, plain localization/resources,
+    /// f26f3acf report/host utility bindings and every old record's supersession
+    /// callback (RET or DiplomacySession's incoming-type mismatch). Preserve
+    /// these providers and stock class provenance throughout the interval.
+    /// Under that contract creation, duplicate rejection, publication and
+    /// supersession change presentation storage only, with no gameplay/RNG or
+    /// player decision. This does not qualify other notification kinds.
+    pub fn qualify_available_capacity_output(
+        &mut self,
+        state: &LoadedState,
+        owners: &[i32],
+    ) -> Result<(), Error> {
+        self.validate(state)?;
+        for &owner in owners {
+            player(state, owner)?;
+        }
+        self.available_capacity_output_owners = owners.to_vec();
+        Ok(())
     }
     fn validate(&self, state: &LoadedState) -> Result<(), Error> {
         if &self.binding != state.binding() {
@@ -869,9 +893,11 @@ pub fn after_cities(
                     }
                 }
             }
-            if outgoing < capacity {
+            if outgoing < capacity && !defs.available_capacity_output_owners.contains(&owner) {
                 return Err(missing("available trade-capacity notification"));
             }
+            // Qualified cce487d2 output has no gameplay/RNG/decision effects.
+            // Keep the native capacity reread and notified-capacity write below.
         }
         // Native rereads capacity after the optional synchronous notification.
         let capacity = player(state, owner)?.trade.outgoing_route_capacity;
