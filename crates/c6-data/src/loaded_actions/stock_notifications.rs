@@ -18,6 +18,8 @@ pub mod city_queries;
 #[path = "stock_city_strike.rs"]
 pub mod city_strike;
 pub mod cityless_managers;
+#[path = "stock_camp_clear.rs"]
+pub mod camp_clear;
 #[path = "stock_combat.rs"]
 pub mod combat;
 pub mod deactivation;
@@ -97,6 +99,7 @@ pub struct Decision {
 /// Informational gameplay output; it never requests a policy choice.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Notice {
+    ResourceDiscovered { owner: i32, resource: i32, plot: u32 },
     ImprovementPillaged {
         owner: i32,
         actor_owner: i32,
@@ -165,6 +168,9 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     resource_revelation: Option<resource_revelation::State>,
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
+    camp_clear: Option<camp_clear::State<'a>>,
+    pub(crate) action_research: Option<crate::research::Runtime>,
+    pub(super) research_resource_amount: Option<(&'a super::upgrade_actions::resources::Definitions, &'a super::upgrade_actions::resources::Signals)>,
     pub(super) research_acquisition: Option<research::acquisition::Binding>,
     pub(super) research_unit_updates: Option<&'a crate::unit_movement_state::Definitions>,
     pub(super) research_queries: Option<research::Queries<'a>>,
@@ -222,6 +228,9 @@ impl<'a, P> Runtime<'a, P> {
             resource_revelation: None,
             city_queries: None,
             gold_signals: None,
+            camp_clear: None,
+            action_research: None,
+            research_resource_amount: None,
             research_acquisition: None,
             research_unit_updates: None,
             research_queries: None,
@@ -248,7 +257,8 @@ impl<'a, P> Runtime<'a, P> {
     ) -> Result<(), processing::Error> {
         self.check(state)?;
         let owner = match &notice {
-            Notice::ImprovementPillaged { owner, .. }
+            Notice::ResourceDiscovered { owner, .. }
+            | Notice::ImprovementPillaged { owner, .. }
             | Notice::TechnologyCompleted { owner, .. }
             | Notice::CivicCompleted { owner, .. }
             | Notice::CivicBoosted { owner, .. }

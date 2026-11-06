@@ -28,6 +28,16 @@ pub trait Context: UnitHealingContext {
     fn improvement_at(&mut self, kind: u32) -> Result<Self::Definition, Self::Error>;
     fn improvement_find(&mut self, kind: u32) -> Result<Option<Self::Definition>, Self::Error>;
     fn remove_on_entry(&mut self, definition: Self::Definition) -> Result<bool, Self::Error>;
+    /// Full removable-improvement continuation, including rewards, removal,
+    /// gameplay listeners and RNG. Missing services remain an explicit error.
+    fn activate_removable_improvement(
+        &mut self,
+        _plot: Self::Plot,
+        _definition: Self::Definition,
+    ) -> Result<bool, Error<Self::Error>> {
+        Err(Error::UnsupportedRemovableActivation)
+    }
+
     /// Capture Globals.EditMap, then the current owner's actual Diplomacy.
     fn map_and_diplomacy(&mut self) -> Result<(Self::Map, Self::Diplomacy), Self::Error>;
     fn plot_at(
@@ -96,7 +106,7 @@ pub fn activate_improvement<C: Context>(c: &mut C, plot: C::Plot) -> Result<bool
     if !c.remove_on_entry(definition).map_err(Error::Context)? {
         return Ok(false);
     }
-    Err(Error::UnsupportedRemovableActivation)
+    c.activate_removable_improvement(plot, definition)
 }
 
 /// Exact radius-one EnumerateNeighborhood order: center, then the matching

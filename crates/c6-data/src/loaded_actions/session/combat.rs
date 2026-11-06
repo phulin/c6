@@ -61,6 +61,7 @@ impl<'s, 'a> Session<'s, 'a> {
         M::Error: std::fmt::Debug,
     {
         self.ordinary_player_action(issuer)?;
+        self.begin_action_research()?;
         let result = move_to::execute_active_request(
             &mut self.context,
             issuer,
@@ -72,6 +73,7 @@ impl<'s, 'a> Session<'s, 'a> {
             movement,
             budget,
         );
+        self.end_action_research()?;
         self.retain(result, true)
     }
 }

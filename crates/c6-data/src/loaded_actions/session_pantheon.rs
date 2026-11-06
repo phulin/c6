@@ -68,7 +68,7 @@ impl<'a, P> Session<'_, 'a, P> {
         let mut effects = Effects {
             backend: &mut self.context.notifications.backend,
             services,
-            research: &mut self.research,
+            research: self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
         };
         let result = action::found(
             self.context.notifications.state,

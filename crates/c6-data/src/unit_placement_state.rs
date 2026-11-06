@@ -1,8 +1,8 @@
 //! Live normal Placement over the canonical loaded Unit and World.
 //! Definitions are retained across actions; query views borrow current state.
 pub mod creation;
-pub mod round;
 pub mod requirement_changes;
+pub mod round;
 
 use crate::{movement_placement_state as placement, unit_sight_state as sight};
 use c6_core::{loaded_state::LoadedState, unit::PlotCoord};
@@ -157,6 +157,18 @@ pub trait Effects:
         _actor: (i32, u32),
     ) -> Result<(), Error<EffectsError<Self>>> {
         Err(Error::Missing("Operations.Clear"))
+    }
+    /// Reached UnitActivateImprovement removable branch on the same owners.
+    fn activate_removable_improvement(
+        &mut self,
+        _state: &mut LoadedState,
+        _runtime: &mut sight::Runtime,
+        _actor: (i32, u32),
+        _plot: u32,
+    ) -> Result<bool, Error<EffectsError<Self>>> {
+        Err(Error::Missing(
+            "removable improvement gameplay continuation",
+        ))
     }
     fn improvement_visibility(
         &mut self,
@@ -707,6 +719,21 @@ impl<E: Effects> c6_core::improvement_movement::Context for Context<'_, '_, '_, 
             .get(definition as usize)
             .copied()
             .ok_or(Error::Missing("RemoveOnEntry"))
+    }
+    fn activate_removable_improvement(
+        &mut self,
+        plot: Self::Plot,
+        _definition: Self::Definition,
+    ) -> Result<bool, c6_core::improvement_movement::Error<Self::Error>> {
+        self.sight
+            .effects
+            .activate_removable_improvement(
+                self.sight.state,
+                self.sight.runtime,
+                self.sight.actor,
+                plot,
+            )
+            .map_err(c6_core::improvement_movement::Error::Context)
     }
     fn map_and_diplomacy(&mut self) -> Result<(Self::Map, Self::Diplomacy), Self::Error> {
         Ok(((), self.actor()?.e_owner))

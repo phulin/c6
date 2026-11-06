@@ -68,13 +68,14 @@ impl<'s, 'a> Session<'s, 'a> {
                     .collect();
                 if let Some((_, current)) = self
                     .research
+                    .as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?
                     .city_order
                     .iter_mut()
                     .find(|(owner, _)| *owner == actor.0)
                 {
                     *current = order;
                 } else {
-                    self.research.city_order.push((actor.0, order));
+                    self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?.city_order.push((actor.0, order));
                 }
             }
         }

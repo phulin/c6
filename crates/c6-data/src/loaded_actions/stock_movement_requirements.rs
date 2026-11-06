@@ -76,12 +76,37 @@ impl near::Context for Near<'_> {
     }
 }
 impl<P> normal::Effects for Runtime<'_, P> {
-    fn damage_changed(&mut self,state:&mut LoadedState,report:c6_core::unit_healing::DamageChangedReport)
-        -> Result<(),normal::Error<Error>> {
-        self.current_actor(state,(i32::from(report.identity.owner),report.identity.id))
-            .map_err(normal::Error::Effect)?;
-        if self.movement().map_err(normal::Error::Effect)?.reporting_suspended {return Ok(());}
-        self.reporting.damage_changed(state,report).map_err(|e|normal::Error::Effect(Error::Rules(e)))
+    fn activate_removable_improvement(
+        &mut self,
+        state: &mut LoadedState,
+        runtime: &mut sight::Runtime,
+        actor: (i32, u32),
+        plot: u32,
+    ) -> Result<bool, normal::Error<Error>> {
+        self.activate_stock_camp(state, runtime, actor, plot)
+            .map_err(normal::Error::Effect)
+    }
+
+    fn damage_changed(
+        &mut self,
+        state: &mut LoadedState,
+        report: c6_core::unit_healing::DamageChangedReport,
+    ) -> Result<(), normal::Error<Error>> {
+        self.current_actor(
+            state,
+            (i32::from(report.identity.owner), report.identity.id),
+        )
+        .map_err(normal::Error::Effect)?;
+        if self
+            .movement()
+            .map_err(normal::Error::Effect)?
+            .reporting_suspended
+        {
+            return Ok(());
+        }
+        self.reporting
+            .damage_changed(state, report)
+            .map_err(|e| normal::Error::Effect(Error::Rules(e)))
     }
     fn city_unit_changed(
         &mut self,

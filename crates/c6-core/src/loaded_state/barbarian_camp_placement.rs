@@ -55,3 +55,24 @@ impl LoadedState {
         Ok(())
     }
 }
+
+impl LoadedState {
+    /// RemoveImprovement2b1d090 erases all matches in order; size metadata stays.
+    pub fn remove_player_improvement(&mut self, owner: i32, plot: i32) -> Result<(), Error> {
+        let player = self
+            .retained
+            .players
+            .iter()
+            .position(|p| p.header.owner == owner)
+            .ok_or(Error::Missing(super::MissingInput::Player(owner)))?;
+        if plot < 0 {
+            return Ok(());
+        }
+        self.revision = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        self.retained.players[player]
+            .improvements
+            .plot_indices
+            .retain(|&p| p != plot);
+        Ok(())
+    }
+}

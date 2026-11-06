@@ -83,7 +83,7 @@ impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
 pub struct Session<'s, 'a, P = c6_core::unit::OperationParameters> {
     context: current_aftermath::Context<'s, stock_notifications::Runtime<'a, P>>,
     update: loaded::Runtime,
-    research: crate::research::Runtime,
+    research: Option<crate::research::Runtime>,
     visibility: data::deactivation::VisibilityHistory,
     failed: Option<String>,
 }
@@ -106,7 +106,7 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         Self {
             context,
             update,
-            research,
+            research: Some(research),
             visibility,
             failed,
         }
@@ -132,7 +132,25 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         crate::research::Runtime,
         data::deactivation::VisibilityHistory,
     ) {
-        (self.context, self.update, self.research, self.visibility)
+        (self.context, self.update, self.research.expect("action research loan restored before Session returns"), self.visibility)
+    }
+    /// Move the sole current research owner into synchronous movement callbacks.
+    /// Entry refuses a nested loan before taking either owner.
+    fn begin_action_research<E>(&mut self) -> Result<(), Error<E>> {
+        if self.context.notifications.backend.action_research.is_some() {
+            return Err(Error::DecisionBoundary("research owner already loaned"));
+        }
+        let owner = self.research.take().ok_or(Error::DecisionBoundary(
+            "research owner temporarily loaned",
+        ))?;
+        self.context.notifications.backend.action_research = Some(owner);
+        Ok(())
+    }
+    fn end_action_research<E>(&mut self) -> Result<(), Error<E>> {
+        let owner = self.context.notifications.backend.action_research.take()
+            .ok_or(Error::DecisionBoundary("movement research owner unavailable"))?;
+        self.research = Some(owner);
+        Ok(())
     }
     fn check<E>(&self) -> Result<(), Error<E>> {
         match &self.failed {
@@ -252,7 +270,7 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         let result = turn_loop::execute(
             &mut self.context,
             &mut self.update,
-            &mut self.research,
+            self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
             inputs,
             &mut self.visibility,
             player,
@@ -303,7 +321,7 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
         let result = turn_loop::resume_end_turn(
             &mut self.context,
             &mut self.update,
-            &mut self.research,
+            self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
             inputs,
             &mut self.visibility,
             budget,
@@ -355,7 +373,7 @@ impl<'s, 'a, P> Session<'s, 'a, P> {
             &mut self.visibility,
             budget,
             definitions,
-            &mut self.research,
+            self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?,
             choices,
             culture,
             index,
@@ -426,6 +444,7 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
         ) {
             return Err(Error::PendingResearch);
         }
+        self.begin_action_research()?;
         let result = super::move_to::execute_active_request(
             &mut self.context,
             issuer,
@@ -437,6 +456,7 @@ impl<'s, 'a> Session<'s, 'a, c6_core::unit::OperationParameters> {
             movement,
             budget,
         );
+        self.end_action_research()?;
         self.retain(result, true)
     }
 }
@@ -568,7 +588,7 @@ impl<P> Session<'_, '_, P> {
         culture: Option<&stock_notifications::research::CultureInputs<'_>>,
     ) -> Result<(), Error<ResearchError>> {
         self.ordinary_player_action(player)?;
-        let mut effects = stock_notifications::research::Effects::new(&mut self.context.notifications.backend, &mut self.research, choices, culture);
+        let mut effects = stock_notifications::research::Effects::new(&mut self.context.notifications.backend, self.research.as_mut().ok_or(Error::DecisionBoundary("research owner temporarily loaned"))?, choices, culture);
         let mut research = crate::research::Context {
             state: self.context.notifications.state,
             definitions,
