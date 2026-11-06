@@ -16,6 +16,8 @@ pub struct InfluenceInputs<'a, 'r> {
     pub visibility: &'a std::cell::RefCell<crate::unit_sight_state::Runtime>,
     pub movement: &'a crate::formation_movement_cost::Definitions<'r>,
     pub formation: &'a crate::formation_rules::Definitions,
+    /// Current bound damage-strength rules, required by a live garrison.
+    pub strength: Option<&'a crate::melee_attack::strength::Definitions>,
     pub cities: &'a crate::loaded_actions::city_range_attack::Queries<'a>,
 }
 struct ResourceEffects {
@@ -179,7 +181,7 @@ impl<P> Runtime<'_, P> {
                 city_range: input.cities,
                 path: None,
                 path_runtime: None,
-                strength: None,
+                strength: input.strength,
             },
             owner,
         )
@@ -213,7 +215,9 @@ impl<P> Runtime<'_, P> {
                     "unhandled City decision: owner {owner}, city {}, conquered from {}, rebelled from {}",
                     city.id, city.just_conquered_from, city.just_rebelled_from
                 ));
-                return Err(Error::Unsupported("pending city conquest/rebellion decision"));
+                return Err(Error::Unsupported(
+                    "pending city conquest/rebellion decision",
+                ));
             }
         }
         let order = player
@@ -265,7 +269,7 @@ impl<P> Runtime<'_, P> {
                 self,
             )
             .map_err(|error| {
-                self.last_error=Some(format!("activation restore unit {owner}/{id}: {error:?}"));
+                self.last_error = Some(format!("activation restore unit {owner}/{id}: {error:?}"));
                 Error::Unsupported("activation current Unit restore suffix")
             })?;
         }

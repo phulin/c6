@@ -179,6 +179,7 @@ impl<'a> TurnServices<'a> for StockTurnServices<'_, '_, '_> {
                 visibility: self.influence.visibility,
                 movement: self.influence.movement,
                 formation: self.influence.formation,
+                strength: self.influence.strength,
                 cities: self.influence.cities,
             },
             human: human.inputs,
