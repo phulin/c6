@@ -36,7 +36,8 @@ rejects later action requests; `into_parts` returns the owners for inspection.
 The qualified stock output scope replaces native status text, XP display caches
 and platform achievement output with typed records. Additional synchronous
 consumers require explicit support. Positive unimplemented branches return errors,
-including bombard, unsupported District configurations, combat capture, joint-war XP consumers,
+including bombard against Units, unsupported District configurations, combat
+capture, joint-war XP consumers,
 multiplayer combat notifications, positive rewards/yields/boosts and positive era
 score continuations. This adapter does not compose melee combat. Definition,
 observer, promotion, notification and callback inputs must describe the actual
@@ -60,14 +61,15 @@ same-origin District damage report scope, and retain the current technology and
 civic graphs for notification aftermath. The city remains a real District
 participant; it is never represented by a synthetic defending Unit.
 
-Generation registers a RANGED proposal and consumes the original inner then
-outer damage draws. Resolution applies outer damage before garrison damage,
+Generation registers a RANGED or BOMBARD proposal and consumes the original
+inner then outer damage draws. Resolution applies outer damage before garrison damage,
 awards experience, clears operations, updates healing eligibility and attack
 budget, and executes war weariness, combat callbacks and
 `HeadlessMessagesProcessed` on the existing owners. It preserves both defense
 health pools and the generated pre-damage defense type. Exhausting the outer
 pool removes the wall strength contribution from subsequent current queries.
-The ranged attacker takes no retaliation damage and never advances or captures.
+The ranged or siege attacker takes no retaliation damage and never advances or
+captures.
 
 Two retained original Linux fixtures use an Archer and a noncapital city with
 Ancient Walls. With undamaged walls, the city receives 1 garrison damage and
@@ -85,14 +87,33 @@ The comparison retains the raw 0-versus-2250 tally difference and checks all
 other Targets fields. This source-qualified policy exclusion permits no
 omission of gameplay or RNG from other AI-named code.
 
-The final comparison uses public gameplay commit
+The Archer comparisons use public gameplay commit
 `e6a8b10bdda682c8965947bad58c0eae17ac1b87` and private adapter commit
 `6dfcab2802344d41b30cacc322c8aa0b4b9dcdb1`. Private receipts
 `evidence/linux/city-ranged-walls-session-4.json` and
 `evidence/linux/city-ranged-walls-exhaust-session-3.json` bind the canonical
 inputs, target/rules/configuration identities, executable hashes and commands.
 
-Urban Defenses, bombard/equal-type attacks, positive bypass-wall support,
+Siege uses the formation's bombard strength and a BOMBARD proposal, without the
+ranged-versus-District strength penalty. Outer damage uses the current rules
+bombard percentage. The existing movement-after-moving, visibility, range and
+attack-budget checks also apply to siege units.
+
+Two retained Linux Catapult fixtures complete through the same persistent
+Session with the compared gameplay, callbacks, history, visibility, modifier
+lifetimes and ordered GameSync draws equal. Intact Ancient Walls take 79 outer
+and 1 garrison damage. Starting at 99 outer damage, the pool clamps to 100 and
+the city takes 72 garrison damage; its wall strength contribution disappears.
+Both cases reject another attack after consuming the attack budget.
+
+These siege comparisons use public gameplay commit
+`ad07dcf8` and private adapter commit `cbefc37d`. Private receipts
+`evidence/linux/city-siege-session-2.json` and
+`evidence/linux/city-siege-exhaust-session-1.json` record their separate current
+configuration identities, exact sources, canonical inputs, commands and results.
+
+Urban Defenses, equal-type attacks, bombard against Units, positive bypass-wall
+support,
 special wall-prevention modifiers and lethal garrison continuations are explicit
 unsupported branches. Other unqualified callback, promotion and joint-war
 branches retain the existing errors. These fixtures do not establish arbitrary
