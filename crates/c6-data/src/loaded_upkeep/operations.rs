@@ -367,6 +367,16 @@ pub fn pop_front_operation<E: OperationReports>(
             ))
         }
     }
+    pop_front_selected(state, actor, effects, selected, hash)
+}
+
+fn pop_front_selected<E: OperationReports>(
+    state: &mut LoadedState,
+    actor: UnitHandle,
+    effects: &mut E,
+    selected: c6_core::unit::OperationStorageHandle,
+    hash: u32,
+) -> Result<(), Error<E::Error>> {
     let delete = !unit_operations_clear::deactivate_base_handler(
         &mut Base {
             state,
@@ -438,4 +448,72 @@ pub fn pop_front_operation<E: OperationReports>(
         )?;
     }
     Ok(())
+}
+
+/// MakeTradeRoute::Deactivate2da0da0 followed by the same retained-slot
+/// BaseHandler/DeleteNode tail. Active cancellation remains explicit; normal
+/// ExpireRoute has already made HasOutgoingRoute false before this call.
+pub fn pop_front_expired_trade_route<E>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    inputs: &Inputs<'_>,
+    effects: &mut E,
+) -> Result<(), Error<<E as Effects>::Error>>
+where
+    E: Effects + OperationReports<Error = <E as Effects>::Error>,
+{
+    let actor = UnitHandle { owner, id };
+    let Some(selected) = actor
+        .get(state)
+        .map_err(Error::World)?
+        .k_operations
+        .nodes
+        .front_storage()
+        .map_err(Error::OperationStorage)?
+    else {
+        return Ok(());
+    };
+    let node = &actor.get(state).map_err(Error::World)?.k_operations.nodes[0];
+    if node.operation_hash != c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+        return Err(Error::Unsupported("Trade Deactivate selected handler"));
+    }
+    let c6_core::unit::OperationParameters::MakeTradeRoute {
+        location0,
+        location1,
+        ..
+    } = node.parameters
+    else {
+        return Err(Error::Unsupported("Trade Deactivate parameters"));
+    };
+    let origin = crate::loaded_actions::trade_route_actions::city::<()>(state, location1)
+        .map_err(Error::TradeRoute)?;
+    let destination = crate::loaded_actions::trade_route_actions::city::<()>(state, location0)
+        .map_err(Error::TradeRoute)?;
+    if let (Some(origin), Some(destination)) = (origin, destination) {
+        let current = identity(state, actor)?;
+        let trader = c6_core::trade::ComponentId {
+            owner: current.owner,
+            component_type: current.component_type as i16,
+            id: current.id,
+        };
+        if state
+            .trade_graph()
+            .map_err(Error::State)?
+            .has_outgoing_route(origin, destination, trader)
+        {
+            return Err(Error::Unsupported(
+                "Trade Deactivate live CancelRoute continuation",
+            ));
+        }
+    }
+    finish_unit_moves(state, owner, id, inputs, effects)
+        .map_err(|e| Error::UnitMovement(Box::new(e)))?;
+    pop_front_selected(
+        state,
+        actor,
+        effects,
+        selected,
+        c6_core::unit::MAKE_TRADE_ROUTE_HASH,
+    )
 }

@@ -100,6 +100,7 @@ pub enum Failure<E> {
     Missing(&'static str),
     Placement(crate::unit_placement_state::Error<E>),
     Finish(c6_core::movement_execution::FormationMovementError<loaded_upkeep::Error<E>>),
+    Deactivate(loaded_upkeep::Error<E>),
 }
 fn major(movement: &queued::ComputedMovement<'_, '_>, owner: i32) -> Result<bool, &'static str> {
     let level = movement
@@ -189,6 +190,10 @@ where
     S: Continuations<E>,
 {
     type Error = Failure<unit_placement_state::EffectsError<E>>;
+    fn pop_expired_trade_route(&mut self,state:&mut LoadedState,actor:(i32,u32),effects:&mut E)->Result<Option<()>,Self::Error> {
+        loaded_upkeep::pop_front_expired_trade_route(state,actor.0,actor.1,&crate::unit_movement_state::Inputs{definitions:&self.movement.path.units},effects).map_err(Failure::Deactivate)?;
+        Ok(Some(()))
+    }
     fn trade_can_start(
         &mut self,
         state: &LoadedState,

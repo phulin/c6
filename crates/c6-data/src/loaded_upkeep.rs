@@ -26,7 +26,7 @@ use c6_core::{
 };
 pub use operations::{
     clear_current_formation_path, clear_unit_operations, complete_unit_movement,
-    pop_front_operation, set_unit_activity, OperationReports,
+    pop_front_operation, pop_front_expired_trade_route, set_unit_activity, OperationReports,
 };
 
 /// Identity of a retained collection slot, independent of mutable Unit ID/owner.
@@ -80,6 +80,8 @@ pub enum Error<E> {
     Movement(unit_movement_state::Error),
     Rules(crate::loaded_actions::Error),
     Unsupported(&'static str),
+    TradeRoute(crate::loaded_actions::trade_route_actions::Error),
+    UnitMovement(Box<c6_core::movement_execution::UnitMovementError<Error<E>>>),
     OperationStorage(c6_core::unit::OperationStorageError),
     FormationRuntime(c6_core::formation_initialization::Error),
     Provider(E),

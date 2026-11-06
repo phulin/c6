@@ -192,6 +192,10 @@ pub trait Movement<E: OperationReports> {
     fn start_trade(&mut self, _state: &mut LoadedState,
         _actor: (i32, u32), _node: &OperationNode, _effects: &mut E)
         -> Result<Option<skip_turn::StartData>, Self::Error> { Ok(None) }
+    /// Exact derived Deactivate plus retained operation deletion. None leaves
+    /// this reached handler unsupported before its state effects.
+    fn pop_expired_trade_route(&mut self,_state:&mut LoadedState,_actor:(i32,u32),_effects:&mut E)
+        ->Result<Option<()>,Self::Error> {Ok(None)}
     /// Exact reached Manager.ExpireRoute, including ordered gameplay effects.
     fn trade_expire(&mut self, _state: &mut LoadedState,
         _origin: c6_core::trade::ComponentId, _destination: c6_core::trade::ComponentId,
@@ -929,8 +933,13 @@ where
             }
         };
         if delete {
-            loaded_upkeep::pop_front_operation(state, actor.0, actor.1, effects)
-                .map_err(Error::Upkeep)?;
+            if front(state,actor)?.operation_hash==c6_core::unit::MAKE_TRADE_ROUTE_HASH {
+                movement.pop_expired_trade_route(state,actor,effects).map_err(Error::Movement)?
+                    .ok_or(Error::Unsupported("Trade Deactivate composition"))?;
+            } else {
+                loaded_upkeep::pop_front_operation(state, actor.0, actor.1, effects)
+                    .map_err(Error::Upkeep)?;
+            }
         }
         if unit(state, actor)?.b_delayed_death || unit(state, actor)?.k_operations.nodes.is_empty()
         {

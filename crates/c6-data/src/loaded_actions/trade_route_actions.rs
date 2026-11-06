@@ -102,7 +102,7 @@ impl Definitions {
     }
 }
 
-fn city<E>(state: &LoadedState, at: PlotCoord) -> Result<Option<ComponentId>, Error<E>> {
+pub(crate) fn city<E>(state: &LoadedState, at: PlotCoord) -> Result<Option<ComponentId>, Error<E>> {
     let Ok((_, plot)) = c6_core::movement_world::plot_at(state.world().map(), at) else {
         return Ok(None);
     };
