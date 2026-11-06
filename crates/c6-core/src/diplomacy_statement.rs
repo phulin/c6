@@ -116,6 +116,9 @@ pub enum Effect {
     DiscardResponse,
     Queue,
     ProcessResponse,
+    /// Session ownership bookkeeping; subtype report/decision continuation is
+    /// mandatory through Manager::apply_first_meeting_statement.
+    ProcessFirstMeeting,
 }
 #[derive(Debug)]
 pub struct Plan {
@@ -186,7 +189,10 @@ impl Plan {
         {
             return Err(Error::Conflict);
         }
-        if self.effect == Effect::ProcessResponse {
+        if matches!(
+            self.effect,
+            Effect::ProcessResponse | Effect::ProcessFirstMeeting
+        ) {
             let first = target.pending.iter().position(|p| p.from == statement.from);
             match (&self.remove, first) {
                 (None, None) => {}
@@ -203,7 +209,7 @@ impl Plan {
                 .queued
                 .try_reserve(1)
                 .map_err(|_| Error::ResourceLimit),
-            Effect::ProcessResponse => target
+            Effect::ProcessResponse | Effect::ProcessFirstMeeting => target
                 .history
                 .try_reserve(1)
                 .map_err(|_| Error::ResourceLimit),
@@ -222,7 +228,7 @@ impl Plan {
                 native_result: false,
                 retired_statement: self.statement.map(|s| s.handle),
             },
-            Effect::Queue | Effect::ProcessResponse => {
+            Effect::Queue | Effect::ProcessResponse | Effect::ProcessFirstMeeting => {
                 let target = target.expect("validated statement target");
                 let statement = self.statement.expect("validated nonnull statement");
                 if self.effect == Effect::Queue {
@@ -288,7 +294,7 @@ pub fn plan(
     sessions: &[SessionView<'_>],
     facts: &[StatementInfo],
 ) -> Result<Plan, Error> {
-    plan_internal(context, statement, sessions, facts, None)
+    plan_internal(context, statement, sessions, facts, None, false)
 }
 
 /// Creation uses the canonical Manager's next fresh logical object label. It
@@ -300,7 +306,17 @@ pub(crate) fn plan_with_creation(
     facts: &[StatementInfo],
     fresh: SessionHandle,
 ) -> Result<Plan, Error> {
-    plan_internal(context, statement, sessions, facts, Some(fresh))
+    plan_internal(context, statement, sessions, facts, Some(fresh), false)
+}
+/// Called only after the dedicated FirstMeeting owner validates its bounded
+/// payload, current endpoint facts and required report/decision continuation.
+pub(crate) fn plan_first_meeting(
+    context: Context,
+    statement: StatementInfo,
+    sessions: &[SessionView<'_>],
+    facts: &[StatementInfo],
+) -> Result<Plan, Error> {
+    plan_internal(context, Some(statement), sessions, facts, None, true)
 }
 fn plan_internal(
     context: Context,
@@ -308,6 +324,7 @@ fn plan_internal(
     sessions: &[SessionView<'_>],
     facts: &[StatementInfo],
     fresh: Option<SessionHandle>,
+    first_meeting: bool,
 ) -> Result<Plan, Error> {
     let result = |effect, target, remove| Plan {
         context,
@@ -315,7 +332,10 @@ fn plan_internal(
         target,
         remove,
         effect,
-        activate: effect == Effect::ProcessResponse && context.active_session.is_none(),
+        activate: matches!(
+            effect,
+            Effect::ProcessResponse | Effect::ProcessFirstMeeting
+        ) && context.active_session.is_none(),
         creation: false,
     };
     let Some(statement) = statement else {
@@ -396,7 +416,7 @@ fn plan_internal(
         p.creation = creation;
         return Ok(p);
     }
-    if statement.kind != StatementKind::Response {
+    if statement.kind != StatementKind::Response && !first_meeting {
         return Err(unsupported(Unsupported::StatementProcess(statement.kind)));
     }
     let remove = session
@@ -421,7 +441,12 @@ fn plan_internal(
             )));
         }
     }
-    let mut p = result(Effect::ProcessResponse, Some(session.header), remove);
+    let effect = if first_meeting {
+        Effect::ProcessFirstMeeting
+    } else {
+        Effect::ProcessResponse
+    };
+    let mut p = result(effect, Some(session.header), remove);
     p.creation = creation;
     Ok(p)
 }

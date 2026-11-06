@@ -409,8 +409,10 @@ impl Manager {
                 }
                 // ProcessResponse removes exactly one pending entry on its
                 // selected target. Every other alias remains unsupported.
-                if plan.effect() != statement::Effect::ProcessResponse
-                    || plan.target() != Some(metadata.header)
+                if !matches!(
+                    plan.effect(),
+                    statement::Effect::ProcessResponse | statement::Effect::ProcessFirstMeeting
+                ) || plan.target() != Some(metadata.header)
                     || removed_target_reference
                 {
                     return Err(statement::Error::Conflict);
