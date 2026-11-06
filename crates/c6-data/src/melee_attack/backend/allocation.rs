@@ -158,6 +158,9 @@ impl EffectRuntime {
             .map(|p| p.next_id)
             .ok_or(QueryError::Missing("current ObjectPool counter"))
     }
+    pub(crate) fn has_modifier_instance(&self, instance: i32) -> bool {
+        self.allocations.modifier_ids.contains(&instance)
+    }
     pub fn next_modifier_instance_id(&self) -> Result<i32, QueryError> {
         self.allocations
             .modifier_next

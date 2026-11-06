@@ -151,7 +151,91 @@ pub struct ResearchTradeCapacityModifier<'a> {
     pub owner_destroyed_subscription: bool,
     pub tracked_destroyed_subscription: bool,
 }
+/// Initial live records already reflected in canonical Player.Trade capacity.
+/// Importing these records restores ownership without applying the effect again.
+pub struct InitialResearchTradeCapacityModifier {
+    pub instance: i32,
+    pub context: u64,
+    pub effect: u64,
+    pub amount: i32,
+    pub applied: bool,
+}
 impl EffectRuntime {
+    pub fn install_initial_research_trade_capacity_modifiers(
+        &mut self,
+        state: &LoadedState,
+        records: &[InitialResearchTradeCapacityModifier],
+    ) -> Result<(), Error> {
+        self.current_owner(state).map_err(Error::Query)?;
+        if !state.is_pristine() {
+            return Err(Error::Missing(
+                "research modifier import requires initial state",
+            ));
+        }
+        for row in records {
+            if !self.has_modifier_instance(row.instance) {
+                return Err(Error::Missing("initial research modifier shared ID"));
+            }
+            if !matches!(
+                self.object(row.context).map_err(Error::Query)?.kind,
+                super::super::ContextObject::Research { .. }
+            ) {
+                return Err(Error::Missing("initial research wrapper"));
+            }
+            if self.effects.iter().any(|r| r.0 == row.effect) {
+                return Err(Error::Query(QueryError::DuplicateEffect(row.effect)));
+            }
+            let creation = self
+                .city_creation
+                .as_mut()
+                .ok_or(Error::Missing("initial research modifier lifecycle"))?;
+            if creation
+                .government
+                .flat
+                .iter()
+                .any(|r| r.instance == row.instance)
+            {
+                return Err(Error::DuplicateModifier(row.instance));
+            }
+            let lifecycle = creation.object_mut(row.context)?;
+            if !lifecycle
+                .affected
+                .entries()
+                .iter()
+                .any(|r| r.instance == row.instance)
+            {
+                return Err(Error::Missing("initial research affected entry"));
+            }
+            let destruction = lifecycle
+                .destroyed
+                .subscription_for(
+                    |s| matches!(s, DestroyedListener::ModifierOwner(i) if i == row.instance),
+                )
+                .map_err(Error::Ring)?;
+            let tracked_destruction = lifecycle
+                .destroyed
+                .subscription_for(
+                    |s| matches!(s, DestroyedListener::Modifier(i) if i == row.instance),
+                )
+                .map_err(Error::Ring)?;
+            self.effects.push((
+                row.effect,
+                super::super::EffectState::TradeRouteCapacity {
+                    context: row.context,
+                    amount: row.amount,
+                },
+            ));
+            creation.government.flat.push(Flat {
+                owner: row.context,
+                instance: row.instance,
+                effect: row.effect,
+                destruction,
+                tracked_destruction,
+                applied: row.applied,
+            });
+        }
+        Ok(())
+    }
     pub fn research_trade_capacity_modifiers(
         &self,
     ) -> Result<Vec<ResearchTradeCapacityModifier<'_>>, Error> {
