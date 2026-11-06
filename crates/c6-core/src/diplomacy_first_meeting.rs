@@ -353,6 +353,35 @@ mod tests {
             .is_err());
         assert!(manager.session_metadata().unwrap()[0].history.is_empty());
     }
+    #[test]
+    fn actual_enabled_stock_file_sink_keeps_canonical_processing_and_policy_yield() {
+        let (mut manager, mut context, ai, human) = fixture();
+        context.logging = Logging::OrdinaryHostFileSink;
+        manager
+            .initialize_execution_profile(context.game_mode, context.logging)
+            .unwrap();
+        let plan = manager
+            .plan_first_meeting_statement(
+                StatementHandle(3),
+                context,
+                ai,
+                human,
+                &[Choice::Positive, Choice::Exit],
+            )
+            .unwrap();
+        let decision = manager
+            .apply_first_meeting_statement(plan, |_| Ok::<_, ()>(()))
+            .unwrap();
+        assert_eq!(decision.player, human.owner);
+        assert_eq!(
+            manager.session_metadata().unwrap()[0].history,
+            [StatementHandle(3)]
+        );
+        assert_eq!(
+            manager.execution_profile(),
+            Some((context.game_mode, Logging::OrdinaryHostFileSink))
+        );
+    }
     fn ready_choice() -> (Manager, PendingDecision, ChoiceContext) {
         let (mut manager, context, ai, human) = fixture();
         manager
@@ -576,7 +605,7 @@ impl Manager {
             || context.statement.active_session != routing.active
             || context.statement.local_player != decision.player
             || context.statement.game_mode != statement::SINGLE_PLAYER_MODE
-            || context.statement.logging != statement::Logging::OrdinaryHostDisabled
+            || !context.statement.logging.supports_diplomacy_output()
             || self
                 .execution_profile()
                 .is_some_and(|p| p != (context.statement.game_mode, context.statement.logging))

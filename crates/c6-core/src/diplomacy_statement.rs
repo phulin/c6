@@ -54,6 +54,21 @@ pub enum Logging {
     /// transitions do not modify this flag/binding; this is not a fabricated
     /// logging-result default or support for arbitrary custom logging callbacks.
     OrdinaryHostDisabled,
+    /// Source-closed stock host LoggingManager/GetLogFile and ordinary LogFile
+    /// sink. Current adapter facts bind the actual enabled manager, channels,
+    /// vtables and platform file-output path. Diplomacy logging reads scalar
+    /// gameplay values; only formatting, file/timestamp output and archive dirty
+    /// bookkeeping are omitted at the headless boundary. This does not admit
+    /// custom log callbacks or supply a fabricated disabled-logger observation.
+    OrdinaryHostFileSink,
+}
+impl Logging {
+    pub const fn supports_diplomacy_output(self) -> bool {
+        matches!(
+            self,
+            Self::OrdinaryHostDisabled | Self::OrdinaryHostFileSink
+        )
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Context {
@@ -342,7 +357,7 @@ fn plan_internal(
         return Ok(result(Effect::Null, None, None));
     };
     let unsupported = |u| Error::Unsupported(u);
-    if context.logging != Logging::OrdinaryHostDisabled {
+    if !context.logging.supports_diplomacy_output() {
         return Err(unsupported(Unsupported::LoggingBinding));
     }
     if context.game_mode != SINGLE_PLAYER_MODE {

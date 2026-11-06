@@ -127,7 +127,7 @@ impl Manager {
         let revision = self.drain_revision.ok_or(Error::Conflict)?;
         let mut effect = Effect::Unconsumed;
         if f.capability && f.from.is_some_and(|p| p.major) {
-            if f.logging != Logging::OrdinaryHostDisabled {
+            if !f.logging.supports_diplomacy_output() {
                 return Err(Error::LoggingBinding);
             }
             if !f.from.is_some_and(|p| p.human) && !f.to.is_some_and(|p| p.human) {
