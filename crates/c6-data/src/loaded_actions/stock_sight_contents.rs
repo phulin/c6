@@ -256,7 +256,9 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
                 Ok(())
             }
             Signal::UnitContinent { .. } if self.definitions()?.unit_continent_empty => Ok(()),
-            _ => Err(Error::Missing("sight discovery signal")),
+            _ => Err(Error::Requirement(format!(
+                "unsupported sight discovery signal {event:?}"
+            ))),
         }
     }
     fn notify(
