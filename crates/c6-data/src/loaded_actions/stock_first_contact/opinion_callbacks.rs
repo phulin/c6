@@ -1,7 +1,7 @@
 //! Concrete Linux first-contact opinion leaves over the canonical live state.
-//! Positive pledge accumulation and active third-party relations remain explicit
-//! unsupported branches. Outer modifier membership and affected lists are owned
-//! by declare_war::requirement_modifiers, including leaves which return early.
+//! Positive pledge accumulation and contributing third-party relations remain
+//! explicit unsupported branches. Outer modifier membership and affected lists
+//! are owned by declare_war::requirement_modifiers, including early returns.
 use crate::game_update_state::activation::trade_relations_opinion as trade;
 use c6_core::loaded_state::LoadedState;
 
@@ -178,37 +178,45 @@ impl Effect {
                 pledge_guard(count)?
             }
             Self::ThirdParty { kind, maximum } => {
-                if !(1..=8).contains(kind) {
-                    Preparation::Value(clamp_third_party(0, *maximum))
+                let value = if !(1..=8).contains(kind) {
+                    0
                 } else {
-                    // All eight calculations begin with an owner friendship/
-                    // alliance or denouncement/war gate for each alive major.
-                    // Prove every actual alive-major slot fails.
                     let relations = state
                         .game_relations()
                         .map_err(|_| "opinion current relations")?;
-                    for &other in current_majors(state, alive_majors)? {
-                        if other == owner {
-                            continue;
-                        }
-                        if relations
-                            .has_declared_friendship(owner, other)
-                            .map_err(|_| "opinion friendship")?
-                            || relations
-                                .is_allied(owner, other)
-                                .map_err(|_| "opinion alliance")?
-                            || relations
-                                .is_at_war(owner, other)
-                                .map_err(|_| "opinion war")?
-                            || player.diplomacy.denounced
-                                [usize::try_from(other).map_err(|_| "opinion player index")?]
-                                >= 0
-                        {
-                            return Err("opinion active third-party relation calculation");
-                        }
-                    }
-                    Preparation::Value(clamp_third_party(0, *maximum))
-                }
+                    third_party_zero(
+                        *kind,
+                        owner,
+                        subject,
+                        current_majors(state, alive_majors)?,
+                        |who, other, query| match query {
+                            RelationQuery::Friendship => relations
+                                .has_declared_friendship(who, other)
+                                .map_err(|_| "opinion friendship"),
+                            RelationQuery::Alliance => relations
+                                .is_allied(who, other)
+                                .map_err(|_| "opinion alliance"),
+                            RelationQuery::War => {
+                                relations.is_at_war(who, other).map_err(|_| "opinion war")
+                            }
+                            RelationQuery::Denounced => {
+                                let diplomacy = &state
+                                    .retained()
+                                    .players
+                                    .iter()
+                                    .find(|p| p.header.owner == who)
+                                    .ok_or("opinion third-party diplomacy")?
+                                    .diplomacy;
+                                let index = usize::try_from(other)
+                                    .ok()
+                                    .filter(|i| *i < 64)
+                                    .ok_or("opinion player index")?;
+                                Ok(diplomacy.denounced[index] >= 0)
+                            }
+                        },
+                    )?
+                };
+                Preparation::Value(clamp_third_party(value, *maximum))
             }
             Self::Warmonger { maximum, percent } => {
                 let score = state
@@ -255,6 +263,49 @@ impl Effect {
         })
     }
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RelationQuery {
+    Friendship,
+    Alliance,
+    War,
+    Denounced,
+}
+
+/// Linux 23684f0..23693e9 iterates every alive major (including owner and
+/// subject). An owner's enemy alone contributes nothing: the subject must
+/// also pass the concrete relation predicate against that same third party.
+/// Only the reached contribution/decay branch requires the effect's additional
+/// amount and duration fields, which this bounded implementation cannot apply.
+fn third_party_zero(
+    kind: i32,
+    owner: i32,
+    subject: i32,
+    majors: &[i32],
+    mut query: impl FnMut(i32, i32, RelationQuery) -> Result<bool, &'static str>,
+) -> Result<i32, &'static str> {
+    use RelationQuery::*;
+    let (first, second) = if kind <= 4 {
+        (Friendship, Alliance)
+    } else {
+        (Denounced, War)
+    };
+    let subject_query = match kind {
+        1 | 5 => War,
+        2 | 6 => Denounced,
+        3 | 7 => Friendship,
+        4 | 8 => Alliance,
+        _ => return Ok(0),
+    };
+    for &other in majors {
+        if (query(owner, other, first)? || query(owner, other, second)?)
+            && query(subject, other, subject_query)?
+        {
+            return Err("opinion contributing third-party relation calculation");
+        }
+    }
+    Ok(0)
+}
+
 fn current_majors<'a>(
     state: &LoadedState,
     roster: Option<&'a [i32]>,
@@ -333,6 +384,34 @@ mod tests {
         assert_eq!(pledge_guard(0), Ok(Preparation::Skip));
         assert_eq!(pledge_guard(-1), Ok(Preparation::Skip));
         assert!(pledge_guard(1).is_err());
+    }
+    #[test]
+    fn third_party_war_with_subject_does_not_contribute_without_subject_relation() {
+        for kind in 1..=8 {
+            let value = third_party_zero(kind, 0, 1, &[0, 1], |who, other, query| {
+                Ok(query == RelationQuery::War && who != other)
+            });
+            assert_eq!(value, Ok(0), "kind {kind}");
+        }
+    }
+    #[test]
+    fn third_party_uses_concrete_subject_predicate_and_preserves_unknown_contributions() {
+        use RelationQuery::*;
+        for kind in 1..=8 {
+            let subject_query = [War, Denounced, Friendship, Alliance][(kind - 1) as usize % 4];
+            let owner_query = if kind <= 4 { Friendship } else { War };
+            for actual in [War, Denounced, Friendship, Alliance] {
+                let value = third_party_zero(kind, 0, 1, &[2], |who, other, query| {
+                    assert_eq!(other, 2);
+                    Ok((who == 0 && query == owner_query) || (who == 1 && query == actual))
+                });
+                assert_eq!(
+                    value.is_err(),
+                    actual == subject_query,
+                    "kind {kind}, {actual:?}"
+                );
+            }
+        }
     }
     #[test]
     fn third_party_native_clamp_preserves_negative_limit_branch() {
