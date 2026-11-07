@@ -13,6 +13,7 @@ pub enum Error {
     Maximum(formation_movement_cost::Error),
     Unsupported(&'static str),
     Interruption(c6_core::unit_operation_interruption::Error),
+    Promotion(crate::loaded_actions::promotion_actions::Error<()>),
 }
 
 /// Semantic output after the caller has executed the reached gameplay effects.
@@ -42,9 +43,10 @@ pub fn observer_can_see_player(observer: i32, owner: i32) -> bool {
 /// target and rules binding.
 ///
 /// A nonempty operation queue reaches IsInterruptible before the death guards;
-/// that branch remains unsupported. A movable, promotable unit with no pending
-/// operations reaches the promotion-definition/CanEarnPromotion enumeration
-/// (2d8fb1f), which also remains unsupported. Neither is an assumed false result.
+/// that branch requires a qualified interruption provider. A movable,
+/// promotable unit with no pending operations reaches promotion-definition
+/// enumeration (2d8fb1f). The rules-bound variant below supplies it; this legacy
+/// maximum-only provider reports that missing dependency explicitly.
 pub fn promotion_available_after_change(
     state: &LoadedState,
     maximum: &formation_movement_cost::Definitions,
@@ -66,6 +68,41 @@ pub fn promotion_available_after_change_with_interruption(
     maximum: &formation_movement_cost::Definitions,
     unit: UnitReference,
     interruptible: impl FnOnce(&c6_core::unit::Unit) -> Result<bool, Error>,
+) -> Result<bool, Error> {
+    promotion_available_with_choices(state, maximum, unit, interruptible, |_| {
+        Err(Error::Unsupported(
+            "Promote CanStart promotion enumeration and CanEarnPromotion results",
+        ))
+    })
+}
+
+/// The positive translator continuation uses the same current rule-driven
+/// eligibility as the explicit Session promotion action. Its nonnull result
+/// collection contains every earnable promotion, preserving definition order.
+pub fn promotion_available_after_change_with_promotions(
+    state: &LoadedState,
+    maximum: &formation_movement_cost::Definitions,
+    unit: UnitReference,
+    definitions: &crate::loaded_actions::promotion_actions::Definitions,
+    interruptible: impl FnOnce(&c6_core::unit::Unit) -> Result<bool, Error>,
+) -> Result<bool, Error> {
+    promotion_available_with_choices(state, maximum, unit, interruptible, |current| {
+        crate::loaded_actions::promotion_actions::earnable_choices(
+            state,
+            definitions,
+            (current.e_owner, current.id),
+        )
+        .map(|choices| !choices.is_empty())
+        .map_err(Error::Promotion)
+    })
+}
+
+fn promotion_available_with_choices(
+    state: &LoadedState,
+    maximum: &formation_movement_cost::Definitions,
+    unit: UnitReference,
+    interruptible: impl FnOnce(&c6_core::unit::Unit) -> Result<bool, Error>,
+    choices: impl FnOnce(&c6_core::unit::Unit) -> Result<bool, Error>,
 ) -> Result<bool, Error> {
     let current = crate::melee_attack::actor(state, unit).map_err(Error::Actor)?;
     state
@@ -93,7 +130,5 @@ pub fn promotion_available_after_change_with_interruption(
     if !current.k_operations.nodes.is_empty() {
         return Ok(false);
     }
-    Err(Error::Unsupported(
-        "Promote CanStart promotion enumeration and CanEarnPromotion results",
-    ))
+    choices(current)
 }

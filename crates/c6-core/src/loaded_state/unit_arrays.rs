@@ -97,6 +97,44 @@ impl LoadedState {
         self.revision = next;
         Ok(())
     }
+    /// Current SetIgnoreTerrain cell, preserving every other array/index.
+    pub fn set_unit_ignore_terrain(
+        &mut self,
+        owner: i32,
+        id: u32,
+        index: usize,
+        definition_hash: u32,
+        value: bool,
+    ) -> Result<(), Error> {
+        self.unit_runtime(owner, id)?;
+        let next = self.revision.checked_add(1).ok_or(Error::ResourceLimit)?;
+        let row = self
+            .runtime
+            .as_mut()
+            .expect("validated runtime")
+            .iter_mut()
+            .find(|p| p.owner == owner)
+            .expect("validated owner");
+        let at = row.unit_index[(id & 0xffff) as usize].expect("validated slot");
+        let unit = self
+            .world
+            .player_mut(owner)
+            .map_err(Error::World)?
+            .unit_mut(id)
+            .map_err(Error::World)?
+            .expect("validated Unit");
+        let runtime = &mut row.units[at];
+        store(
+            &mut unit.ab_ignore_terrain_types,
+            &mut runtime.dependencies.ignore_terrain,
+            &mut runtime.value.ignore_terrain,
+            index,
+            definition_hash,
+            value,
+        )?;
+        self.revision = next;
+        Ok(())
+    }
     /// Current SetInvalidTerrainType cell, preserving every other array/index.
     pub fn set_unit_invalid_terrain(
         &mut self,
@@ -153,6 +191,7 @@ mod tests {
         let runtime = &mut row.units[0];
         runtime.value.abilities = vec![4, 1];
         runtime.value.invalid_terrain = vec![false, true];
+        runtime.value.ignore_terrain = vec![false, true];
         runtime.value.ignore_feature = vec![true];
         let unit = state
             .world
@@ -181,6 +220,16 @@ mod tests {
                 value: true,
             },
         ];
+        unit.ab_ignore_terrain_types = vec![
+            HashValue {
+                definition_hash: 20,
+                value: false,
+            },
+            HashValue {
+                definition_hash: 21,
+                value: true,
+            },
+        ];
         runtime.dependencies = super::super::UnitDependencies::capture(unit).unwrap();
         (state, owner, actor.id)
     }
@@ -198,6 +247,25 @@ mod tests {
         assert_eq!(unit.ai_abilities_possessed[1].value, 0);
         assert!(unit.ab_invalid_terrain_types[0].value);
         assert_ne!(stamp, s.action_stamp());
+    }
+    #[test]
+    fn terrain_cost_boolean_order_is_not_reference_counted_and_preserves_other_cells() {
+        let (mut s, o, id) = state();
+        // Two overlapping Ignore=true applications followed by one native
+        // Remove(!true). The resulting false is intentional: no stack count.
+        s.set_unit_ignore_terrain(o, id, 0, 20, true).unwrap();
+        s.set_unit_ignore_terrain(o, id, 0, 20, true).unwrap();
+        s.set_unit_ignore_terrain(o, id, 0, 20, false).unwrap();
+        assert_eq!(s.unit_runtime(o, id).unwrap().ignore_terrain, [false, true]);
+        // A later application wins; this is source-ordered field storage.
+        s.set_unit_ignore_terrain(o, id, 0, 20, true).unwrap();
+        let runtime = s.unit_runtime(o, id).unwrap();
+        assert_eq!(runtime.ignore_terrain, [true, true]);
+        assert_eq!(runtime.invalid_terrain, [false, true]);
+        assert_eq!(runtime.abilities, [4, 1]);
+        let unit = s.world.player(o).unwrap().unit(id).unwrap().unwrap().record;
+        assert!(unit.ab_ignore_terrain_types[0].value);
+        assert!(unit.ab_ignore_terrain_types[1].value);
     }
     #[test]
     fn unrelated_raw_change_is_not_admitted_by_targeted_setter() {

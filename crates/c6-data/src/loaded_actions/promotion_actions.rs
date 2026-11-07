@@ -195,6 +195,24 @@ pub fn can_earn(
     Ok(unit.class == p.class
         && (p.prerequisites.is_empty() || p.prerequisites.iter().any(|v| has(u, *v))))
 }
+/// Visible-only CanStart results enumerate all current promotions in definition
+/// order, independently of phase/turn/pause guards. This is also used by the
+/// experience-changed report translator; it never selects a player policy.
+pub fn earnable_choices(
+    state: &LoadedState,
+    defs: &Definitions,
+    id: (i32, u32),
+) -> Result<Vec<u32>, Error<()>> {
+    defs.check(state)?;
+    let mut choices = Vec::new();
+    for promotion in &defs.promotions {
+        if can_earn(state, defs, id, promotion.hash)? {
+            choices.push(promotion.hash);
+        }
+    }
+    Ok(choices)
+}
+
 /// Mandatory synchronous effects use the same live world and runtime owners.
 pub trait Effects {
     type Error;

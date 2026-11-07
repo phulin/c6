@@ -13,13 +13,24 @@ pub enum Effect {
     Unsupported(u64),
     Common(c6_core::unit_modifier_effect::Effect),
     ExperienceModifier(i32),
-    DiploVisibilityCombat { amount: i32, higher: bool },
+    DiploVisibilityCombat {
+        amount: i32,
+        higher: bool,
+    },
     SeaMovement(i32),
     ValidTerrain(u32),
     GrantAbility(u32),
     ExtractSeaArtifacts(bool),
-    CombatStrength { amount: i32, kind: i32 },
+    CombatStrength {
+        amount: i32,
+        kind: i32,
+    },
     SeeHidden,
+    /// AdjustUnitIgnoreTerrainCost with the HILLS selector. Native Apply writes
+    /// the stored boolean; Remove writes its inverse, irrespective of overlap.
+    IgnoreHills {
+        ignore: bool,
+    },
 }
 /// The definitions must be the existing cached maps built for this state's
 /// admitted resources. No table is rebuilt during a modifier callback.
@@ -45,6 +56,14 @@ pub fn remove_fields<C, P>(
     actor: (i32, u32),
     effect: Effect,
 ) -> Result<FieldRemoval, Error<C, P>> {
+    if let Effect::IgnoreHills { ignore } = effect {
+        return set_ignore_hills(state, definitions, actor, !ignore)
+            .map(|success| FieldRemoval {
+                success,
+                ability_lost: None,
+            })
+            .map_err(Error::State);
+    }
     if let Effect::SeeHidden = effect {
         return crate::unit_creation::collections::see_hidden::apply(state, actor, true)
             .map(|success| FieldRemoval {
@@ -81,6 +100,7 @@ pub fn remove_fields<C, P>(
         }
         Effect::Common(_) => unreachable!("common UnitEffect returned above"),
         Effect::CombatStrength { .. } => unreachable!("strength effect returned above"),
+        Effect::IgnoreHills { .. } => unreachable!("terrain effect returned above"),
         Effect::SeeHidden => unreachable!("SeeHidden effect returned above"),
         Effect::ExperienceModifier(n) => kernel::Effect::ExperienceModifier(n),
         Effect::DiploVisibilityCombat { amount, higher } => {
@@ -239,4 +259,25 @@ pub fn remove<E: Effects>(
         actor,
         effect,
     )
+}
+
+/// AdjustUnitIgnoreTerrainCost2358f10/23590d0, selector -3. Iterate the current
+/// terrain definitions in collection order; SetIgnoreTerrain2422af0 performs
+/// a direct boolean store without callbacks, counters or RNG.
+pub fn set_ignore_hills(
+    state: &mut LoadedState,
+    definitions: &Definitions,
+    actor: (i32, u32),
+    ignore: bool,
+) -> Result<bool, c6_core::loaded_state::Error> {
+    for (index, &hills) in definitions.hills().iter().enumerate() {
+        if hills {
+            let hash = definitions
+                .terrains()
+                .type_hash(index)
+                .expect("hills metadata shares current terrain registry order");
+            state.set_unit_ignore_terrain(actor.0, actor.1, index, hash, ignore)?;
+        }
+    }
+    Ok(true)
 }

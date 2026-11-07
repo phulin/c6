@@ -35,6 +35,28 @@ impl PromotionQuery for crate::formation_movement_cost::Definitions<'_> {
             .map_err(|e| format!("{e:?}"))
     }
 }
+/// Rules-bound promotion reporting for units that reach the XP threshold.
+impl PromotionQuery
+    for (
+        &crate::formation_movement_cost::Definitions<'_>,
+        &crate::loaded_actions::promotion_actions::Definitions,
+    )
+{
+    fn available(&self, state: &LoadedState, unit: UnitReference) -> Result<bool, String> {
+        experience::reporting::promotion_available_after_change_with_promotions(
+            state,
+            self.0,
+            unit,
+            self.1,
+            |_| {
+                Err(experience::reporting::Error::Unsupported(
+                    "Promote CanStart operation queue IsInterruptible",
+                ))
+            },
+        )
+        .map_err(|e| format!("{e:?}"))
+    }
+}
 /// Immutable combat inputs and retained callback rings. Mutable modifier stores
 /// remain in Runtime::modifier_owners, shared with unit/building creation.
 pub struct State<'a> {

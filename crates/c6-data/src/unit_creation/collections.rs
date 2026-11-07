@@ -308,6 +308,13 @@ impl<E: Effects> common::EffectContext for Apply<'_, '_, E> {
         let actor = (unit.e_owner, unit.id);
         use crate::unit_kill::effects::Effect;
         match effect {
+            Effect::IgnoreHills { ignore } => crate::unit_kill::effects::set_ignore_hills(
+                self.owners.state,
+                &self.definitions.initialization,
+                actor,
+                ignore,
+            )
+            .map_err(Error::State),
             Effect::SeeHidden => see_hidden::apply(self.owners.state, actor, false),
             Effect::CombatStrength { amount, kind } => {
                 crate::unit_kill::effects::adjust_combat_strength(

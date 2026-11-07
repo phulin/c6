@@ -18,6 +18,7 @@ enum RecipeEffect {
     OwnerStrength,
     UnitCombatStrength,
     SeeHidden,
+    IgnoreHills,
 }
 pub(super) struct Ability {
     index: usize,
@@ -87,6 +88,9 @@ fn compile_source(
             (b"COLLECTION_OWNER", b"EFFECT_ADJUST_UNIT_COMBAT_STRENGTH") => {
                 RecipeEffect::OwnerStrength
             }
+            (b"COLLECTION_OWNER", b"EFFECT_ADJUST_UNIT_IGNORE_TERRAIN_COST") => {
+                RecipeEffect::IgnoreHills
+            }
             (b"COLLECTION_OWNER", b"EFFECT_ADJUST_UNIT_SEE_HIDDEN") => RecipeEffect::SeeHidden,
             (b"COLLECTION_UNIT_COMBAT", b"EFFECT_ADJUST_PLAYER_STRENGTH_MODIFIER") => {
                 RecipeEffect::UnitCombatStrength
@@ -102,6 +106,8 @@ fn compile_source(
         }
         let mut amount = 0;
         let mut kind = 1;
+        let mut terrain_type = None;
+        let mut ignore = false;
         for arg in table("ModifierArguments")?.rows() {
             if text(arg, "ModifierId")? != id {
                 continue;
@@ -110,6 +116,16 @@ fn compile_source(
                 return Err(Error::Missing("dynamic ability modifier argument"));
             }
             match text(arg, "Name")? {
+                b"Ignore" if effect == RecipeEffect::IgnoreHills => {
+                    ignore = std::str::from_utf8(text(arg, "Value")?)
+                        .ok()
+                        .and_then(|s| s.parse::<i32>().ok())
+                        .ok_or(Error::Missing("terrain Ignore boolean"))?
+                        != 0;
+                }
+                b"Type" if effect == RecipeEffect::IgnoreHills => {
+                    terrain_type = Some(text(arg, "Value")?.to_vec());
+                }
                 b"Amount" => {
                     amount = std::str::from_utf8(text(arg, "Value")?)
                         .map_err(|_| Error::Missing("ability Amount UTF8"))?
@@ -134,6 +150,12 @@ fn compile_source(
                 }
                 _ => {}
             }
+        }
+        if effect == RecipeEffect::IgnoreHills {
+            if terrain_type.as_deref() != Some(b"HILLS") {
+                return Err(Error::Missing("unsupported ignore-terrain selector"));
+            }
+            amount = i32::from(ignore);
         }
         out.push(Recipe {
             id,
@@ -289,6 +311,9 @@ fn attach_recipes<E: Effects>(
                         }
                     }
                     RecipeEffect::SeeHidden => crate::unit_kill::effects::Effect::SeeHidden,
+                    RecipeEffect::IgnoreHills => crate::unit_kill::effects::Effect::IgnoreHills {
+                        ignore: recipe.amount != 0,
+                    },
                     RecipeEffect::UnitCombatStrength => unreachable!(),
                 },
             )
@@ -672,6 +697,16 @@ mod tests {
     #[test]
     fn new_player_strength_scaling_arguments_remain_explicitly_unsupported() {
         let db = database("UPDATE DynamicModifiers SET CollectionType='COLLECTION_UNIT_COMBAT',EffectType='EFFECT_ADJUST_PLAYER_STRENGTH_MODIFIER'; INSERT INTO ModifierArguments VALUES('Z','StackScale','ARGTYPE_IDENTITY','50');");
+        assert!(compile(&db, b"A").is_err());
+    }
+    #[test]
+    fn terrain_ignore_recipe_uses_effect_and_arguments_without_promotion_name_special_case() {
+        let db = database("UPDATE DynamicModifiers SET EffectType='EFFECT_ADJUST_UNIT_IGNORE_TERRAIN_COST'; DELETE FROM ModifierArguments; INSERT INTO ModifierArguments VALUES('Z','Ignore','ARGTYPE_IDENTITY','1'),('Z','Type','ARGTYPE_IDENTITY','HILLS'),('B','Ignore','ARGTYPE_IDENTITY','0'),('B','Type','ARGTYPE_IDENTITY','HILLS');");
+        let rows = compile(&db, b"A").unwrap();
+        assert_eq!(rows[0].effect, RecipeEffect::IgnoreHills);
+        assert_eq!(rows[0].amount, 0);
+        assert_eq!(rows[1].amount, 1);
+        let db = database("UPDATE DynamicModifiers SET EffectType='EFFECT_ADJUST_UNIT_IGNORE_TERRAIN_COST'; DELETE FROM ModifierArguments; INSERT INTO ModifierArguments VALUES('Z','Type','ARGTYPE_IDENTITY','ALL');");
         assert!(compile(&db, b"A").is_err());
     }
     #[test]

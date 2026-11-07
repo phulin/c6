@@ -30,6 +30,7 @@ impl std::error::Error for Error {}
 pub struct Definitions {
     abilities: LinuxDefinitionRegistry,
     terrains: LinuxDefinitionRegistry,
+    hills: Vec<bool>,
     features: LinuxDefinitionRegistry,
     great_person_classes: LinuxDefinitionRegistry,
 }
@@ -45,6 +46,13 @@ impl Definitions {
         Ok(Self {
             abilities: collection(rules, "UnitAbilities", "UnitAbilityType")?,
             terrains: collection(rules, "Terrains", "TerrainType")?,
+            hills: rules
+                .gameplay()
+                .table("Terrains")
+                .ok_or(Error::MissingTable("Terrains"))?
+                .rows()
+                .map(|row| row.integer("Hills").map(|v| v != 0).map_err(Error::Rules))
+                .collect::<Result<_, _>>()?,
             features: collection(rules, "Features", "FeatureType")?,
             great_person_classes: collection(rules, "GreatPersonClasses", "GreatPersonClassType")?,
         })
@@ -54,6 +62,10 @@ impl Definitions {
     }
     pub fn terrains(&self) -> &LinuxDefinitionRegistry {
         &self.terrains
+    }
+    /// Current native terrain-definition order and source IsHills flag.
+    pub fn hills(&self) -> &[bool] {
+        &self.hills
     }
     pub fn features(&self) -> &LinuxDefinitionRegistry {
         &self.features
