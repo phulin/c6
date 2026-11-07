@@ -45,7 +45,6 @@ pub struct Profile<'a> {
     origin: ActionStamp,
     owner: i32,
     plans: Vec<Plan>,
-    used: bool,
     requirements: &'a RefCell<crate::game_update_state::activation::requirement_changes::Runtime>,
     queries: Box<dyn Queries + 'a>,
     inputs: Option<backend::Inputs>,
@@ -105,7 +104,6 @@ impl<'a> Profile<'a> {
             origin: state.action_stamp(),
             owner,
             plans,
-            used: false,
             requirements,
             queries,
             inputs: Some(inputs),
@@ -116,9 +114,6 @@ impl<'a> Profile<'a> {
         runtime: &mut Runtime<'_, P>,
         state: &mut LoadedState,
     ) -> Result<(), Error> {
-        if self.used {
-            return Err(Error::Unsupported("human wartime profile already consumed"));
-        }
         let player = state
             .retained()
             .players
@@ -215,7 +210,6 @@ impl<'a> Profile<'a> {
             runtime.last_error = Some(detail);
         }
         result??;
-        self.used = true;
         runtime
             .reached
             .push("stock human wartime forecast proposal callbacks");
@@ -238,6 +232,57 @@ impl<'a, P> Runtime<'a, P> {
         self.human_wartime.push(profile);
         Ok(())
     }
+    /// Planning.DoTurnActivate snapshots the current Unit order at its configured
+    /// priority, including units created after the imported planner snapshot.
+    pub(in crate::loaded_actions::stock_notifications) fn continue_human_planning(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+    ) -> Result<(), Error> {
+        let Some(at) = self.human_wartime.iter().position(|p| p.owner == owner) else {
+            // Other stock profiles retain their established peaceful query scope.
+            // A new war cannot enter this path without current planner inputs.
+            if state
+                .retained()
+                .players
+                .iter()
+                .find(|p| p.header.owner == owner)
+                .and_then(|p| p.ai_targets.as_ref())
+                .is_some_and(|t| t.new_war_started.0 != 0)
+            {
+                return Err(Error::Unsupported(
+                    "current human wartime activation planner inputs",
+                ));
+            }
+            return Ok(());
+        };
+        if !self.human_wartime[at].plans.is_empty() {
+            return Err(Error::Unsupported(
+                "human planning reactivation before planner teardown",
+            ));
+        }
+        self.human_wartime[at].plans = state
+            .world()
+            .player(owner)
+            .map_err(|_| Error::Unsupported("human planning current player"))?
+            .unit_records()
+            .map_err(|_| Error::Unsupported("human planning current roster"))?
+            .iter()
+            .map(|row| Plan {
+                unit: row.value.id,
+                search_turns: 2,
+                delayed_death: row.value.b_delayed_death,
+            })
+            .collect();
+        self.continue_human_wartime(state, owner)
+    }
+    pub(super) fn clear_human_planning(&mut self, owner: i32) {
+        if let Some(profile) = self.human_wartime.iter_mut().find(|p| p.owner == owner) {
+            // DoTurnDeactivate clears every planner and plain Unit planner pointer.
+            // Those pointers have no gameplay consumers in this external policy scope.
+            profile.plans.clear();
+        }
+    }
     pub(super) fn continue_human_wartime(
         &mut self,
         state: &mut LoadedState,
@@ -257,7 +302,7 @@ impl<'a, P> Runtime<'a, P> {
     }
 }
 
-/// Shared current services for the bounded Warrior/one enemy combat District
+/// Shared current services for bounded Warrior/Scout enemy combat District
 /// forecast query. These borrow the ordinary action/turn providers.
 pub struct CurrentQueries<'a, 'r> {
     pub binding: WireBinding,
@@ -266,6 +311,7 @@ pub struct CurrentQueries<'a, 'r> {
     pub levels: &'a [(i32, u32)],
     pub city_domains: Option<&'a [Option<c6_core::city_district::DomainMask>]>,
     pub combat: &'a crate::loaded_actions::city_range_attack::Definitions,
+    pub movement: &'a crate::unit_movement_state::Inputs<'a>,
     pub capabilities: Option<&'a c6_core::game_capabilities::Membership>,
 }
 impl Queries for CurrentQueries<'_, '_> {
@@ -291,7 +337,16 @@ impl Queries for CurrentQueries<'_, '_> {
             .map_err(query_error)?
             .ok_or("wartime planning Unit missing")?
             .record;
+        let district_combat = crate::formation_path_state::planning::has_district_combat_forecasts(
+            state,
+            &self.path.formation,
+            unit,
+        )
+        .map_err(query_error)?;
         let origin = unit.k_location;
+        let radius = crate::unit_movement_state::unit_max_moves(state, unit, self.movement)
+            .map_err(query_error)?
+            .wrapping_mul(plan.search_turns);
         let map = state.world().map();
         let near = |at: (i32, i32)| {
             c6_core::geometry::plot_distance(
@@ -301,7 +356,7 @@ impl Queries for CurrentQueries<'_, '_> {
                 origin.y,
                 at.0,
                 at.1,
-            ) <= 4
+            ) <= radius
         };
         let targets = state
             .retained()
@@ -358,7 +413,7 @@ impl Queries for CurrentQueries<'_, '_> {
                     return Err("wartime planning nearby unseen Unit continuation".into());
                 }
             }
-            if desired == 0 {
+            if desired == 0 || !district_combat {
                 continue;
             }
             for row in &other.districts.records.entries {

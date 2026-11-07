@@ -314,6 +314,7 @@ pub fn finish_completed_human_pass<P>(
                 },
             )
             .map_err(Error::Prefix)?;
+            backend.borrow_mut().clear_human_planning(owner);
         } else {
             let services = inputs.npc_services.as_ref().ok_or(Error::Prefix(
                 game_update::Error::Unsupported("current NPC deactivation services"),

@@ -252,6 +252,7 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
             }
             Self::controller_callbacks(state, owner, kind)?;
             match kind {
+                Kind::Planning => self.backend.continue_human_planning(state, owner)?,
                 Kind::Religious => {
                     if self
                         .inputs
