@@ -19,7 +19,9 @@ A [produced Builder expansion profile](docs/linux-produced-builder-expansion.md)
 joins queued Settler and Builder completion, second founding, external travel,
 a Farm and the following round on one Session. The [resource Farm profile](docs/linux-resource-farm-irrigation.md)
 retains its Irrigation boost and resource acquisition; the [Plantation profile](docs/linux-plantation-luxury.md)
-adds a newly available luxury, both cities' amenities and following upkeep.
+adds a newly available luxury, both cities' amenities and following upkeep. The
+[revealed Iron Mine profile](docs/linux-iron-mine-stockpile.md) retains both construction
+boosts and strategic-resource extraction through ordinary upkeep.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
