@@ -8,6 +8,31 @@ pub type RangedError<M> = move_to::ActionError<
 >;
 pub type MeleeError<M> = RangedError<M>;
 impl<'s, 'a> Session<'s, 'a> {
+    /// Run a synchronous action with the same RequirementSystem used by turn
+    /// callbacks. Factory metadata is joined, while all created requirements,
+    /// logical IDs and reached errors remain on the caller's retained store.
+    pub fn with_modifier_requirement_sets<R>(
+        &mut self,
+        shared: &mut c6_core::melee_attack::proposals::subject_sets::Runtime,
+        apply: impl FnOnce(&mut Self) -> R,
+    ) -> Result<R, stock_notifications::movement::Error> {
+        let owners = self.context.notifications.backend.modifier_owners_mut()?;
+        shared
+            .install_factory_definitions(owners.requirements.sets())
+            .map_err(stock_notifications::movement::Error::Missing)?;
+        std::mem::swap(shared, owners.requirements.sets_mut());
+        let result = apply(self);
+        // Session actions retain the bound owner even when their reached
+        // transition fails. Restore the same store before returning that result.
+        let owners = self
+            .context
+            .notifications
+            .backend
+            .modifier_owners_mut()
+            .expect("bound modifier owner retained through synchronous Session action");
+        std::mem::swap(shared, owners.requirements.sets_mut());
+        Ok(result)
+    }
     /// Execute qualified ordinary ranged Unit/Unit or city-center combat and its mandatory
     /// stock aftermath using current state, script, sight and modifier owners.
     /// Unsupported branches retain their reached effects and freeze the session.
