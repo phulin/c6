@@ -1,4 +1,4 @@
-//! Ordinary Linux XP2 Builder Farm and Mine operations, over the ongoing loaded state.
+//! Ordinary Linux XP2 Builder Farm, Mine and Plantation operations, over the ongoing loaded state.
 //!
 //! The operation body is separate from legality, queue processing and stock
 //! subscriber delivery. A returned StartData is meaningful only after every
@@ -39,12 +39,14 @@ impl<E: std::fmt::Debug> std::error::Error for Error<E> {}
 pub enum Kind {
     Farm,
     Mine,
+    Plantation,
 }
 impl Kind {
     pub fn type_name(self) -> &'static str {
         match self {
             Self::Farm => "IMPROVEMENT_FARM",
             Self::Mine => "IMPROVEMENT_MINE",
+            Self::Plantation => "IMPROVEMENT_PLANTATION",
         }
     }
 }

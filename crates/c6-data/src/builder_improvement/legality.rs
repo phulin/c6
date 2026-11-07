@@ -1,5 +1,5 @@
-//! Bounded ordinary Farm/Mine legality for owned feature-free first placement.
-//! Farm resource compatibility and visibility come from admitted current rules.
+//! Bounded Farm/Mine/Plantation legality for owned feature-free first placement.
+//! Resource compatibility and visibility come from admitted current rules.
 //! Other improvement and replacement branches remain explicit unsupported inputs.
 use super::{Definitions, Error, Kind};
 use crate::{registry::linux_type_hash, Rules, SqlValue};
@@ -93,9 +93,6 @@ impl Static {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        if terrains.is_empty() {
-            return Err(Error::Missing("ordinary improvement terrain references"));
-        }
         let hills = rules
             .gameplay()
             .table("Terrains")
@@ -126,6 +123,11 @@ impl Static {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
+        // Resource-only improvements (Plantation) have no ValidTerrains rows.
+        // Their matching visible resource bypasses terrain enforcement below.
+        if terrains.is_empty() && resources.is_empty() {
+            return Err(Error::Missing("ordinary improvement placement references"));
+        }
         let visibility = crate::city_turn::resources::Definitions::from_rules(rules)
             .map_err(|_| Error::Missing("improvement resource visibility definitions"))?;
         Ok(Self {
@@ -272,9 +274,11 @@ pub fn can_start(
         ));
     }
     if plot.resource_hash != u32::MAX {
-        if defs.kind != Kind::Farm || !defs.legality.resources.contains(&plot.resource_hash) {
+        if !matches!(defs.kind, Kind::Farm | Kind::Plantation)
+            || !defs.legality.resources.contains(&plot.resource_hash)
+        {
             return Err(Error::Unsupported(
-                "improvement resource legality outside supported Farm rules",
+                "improvement resource legality outside supported rules",
             ));
         }
         // CanHaveImprovement's matched ValidResource bypasses terrain when

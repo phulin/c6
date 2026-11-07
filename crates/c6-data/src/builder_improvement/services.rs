@@ -1,5 +1,5 @@
-//! Reached ordinary Farm constructed subscribers, evaluated from current state.
-//! Positive boosts and Farm resource acquisition borrow canonical stock effects. No native
+//! Reached ordinary improvement subscribers, evaluated from current state.
+//! Positive boosts and resource acquisition borrow canonical stock effects. No native
 //! callback results, count answers or AFTER state are accepted as inputs.
 use super::Definitions;
 use crate::{registry::linux_type_hash, Rules, SqlValue};
@@ -298,10 +298,12 @@ impl Current {
                 }
                 Subscriber::Resources { owner: receiver } => {
                     if receiver == owner && p.resource_hash != u32::MAX {
-                        if defs.kind != super::Kind::Farm
+                        if !matches!(defs.kind, super::Kind::Farm | super::Kind::Plantation)
                             || !defs.legality.resources.contains(&p.resource_hash)
                         {
-                            return Err(Error("Farm resource extraction outside supported rules"));
+                            return Err(Error(
+                                "improvement resource extraction outside supported rules",
+                            ));
                         }
                         // Before first placement there was no improvement or
                         // district, so NO_IMPROVEMENT extracts NO_RESOURCE.
