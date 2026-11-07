@@ -428,6 +428,24 @@ impl Queries for CurrentQueries<'_, '_> {
                         // stock single land Warrior/Scout defender is a low-
                         // priority Unit target. Other target classes stay guarded.
                         let target = &unit.value;
+                        if let Some(district) = other.districts.records.entries.iter().find(|d| {
+                            d.value.location == (target.k_location.x, target.k_location.y)
+                        }) {
+                            // CollectTargets skips Unit enumeration after
+                            // a combat District. Its occupant is not a second
+                            // Unit forecast target, including a city Trader.
+                            if self
+                                .path
+                                .movement
+                                .district_definition_hit_points(&district.value)
+                                .map_err(query_error)?
+                                .unwrap_or(0)
+                                > 0
+                            {
+                                continue;
+                            }
+                            return Err("wartime planning passive District Unit target".into());
+                        }
                         if target.b_has_hidden_visibility
                             || (target.e_type_index
                                 != crate::registry::linux_type_hash(b"UNIT_WARRIOR")
@@ -451,9 +469,6 @@ impl Queries for CurrentQueries<'_, '_> {
                             .map_err(query_error)?
                             .len()
                             != 1
-                            || other.districts.records.entries.iter().any(|d| {
-                                d.value.location == (target.k_location.x, target.k_location.y)
-                            })
                         {
                             return Err("wartime planning stacked or District Unit target".into());
                         }
