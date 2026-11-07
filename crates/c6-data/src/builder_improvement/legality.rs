@@ -1,4 +1,5 @@
-//! Source ordinary Farm/Mine legality for owned resource/feature-free first placement.
+//! Bounded ordinary Farm/Mine legality for owned feature-free first placement.
+//! Farm resource compatibility and visibility come from admitted current rules.
 //! Other improvement and replacement branches remain explicit unsupported inputs.
 use super::{Definitions, Error, Kind};
 use crate::{registry::linux_type_hash, Rules, SqlValue};
@@ -13,7 +14,7 @@ use std::convert::Infallible;
 pub(super) struct Static {
     terrains: Vec<u32>,
     hills: Vec<u32>,
-    wheat: bool,
+    pub(super) resources: Vec<u32>,
     visibility: crate::city_turn::resources::Definitions,
 }
 impl Static {
@@ -110,22 +111,27 @@ impl Static {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let wheat = kind == Kind::Farm
-            && rules
-                .gameplay()
-                .table("Improvement_ValidResources")
-                .ok_or(Error::Missing("Improvement_ValidResources"))?
-                .rows()
-                .any(|r| {
-                    r.text("ImprovementType").ok() == Some(name)
-                        && r.text("ResourceType").ok() == Some("RESOURCE_WHEAT")
-                });
+        let resources = rules
+            .gameplay()
+            .table("Improvement_ValidResources")
+            .ok_or(Error::Missing("Improvement_ValidResources"))?
+            .rows()
+            .filter(|r| r.text("ImprovementType").ok() == Some(name))
+            .map(|r| {
+                r.text("ResourceType")
+                    .map(|name| linux_type_hash(name.as_bytes()))
+                    .map_err(|error| Error::Effect {
+                        stage: "Farm valid resource",
+                        error,
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
         let visibility = crate::city_turn::resources::Definitions::from_rules(rules)
             .map_err(|_| Error::Missing("improvement resource visibility definitions"))?;
         Ok(Self {
             terrains,
             hills,
-            wheat,
+            resources,
             visibility,
         })
     }
@@ -266,9 +272,9 @@ pub fn can_start(
         ));
     }
     if plot.resource_hash != u32::MAX {
-        if plot.resource_hash != linux_type_hash(b"RESOURCE_WHEAT") || !defs.legality.wheat {
+        if defs.kind != Kind::Farm || !defs.legality.resources.contains(&plot.resource_hash) {
             return Err(Error::Unsupported(
-                "improvement resource legality outside Wheat Farm",
+                "improvement resource legality outside supported Farm rules",
             ));
         }
         // CanHaveImprovement's matched ValidResource bypasses terrain when

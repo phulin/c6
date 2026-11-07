@@ -1,5 +1,5 @@
 //! Reached ordinary Farm constructed subscribers, evaluated from current state.
-//! Positive boosts and Wheat acquisition borrow canonical stock effects. No native
+//! Positive boosts and Farm resource acquisition borrow canonical stock effects. No native
 //! callback results, count answers or AFTER state are accepted as inputs.
 use super::Definitions;
 use crate::{registry::linux_type_hash, Rules, SqlValue};
@@ -46,6 +46,7 @@ pub struct Current {
     boosts: Vec<Boost>,
     yields: crate::registry::LinuxDefinitionRegistry,
     visibility: crate::city_turn::resources::Definitions,
+    accumulating: Vec<u32>,
     modifier_improvements: Vec<u32>,
     resort_hash: Option<u32>,
     civilizations: Vec<(i32, String)>,
@@ -122,6 +123,23 @@ impl Current {
             yields,
             visibility: crate::city_turn::resources::Definitions::from_rules(rules)
                 .map_err(|_| Error("Farm resource visibility definitions"))?,
+            accumulating: table("Resource_Consumption")?
+                .rows()
+                .map(|r| {
+                    let accumulates = r
+                        .integer("Accumulate")
+                        .map_err(|_| Error("Farm resource accumulation definition"))?
+                        != 0;
+                    let resource = r
+                        .text("ResourceType")
+                        .map(|name| linux_type_hash(name.as_bytes()))
+                        .map_err(|_| Error("Farm resource consumption definition"))?;
+                    Ok(accumulates.then_some(resource))
+                })
+                .collect::<Result<Vec<_>, Error>>()?
+                .into_iter()
+                .flatten()
+                .collect(),
             modifier_improvements,
             resort_hash,
             civilizations,
@@ -281,15 +299,16 @@ impl Current {
                 Subscriber::Resources { owner: receiver } => {
                     if receiver == owner && p.resource_hash != u32::MAX {
                         if defs.kind != super::Kind::Farm
-                            || p.resource_hash != linux_type_hash(b"RESOURCE_WHEAT")
+                            || !defs.legality.resources.contains(&p.resource_hash)
                         {
-                            return Err(Error("Farm resource extraction outside Wheat"));
+                            return Err(Error("Farm resource extraction outside supported rules"));
                         }
                         // Before first placement there was no improvement or
                         // district, so NO_IMPROVEMENT extracts NO_RESOURCE.
                         let resource = p.resource_hash;
                         let count = i32::from(p.resource_count);
                         if count > 0
+                            && !self.accumulating.contains(&resource)
                             && self
                                 .visibility
                                 .visible_resource(state, owner, resource as i32)
