@@ -9,8 +9,9 @@ incomplete.
 The fixture starts with Washington and an available Settler placed at a legal
 second-city site. The external FoundCity request creates Baltimore at `[16, 7]`
 for the same owner. This comparison exercises founding and its following round;
-it does not reproduce the Settler's earlier production or movement. Natural
-[Settler production](linux-settler-production.md) has a separate comparison.
+it does not reproduce the Settler's earlier production or movement. A separate
+[joined expansion comparison](linux-produced-settler-expansion.md) now produces
+the Settler through upkeep, moves it legally and founds its city on one Session.
 
 Use the same `Session::from_initialized` owner for `found_city`, research,
 `choose_building`, unit orders and `advance(Request::EndTurn { .. })`. Select

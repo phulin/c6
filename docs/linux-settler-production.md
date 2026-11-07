@@ -30,3 +30,7 @@ The supported case has ordinary formation, the current stock subscribers and
 empty current gossip-visibility history. Unknown or positive unsupported
 creation, gossip-delivery, modifier or yield-grant branches return explicit
 partial-transition errors. Reached mutations remain visible after such an error.
+
+The [joined expansion comparison](linux-produced-settler-expansion.md) retains
+that naturally produced unit through external movement, second-city founding
+and the following ordinary round on the same Session.
