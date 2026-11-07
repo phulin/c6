@@ -16,6 +16,16 @@ pub enum Scope {
     /// consumers. Native output caches and platform achievements are omitted.
     StockHeadlessNoAddedConsumers,
 }
+/// Qualification for the reached manual `NOTIFICATION_UNIT_ATTACKED` output.
+/// This does not qualify arbitrary notification types or custom subscribers.
+#[derive(Clone, Copy, Debug)]
+pub enum CombatNoticeScope {
+    /// Actual stock default factory/manager, plain owned resources, stock old
+    /// supersession callbacks, and NotificationAdded with no native gameplay
+    /// consumers or synchronous host hooks. Native IDs, pools, text and queued
+    /// presentation are omitted; ordered semantic combat statuses are retained.
+    StockPlainHeadlessNoAddedConsumers,
+}
 pub trait PromotionQuery {
     fn available(&self, state: &LoadedState, unit: UnitReference) -> Result<bool, String>;
 }
@@ -38,6 +48,7 @@ pub struct State<'a> {
     pub promotion: &'a dyn PromotionQuery,
     pub experience_events: Vec<experience::reporting::Event>,
     pub statuses: Vec<resolve::surviving::Status>,
+    combat_notice_scope: Option<CombatNoticeScope>,
     pub deaths: Vec<resolve::UnitDeath>,
     pub resolved: Vec<resolve::completion::ResolvedCombat>,
     pub city_melees: Vec<melee::city::resolve::Resolved>,
@@ -49,6 +60,15 @@ pub struct State<'a> {
     pub city_strike_report_scope: Option<crate::city_strike::reports::Scope>,
 }
 impl<'a> State<'a> {
+    /// Qualify the manual defender notice reached by surviving Unit combat.
+    /// Callers must establish the actual factory, owned-resource and callback
+    /// bindings for this input and preserve them while using the combat owner.
+    /// Constructors leave this absent, retaining the explicit unsupported path.
+    pub fn with_combat_notice_scope(mut self, scope: CombatNoticeScope) -> Self {
+        self.combat_notice_scope = Some(scope);
+        self
+    }
+
     /// Semantic observations emitted by the reached stock combat callbacks.
     pub fn completion_outputs(&self) -> Option<&[resolve::completion::stock::Output]> {
         self.bindings.as_ref().map(|bindings| bindings.outputs())
@@ -75,6 +95,7 @@ impl<'a> State<'a> {
             promotion,
             experience_events: Vec::new(),
             statuses: Vec::new(),
+            combat_notice_scope: None,
             deaths: Vec::new(),
             resolved: Vec::new(),
             city_melees: Vec::new(),
@@ -127,6 +148,7 @@ impl<'a> State<'a> {
                 promotion,
                 experience_events: Vec::new(),
                 statuses: Vec::new(),
+                combat_notice_scope: None,
                 deaths: Vec::new(),
                 resolved: Vec::new(),
                 city_melees: Vec::new(),
@@ -589,7 +611,7 @@ impl<P> ranged_attack::Effects for Runtime<'_, P> {
             defender,
         )
         .map_err(|e| Error::Requirement(format!("{e:?}")))?;
-        if required {
+        if required && self.combat_current(state)?.combat_notice_scope.is_none() {
             return Err(Error::Missing(
                 "human multiplayer combat notification creation",
             ));
@@ -827,6 +849,7 @@ impl<P> resolve::surviving::Effects for Runtime<'_, P> {
             request.defender,
         )
         .map_err(|e| Error::Requirement(format!("{e:?}")))?
+            && self.combat_current(state)?.combat_notice_scope.is_none()
         {
             return Err(Error::Missing(
                 "human multiplayer combat notification creation",
