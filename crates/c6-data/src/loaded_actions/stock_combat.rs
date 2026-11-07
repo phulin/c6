@@ -351,7 +351,11 @@ impl<'a, P> Runtime<'a, P> {
             .combat
             .take()
             .ok_or_else(|| missing("combat services"))?;
-        if combat.inputs.is_none() || combat.bindings.is_none() || combat.configuration.is_none() {
+        if combat.inputs.is_none()
+            || combat.bindings.is_none()
+            || combat.configuration.is_none()
+            || combat.capture_owners.is_some()
+        {
             self.combat = Some(combat);
             return Err(missing(
                 "ranged action services unavailable in cleanup context",
@@ -367,6 +371,10 @@ impl<'a, P> Runtime<'a, P> {
             collections,
             unit_created,
         } = owners;
+        combat.capture_owners = Some(super::capture_owners::CombatLifecycleOwners {
+            collections,
+            unit_created,
+        });
         let backend_inputs = combat
             .inputs
             .take()
@@ -438,6 +446,13 @@ impl<'a, P> Runtime<'a, P> {
         };
         let ((), requirements, effects, backend_inputs) = backend.into_parts();
         combat.inputs = Some(backend_inputs);
+        let super::capture_owners::CombatLifecycleOwners {
+            collections,
+            unit_created,
+        } = combat
+            .capture_owners
+            .take()
+            .expect("ranged lifecycle owners retained across Result");
         self.modifier_owners = Some(ModifierOwners {
             effects,
             requirements,
