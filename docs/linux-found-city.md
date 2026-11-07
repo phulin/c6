@@ -14,6 +14,12 @@ must supply the actual initialized state, matching rules and callback services.
 The standalone library does not create a new initialized game or require the
 original engine at runtime.
 
+A separate [second-city comparison](linux-second-city.md) founds a second city
+for the same major player, supplies production choices for both cities and
+advances their ordinary round on the retained Session. It includes ordinary
+weighted naming, owned city-center resource extraction and delayed Settler
+cleanup.
+
 Construct `Session::from_initialized` once. Keep its World, Script and RNG,
 research, visibility history, modifier/requirement stores, quests and shared
 territory alive across every action and turn. Cache immutable rule definitions
