@@ -46,7 +46,11 @@ and the complete RNG inventory are not established by this case.
 Peaceful major-to-major foreign routes have [separate bounded coverage](linux-international-trade.md)
 through 24 rounds, normal completion, both trading posts, the reached foreign
 historic moment and the next external Trader decision. Positive unreceived random
-first-post boost rewards, live cancellation, new idle-path edge allocation and
+first-post boost rewards, arbitrary live cancellation, new idle-path edge allocation and
 other unimplemented production, modifier or event branches return explicit errors.
 Completed mutations remain visible after an unsupported continuation. These
 limits do not turn unsupported work into a successful empty action.
+
+[War-triggered international route interruption](linux-trade-war-interruption.md)
+has separate bounded coverage; it preserves cancellation effects without the
+normal completion posts or rewards.

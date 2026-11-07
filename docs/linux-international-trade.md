@@ -69,7 +69,8 @@ the exact native human guard returns before purchase, and the hook already skips
 policy selection and its RNG. Nonhuman purchase requests remain strict.
 
 This does not establish complete runtime state, a complete RNG inventory or
-full-game parity. Live cancellation, new idle-path edge allocation, occupied naval
+full-game parity. [War-triggered interruption](linux-trade-war-interruption.md) has
+separate bounded coverage. Other live cancellation, new idle-path edge allocation, occupied naval
 storm targets, positive eligible era Gossip delivery and other unimplemented
 production, modifier, resource or event branches return explicit errors while
 retaining completed mutations. The domestic convenience method remains available.
