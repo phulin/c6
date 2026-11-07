@@ -179,7 +179,9 @@ fn damage_land_units<P>(
                 .unit_runtime(reference.player(), reference.id)
                 .map_err(Error::State)?
                 .domain
-                != 1
+                // DealEventDamage2a100ad passes native DomainTypes2 for
+                // UNIT_DAMAGE_LAND; naval damage passes0 at2a10128.
+                != 2
         {
             continue;
         }
