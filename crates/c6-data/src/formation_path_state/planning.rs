@@ -1,6 +1,6 @@
 //! Bounded Linux planning forecast inputs, without selecting or issuing orders.
 //!
-//! This preserves Planning::Instance's two-turn Warrior/Scout search and ordered
+//! This preserves Planning::Instance's two-turn Warrior/Scout/Slinger search and ordered
 //! Unit and District combat positions. The caller executes every reached forecast's
 //! proposal creation/cleanup callbacks; these inputs are not completed combat.
 use super::*;
@@ -22,6 +22,7 @@ struct Search<'s, 'a, 'r> {
     target: PlotCoord,
     unit_location: PlotCoord,
     max_moves: i32,
+    attack_range: i32,
     positions: Vec<PlotCoord>,
 }
 impl Search<'_, '_, '_> {
@@ -44,7 +45,7 @@ impl Search<'_, '_, '_> {
         .map_err(Error::PlacementQuery)
     }
 
-    /// AddReachablePosition21b8200's combat-only mode, for land range0 and
+    /// AddReachablePosition21b8200's combat-only mode, for admitted land range0/range1 and
     /// TARGET_ENEMY_COMBAT_DISTRICT. No cached planning answers are inputs.
     fn record_combat_position(
         &mut self,
@@ -74,7 +75,11 @@ impl Search<'_, '_, '_> {
             self.target.x,
             self.target.y,
         );
-        let candidate = if distance == 0 {
+        let candidate = if self.attack_range == 1 {
+            // Source21b82d7..8757: range1 keeps the reached tile, including
+            // distance0; no sight raycast or moves-remaining gate is reached.
+            (distance <= 1).then_some(at)
+        } else if distance == 0 {
             // For a land unit entering the target tile, combat starts at the
             // proposed parent, including the source for a root callback.
             if c.water(at)? {
@@ -96,10 +101,15 @@ impl Search<'_, '_, '_> {
             None
         };
         if let Some(candidate) = candidate {
-            // Source21b8757..8841: target water is excluded for land range0;
-            // first six unique positions survive. Later better paths do not
+            // Source21b8757..8841: range0 checks target water; range1 checks
+            // candidate water. The first six unique positions survive. Later better paths do not
             // replace an already recorded position or alter its order.
-            if !c.water(self.target)?
+            let water_check = if self.attack_range == 1 {
+                candidate
+            } else {
+                self.target
+            };
+            if !c.water(water_check)?
                 && self.positions.len() < 6
                 && !self.positions.contains(&candidate)
             {
@@ -293,9 +303,9 @@ pub fn has_district_combat_forecasts(
         .map_err(|_| Error::Missing("planning Unit.IsCombat query"))
 }
 
-/// Compute positions for one live, unembarked range0 planner: Warrior/max2
-/// or Scout/max3, with searchTurns2 and one current enemy combat District. The caller admits the
-/// complete planner/target roster and rejects other nearby combat targets.
+/// Compute positions for one live, unembarked Warrior/max2 or Scout/max3
+/// range0 planner, or Slinger/max2/range1, with searchTurns2 and one current
+/// enemy combat District. The caller admits the complete planner/target roster and rejects other nearby combat targets.
 /// Unsupported reached movement/placement inputs remain errors.
 pub fn district_forecast(
     context: Context<'_, '_, '_>,
@@ -330,7 +340,7 @@ pub fn district_forecast(
     )
 }
 
-/// Compute the same source-ordered range0 combat positions for a live hostile
+/// Compute the same source-ordered admitted combat positions for a live hostile
 /// land combat Unit. Remembered, civilian and religious targets remain separate.
 pub fn unit_forecast(
     context: Context<'_, '_, '_>,
@@ -389,9 +399,15 @@ fn forecast(
         },
     )
     .map_err(Error::UnitMoves)?;
-    let supported = unit.e_type_index == crate::registry::linux_type_hash(b"UNIT_WARRIOR")
-        && max_moves == 2
-        || unit.e_type_index == crate::registry::linux_type_hash(b"UNIT_SCOUT") && max_moves == 3;
+    let attack_range = unit.k_attack_range_modifiers.i_attack_range;
+    let supported = attack_range == 0
+        && (unit.e_type_index == crate::registry::linux_type_hash(b"UNIT_WARRIOR")
+            && max_moves == 2
+            || unit.e_type_index == crate::registry::linux_type_hash(b"UNIT_SCOUT")
+                && max_moves == 3)
+        || attack_range == 1
+            && unit.e_type_index == crate::registry::linux_type_hash(b"UNIT_SLINGER")
+            && max_moves == 2;
     if search_turns != 2
         || context.record().unit_ids.as_slice() != [planner_unit]
         || !supported
@@ -403,10 +419,9 @@ fn forecast(
         })
         || unit.k_location != context.record().location
         || !has_district_combat_forecasts(context.state, &context.definitions.formation, unit)?
-        || unit.k_attack_range_modifiers.i_attack_range != 0
     {
         return Err(Error::Missing(
-            "planning Warrior/max2 or Scout/max3, searchTurns2/range0 scope",
+            "planning Warrior/max2/Scout/max3/range0 or Slinger/max2/range1, searchTurns2 scope",
         ));
     }
     let unit_location = unit.k_location;
@@ -433,12 +448,17 @@ fn forecast(
         target: target_location,
         unit_location,
         max_moves,
+        attack_range,
         positions: Vec::new(),
     };
     if !search.at_war(defender.0)? {
         return Err(Error::Missing("planning target enemy combat participant"));
     }
-    if distance > max_moves.wrapping_mul(search_turns) {
+    if distance
+        > max_moves
+            .wrapping_mul(search_turns)
+            .wrapping_add(attack_range)
+    {
         return Ok(None);
     }
     engine.generate(

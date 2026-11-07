@@ -95,6 +95,7 @@ impl<'a> Profile<'a> {
             }
             if !plan.delayed_death
                 && unit.e_type_index != crate::registry::linux_type_hash(b"UNIT_WARRIOR")
+                && unit.e_type_index != crate::registry::linux_type_hash(b"UNIT_SLINGER")
             {
                 return Err(Error::Unsupported("human wartime live planner type"));
             }
@@ -364,7 +365,8 @@ impl Queries for CurrentQueries<'_, '_> {
         let origin = unit.k_location;
         let radius = crate::unit_movement_state::unit_max_moves(state, unit, self.movement)
             .map_err(query_error)?
-            .wrapping_mul(plan.search_turns);
+            .wrapping_mul(plan.search_turns)
+            .wrapping_add(unit.k_attack_range_modifiers.i_attack_range);
         let map = state.world().map();
         let near = |at: (i32, i32)| {
             c6_core::geometry::plot_distance(
@@ -425,7 +427,7 @@ impl Queries for CurrentQueries<'_, '_> {
                         .map_err(query_error)?
                     {
                         // CollectTargets scans visible plots by map index. Its
-                        // stock single land Warrior/Scout defender is a low-
+                        // stock single land Warrior/Scout/Slinger defender is a low-
                         // priority Unit target. Other target classes stay guarded.
                         let target = &unit.value;
                         if let Some(district) = other.districts.records.entries.iter().find(|d| {
@@ -450,7 +452,9 @@ impl Queries for CurrentQueries<'_, '_> {
                             || (target.e_type_index
                                 != crate::registry::linux_type_hash(b"UNIT_WARRIOR")
                                 && target.e_type_index
-                                    != crate::registry::linux_type_hash(b"UNIT_SCOUT"))
+                                    != crate::registry::linux_type_hash(b"UNIT_SCOUT")
+                                && target.e_type_index
+                                    != crate::registry::linux_type_hash(b"UNIT_SLINGER"))
                         {
                             return Err("wartime planning visible Unit target class".into());
                         }
