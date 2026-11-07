@@ -572,10 +572,8 @@ pub fn religion(
     // only compares the current replacement vector. Conditional Hero CanTrain
     // is kept separate below. Identical clamped balances cannot cross a cost,
     // so the notification constructors/Send (and their effects) are unreachable.
-    if !no_cities(player(state, owner)?) {
-        if defs.religious_purchase_heroes {
-            return Err(Error::Unsupported("religious Hero purchase queries"));
-        }
+    if !no_cities(player(state, owner)?) && defs.religious_purchase_heroes {
+        return Err(Error::Unsupported("religious Hero purchase queries"));
     }
     let new = old.saturating_add(yield_q8);
     if old != new {
