@@ -265,7 +265,10 @@ pub fn can_start(
     if plot.flags.get(PlotFlag::Impassable) {
         return Ok(false);
     }
-    if plot.feature_hash != u32::MAX || plot.improvement_hash != u32::MAX {
+    if (defs.kind != Kind::Mine && defs.legality.hills.contains(&plot.terrain_hash))
+        || plot.feature_hash != u32::MAX
+        || plot.improvement_hash != u32::MAX
+    {
         return Err(Error::Unsupported(
             "Farm flat empty first-placement profile",
         ));
