@@ -20,6 +20,10 @@ pub enum Kind {
     Ally,
     DeclaredFriend,
     FriendlyCityOccupied,
+    PillageLead {
+        minimum: i32,
+        percentage_bits: u32,
+    },
     NearCultureBorder {
         radius: u32,
         lookback: i32,
@@ -113,7 +117,9 @@ fn event_gate(
     has_met: impl FnOnce() -> Result<bool, Error>,
 ) -> Result<bool, Error> {
     match r.kind {
-        Kind::TurnStarted | Kind::AtPeace { .. } => Ok(r.context == reported),
+        Kind::TurnStarted | Kind::AtPeace { .. } | Kind::PillageLead { .. } => {
+            Ok(r.context == reported)
+        }
         Kind::Ally
         | Kind::DeclaredFriend
         | Kind::FriendlyCityOccupied
@@ -141,6 +147,15 @@ pub fn test(
     let subject = player(state, r.subject)?;
     match r.kind {
         Kind::TurnStarted => Ok(0),
+        Kind::PillageLead {
+            minimum,
+            percentage_bits,
+        } => Ok(pillage_lead(
+            context.stats.tiles_pillaged,
+            subject.stats.tiles_pillaged,
+            minimum,
+            percentage_bits,
+        )),
         Kind::Ally => Ok(i32::from(
             !state
                 .game_relations()
@@ -297,9 +312,47 @@ pub fn test(
     }
 }
 
+// PlayerPillageLead23c2a00: 64-bit difference, separate SSE f32 casts/mul,
+// and an ordered comparison. NaN follows the nonpositive arm and fails.
+fn pillage_lead(context: i32, subject: i32, minimum: i32, percentage_bits: u32) -> i32 {
+    if (context <= 0 && subject <= 0)
+        || (i64::from(context) - i64::from(subject)).abs() < i64::from(minimum)
+    {
+        return 1;
+    }
+    let percentage = f32::from_bits(percentage_bits);
+    let satisfied = if percentage > 0.0 {
+        subject as f32 >= percentage * context as f32
+    } else {
+        context as f32 >= f32::from_bits((percentage * subject as f32).to_bits() ^ 0x8000_0000)
+    };
+    i32::from(!satisfied)
+}
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn pillage_lead_uses_native_direction_minimum_and_ordered_float_comparison() {
+        assert_eq!(pillage_lead(0, 0, 0, 0f32.to_bits()), 1);
+        assert_eq!(pillage_lead(10, 14, 5, 1.25f32.to_bits()), 1);
+        assert_eq!(pillage_lead(10, 15, 5, 1.5f32.to_bits()), 0);
+        assert_eq!(pillage_lead(15, 10, 5, (-1.5f32).to_bits()), 0);
+        assert_eq!(
+            pillage_lead(i32::MIN, i32::MAX, i32::MAX, 1f32.to_bits()),
+            0
+        );
+        assert_eq!(pillage_lead(10, 15, 5, f32::NAN.to_bits()), 1);
+        let r = Receiver {
+            kind: Kind::PillageLead {
+                minimum: 5,
+                percentage_bits: 1.5f32.to_bits(),
+            },
+            context: 0,
+            subject: 1,
+        };
+        assert!(event_gate(r, 0, || panic!("no contact query")).unwrap());
+        assert!(!event_gate(r, 1, || panic!("no contact query")).unwrap());
+    }
     #[test]
     fn subject_and_context_callbacks_have_distinct_native_filters() {
         let mut r = Receiver {
