@@ -27,7 +27,7 @@ pub struct Forecast {
     pub defender: ComponentId,
     pub attack_location: PlotCoord,
     pub retaliation_locations: Vec<PlotCoord>,
-    pub district_can_retaliate: bool,
+    pub can_retaliate: bool,
 }
 /// The stock formation planning BFS supplies these requests from the SAME
 /// current world, placement, sight and movement definitions. Unknown target or
@@ -186,15 +186,26 @@ impl<'a> Profile<'a> {
                             let forecasts = self.queries.forecasts(state,self.owner,plan)
                                 .map_err(|error|{detail=Some(error);Error::Unsupported("human wartime forecast query; inspect backend.last_error")})?;
                             for forecast in forecasts {
-                            let (id,_)=proposals::Context::new(state,&mut combat)
-                                .propose_unit_district(forecast.attacker,forecast.defender,forecast.attack_location)
+                            if !matches!(forecast.defender.component_type, 1 | 3) {
+                                return Err(Error::Unsupported("human wartime forecast component type"));
+                            }
+                            let proposal = if forecast.defender.component_type == 1 {
+                                proposals::Context::new(state,&mut combat).propose_units(forecast.attacker,UnitReference::from_component_id(forecast.defender),forecast.attack_location)
+                            } else {
+                                proposals::Context::new(state,&mut combat).propose_unit_district(forecast.attacker,forecast.defender,forecast.attack_location)
+                            };
+                            let (id,_) = proposal
                                 .map_err(|error|{detail=Some(format!("{error:?}"));Error::Unsupported("human wartime attack proposal callback")})?;
                             proposals::collection_modifiers::forget_combat(state,&mut combat,id)
                                 .map_err(|error|{detail=Some(format!("{error:?}"));Error::Unsupported("human wartime attack proposal destruction")})?;
-                            if forecast.district_can_retaliate {
+                            if forecast.can_retaliate {
                                 for at in forecast.retaliation_locations {
-                                    let (id,_)=proposals::Context::new(state,&mut combat)
-                                        .propose_district_unit(forecast.defender,forecast.attacker,at)
+                                    let proposal = if forecast.defender.component_type == 1 {
+                                        proposals::Context::new(state,&mut combat).propose_units(UnitReference::from_component_id(forecast.defender),forecast.attacker,at)
+                                    } else {
+                                        proposals::Context::new(state,&mut combat).propose_district_unit(forecast.defender,forecast.attacker,at)
+                                    };
+                                    let (id,_) = proposal
                                         .map_err(|error|{detail=Some(format!("{error:?}"));Error::Unsupported("human wartime retaliation proposal callback")})?;
                                     proposals::collection_modifiers::forget_combat(state,&mut combat,id)
                                         .map_err(|error|{detail=Some(format!("{error:?}"));Error::Unsupported("human wartime retaliation proposal destruction")})?;
@@ -309,8 +320,8 @@ impl<'a, P> Runtime<'a, P> {
     }
 }
 
-/// Shared current services for bounded Warrior/Scout enemy combat District
-/// forecast query. These borrow the ordinary action/turn providers.
+/// Shared current services for bounded Warrior/Scout enemy Unit and District
+/// forecast queries. These borrow the ordinary action/turn providers.
 pub struct CurrentQueries<'a, 'r> {
     pub binding: WireBinding,
     pub path: &'a crate::formation_path_state::Definitions<'a, 'r>,
@@ -380,7 +391,7 @@ impl Queries for CurrentQueries<'_, '_> {
             .value
             .0;
         let sight = self.visibility.borrow();
-        let mut districts = Vec::new();
+        let mut candidates = Vec::new();
         for other in &state.retained().players {
             let enemy = other.header.owner;
             if enemy == owner
@@ -413,7 +424,52 @@ impl Queries for CurrentQueries<'_, '_> {
                     if crate::formation_path_state::shared_plot_visible(&sight, owner, index)
                         .map_err(query_error)?
                     {
-                        return Err(format!("wartime planning nearby visible enemy Unit continuation: planner {owner}/{}, enemy {enemy}/{}",plan.unit,unit.value.id));
+                        // CollectTargets scans visible plots by map index. Its
+                        // stock single land Warrior/Scout defender is a low-
+                        // priority Unit target. Other target classes stay guarded.
+                        let target = &unit.value;
+                        if target.b_has_hidden_visibility
+                            || (target.e_type_index
+                                != crate::registry::linux_type_hash(b"UNIT_WARRIOR")
+                                && target.e_type_index
+                                    != crate::registry::linux_type_hash(b"UNIT_SCOUT"))
+                        {
+                            return Err("wartime planning visible Unit target class".into());
+                        }
+                        if map
+                            .plots
+                            .get(index)
+                            .ok_or("wartime Unit plot extent")?
+                            .improvement_hash
+                            != u32::MAX
+                        {
+                            return Err("wartime planning improved Unit target plot".into());
+                        }
+                        if state
+                            .world()
+                            .plot_units(0, index)
+                            .map_err(query_error)?
+                            .len()
+                            != 1
+                            || other.districts.records.entries.iter().any(|d| {
+                                d.value.location == (target.k_location.x, target.k_location.y)
+                            })
+                        {
+                            return Err("wartime planning stacked or District Unit target".into());
+                        }
+                        let desired_unit = targets
+                            .desired_targets
+                            .iter()
+                            .find(|r| {
+                                r.hash
+                                    == crate::registry::linux_type_hash(b"TARGET_LOW_PRIORITY_UNIT")
+                            })
+                            .ok_or("wartime planning desired low priority Unit type")?
+                            .value
+                            .0;
+                        if desired_unit != 0 && district_combat {
+                            candidates.push((index, enemy, target.id, 1, true));
+                        }
                     }
                 }
             }
@@ -421,17 +477,31 @@ impl Queries for CurrentQueries<'_, '_> {
                 .ok()
                 .and_then(|i| targets.knowledge_base.player_armies.0.get(i))
             {
-                if army.army_size.value.as_ref().is_some_and(|groups| {
-                    groups.iter().any(|group| {
-                        group
-                            .value
-                            .iter()
-                            .any(|unit| near((unit.location.x, unit.location.y)))
-                    })
-                }) {
-                    return Err("wartime planning nearby unseen Unit continuation".into());
+                if let Some(groups) = &army.army_size.value {
+                    for group in groups {
+                        for unit in &group.value {
+                            if !near((unit.location.x, unit.location.y)) {
+                                continue;
+                            }
+                            let x = usize::try_from(unit.location.x)
+                                .map_err(|_| "wartime remembered Unit x")?;
+                            let y = usize::try_from(unit.location.y)
+                                .map_err(|_| "wartime remembered Unit y")?;
+                            let index = y * map.header.width as usize + x;
+                            if !crate::formation_path_state::shared_plot_visible(
+                                &sight, owner, index,
+                            )
+                            .map_err(query_error)?
+                            {
+                                return Err(
+                                    "wartime planning nearby unseen Unit continuation".into()
+                                );
+                            }
+                        }
+                    }
                 }
             }
+
             if desired == 0 || !district_combat {
                 continue;
             }
@@ -463,14 +533,14 @@ impl Queries for CurrentQueries<'_, '_> {
                     )
                     .map_err(query_error)?
                         != 0;
-                districts.push((enemy, district.id, retaliation));
+                candidates.push((index, enemy, district.id, 3, retaliation));
             }
         }
-        if districts.len() > 1 {
-            return Err("wartime planning multiple nearby combat Districts".into());
-        }
+        // CollectTargets appends live targets in map-index order. The supported
+        // profile has one combat target per plot and no civilian escort rewrite.
+        candidates.sort_by_key(|c| c.0);
         let mut result = Vec::new();
-        for (enemy, id, retaliation) in districts {
+        for (_, enemy, id, component_type, retaliation) in candidates {
             let stamp = state.action_stamp();
             let runtime = crate::formation_path_state::Runtime {
                 visibility: &sight,
@@ -500,14 +570,23 @@ impl Queries for CurrentQueries<'_, '_> {
             if let Some(capabilities) = self.capabilities {
                 context = context.with_capabilities(capabilities);
             }
-            if let Some(forecast) = crate::formation_path_state::planning::district_forecast(
-                context,
-                plan.unit,
-                (enemy, id),
-                plan.search_turns,
-            )
-            .map_err(query_error)?
-            {
+            let forecast = if component_type == 1 {
+                crate::formation_path_state::planning::unit_forecast(
+                    context,
+                    plan.unit,
+                    (enemy, id),
+                    plan.search_turns,
+                )
+            } else {
+                crate::formation_path_state::planning::district_forecast(
+                    context,
+                    plan.unit,
+                    (enemy, id),
+                    plan.search_turns,
+                )
+            }
+            .map_err(query_error)?;
+            if let Some(forecast) = forecast {
                 result.push(Forecast {
                     attacker: UnitReference::from_component_id(ComponentId {
                         owner: owner as i16,
@@ -516,12 +595,12 @@ impl Queries for CurrentQueries<'_, '_> {
                     }),
                     defender: ComponentId {
                         owner: enemy as i16,
-                        component_type: 3,
+                        component_type,
                         id,
                     },
                     attack_location: forecast.attack_location,
                     retaliation_locations: forecast.retaliation_locations,
-                    district_can_retaliate: retaliation,
+                    can_retaliate: retaliation,
                 });
             }
         }

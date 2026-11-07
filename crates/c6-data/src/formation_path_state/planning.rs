@@ -1,13 +1,14 @@
 //! Bounded Linux planning forecast inputs, without selecting or issuing orders.
 //!
 //! This preserves Planning::Instance's two-turn Warrior/Scout search and ordered
-//! District combat positions. The caller executes every reached forecast's
+//! Unit and District combat positions. The caller executes every reached forecast's
 //! proposal creation/cleanup callbacks; these inputs are not completed combat.
 use super::*;
 
-/// DoCombatSimulations first forecasts Unit -> District at `attack_location`.
-/// When the current District.GetAttackStrength(false) is nonzero, it then
-/// forecasts District -> Unit at each `retaliation_locations` entry in order.
+/// DoCombatSimulations first forecasts the planner against the target at
+/// `attack_location`, then the target against the planner at every ordered
+/// `retaliation_locations` entry. District retaliation additionally requires
+/// current District.GetAttackStrength(false) to be nonzero.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DistrictForecast {
     pub attacker: (i32, u32),
@@ -302,6 +303,73 @@ pub fn district_forecast(
     district: (i32, u32),
     search_turns: i32,
 ) -> Result<Option<DistrictForecast>, Error> {
+    let target = context
+        .state
+        .district(district.0, district.1)
+        .map_err(|_| Error::Missing("planning target District"))?;
+    let target_location = PlotCoord {
+        x: target.location.0,
+        y: target.location.1,
+    };
+    if context
+        .definitions
+        .movement
+        .district_definition_hit_points(target)
+        .map_err(Error::Cost)?
+        .unwrap_or(0)
+        <= 0
+    {
+        return Err(Error::Missing("planning target combat District"));
+    }
+    forecast(
+        context,
+        planner_unit,
+        district,
+        target_location,
+        search_turns,
+    )
+}
+
+/// Compute the same source-ordered range0 combat positions for a live hostile
+/// land combat Unit. Remembered, civilian and religious targets remain separate.
+pub fn unit_forecast(
+    context: Context<'_, '_, '_>,
+    planner_unit: u32,
+    defender: (i32, u32),
+    search_turns: i32,
+) -> Result<Option<DistrictForecast>, Error> {
+    let target = context
+        .state
+        .world()
+        .player(defender.0)
+        .map_err(Error::World)?
+        .unit(defender.1)
+        .map_err(Error::World)?
+        .ok_or(Error::Missing("planning target Unit"))?
+        .record;
+    if target.b_delayed_death
+        || unit_moves::unit_is_embarked(target)
+        || !has_district_combat_forecasts(context.state, &context.definitions.formation, target)?
+        || context
+            .state
+            .unit_runtime(defender.0, defender.1)
+            .map_err(Error::State)?
+            .domain
+            != 2
+    {
+        return Err(Error::Missing("planning live land combat Unit target"));
+    }
+    let location = target.k_location;
+    forecast(context, planner_unit, defender, location, search_turns)
+}
+
+fn forecast(
+    context: Context<'_, '_, '_>,
+    planner_unit: u32,
+    defender: (i32, u32),
+    target_location: PlotCoord,
+    search_turns: i32,
+) -> Result<Option<DistrictForecast>, Error> {
     let owner = context.record().owner;
     let player = context.state.world().player(owner).map_err(Error::World)?;
     let unit = player
@@ -343,24 +411,6 @@ pub fn district_forecast(
     }
     let unit_location = unit.k_location;
     context.require_plot(unit_location)?;
-    let target = context
-        .state
-        .district(district.0, district.1)
-        .map_err(|_| Error::Missing("planning target District"))?;
-    let target_location = PlotCoord {
-        x: target.location.0,
-        y: target.location.1,
-    };
-    if context
-        .definitions
-        .movement
-        .district_definition_hit_points(target)
-        .map_err(Error::Cost)?
-        .unwrap_or(0)
-        <= 0
-    {
-        return Err(Error::Missing("planning target combat District"));
-    }
     context.require_plot(target_location)?;
     let map = context.state.world().map();
     let distance = c6_core::geometry::plot_distance(
@@ -385,8 +435,8 @@ pub fn district_forecast(
         max_moves,
         positions: Vec::new(),
     };
-    if !search.at_war(district.0)? {
-        return Err(Error::Missing("planning target enemy District"));
+    if !search.at_war(defender.0)? {
+        return Err(Error::Missing("planning target enemy combat participant"));
     }
     if distance > max_moves.wrapping_mul(search_turns) {
         return Ok(None);
@@ -400,7 +450,7 @@ pub fn district_forecast(
     )?;
     Ok((!search.positions.is_empty()).then_some(DistrictForecast {
         attacker: (owner, planner_unit),
-        defender: district,
+        defender,
         attack_location: target_location,
         retaliation_locations: search.positions,
     }))
