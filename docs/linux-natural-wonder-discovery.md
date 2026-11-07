@@ -31,4 +31,4 @@ The native capture uses public `e04335a0` / private `38ae41e8`, configuration `1
 
 Public checks at production `49d89033` pass 1,832 unit tests, two doc tests, workspace Clippy with warnings denied, the existing C smoke check and a committed public build without private siblings. Production remains standalone Rust; this adds no C ABI gameplay operation.
 
-Promotion-threshold enumeration, random promotion options, nonempty gossip delivery, positive relic creation, positive discovery-rate era notices, added unit-wonder consumers, automation reactivation and circumnavigation remain outside this qualified profile.
+The separate [Scout Alpine profile](linux-scout-alpine.md) now exercises threshold enumeration, an explicit promotion and its subsequent hill effect. Random promotion options, nonempty gossip delivery, positive relic creation, positive discovery-rate era notices, added unit-wonder consumers, automation reactivation and circumnavigation remain outside this qualified profile.

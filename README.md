@@ -24,7 +24,9 @@ adds a newly available luxury, both cities' amenities and following upkeep. The
 boosts and strategic-resource extraction through ordinary upkeep.
 A [Scout natural-wonder profile](docs/linux-natural-wonder-discovery.md) preserves
 positive sight experience, Astrology, History and era effects through the next
-ordinary round on the same Session.
+ordinary round on the same Session. A [Scout Alpine profile](docs/linux-scout-alpine.md)
+extends discovery through an explicitly selected promotion, ordinary upkeep and
+hill movement that demonstrates the earned effect.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
