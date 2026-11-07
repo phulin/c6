@@ -109,7 +109,7 @@ fn debug(error: impl std::fmt::Debug) -> String {
 /// Call only at the source StartEmergency boundary: capability enabled, no
 /// existing/pending matching emergency, XP2 definition present, major target,
 /// and complete current Emergency wrapper-cache domain. Positive eligibility
-/// remains unsupported and is reported after preserving its created objects.
+/// remains unsupported and is rejected before changing the shared owners.
 #[allow(clippy::too_many_arguments)]
 pub fn check_target(
     state: &LoadedState,
@@ -136,6 +136,15 @@ pub fn check_target(
         .find(|(_, o)| o.kind == backend::ContextObject::Player(issuer))
         .map(|(handle, _)| *handle)
         .ok_or("backstab current Player wrapper")?;
+    // Preflight the unsupported positive branch before creating partial pending
+    // state. This read has no callbacks/RNG; the supported negative path uses
+    // exactly the native pending Emergency player-data [victim].
+    let eligible =
+        backstab_alliance_requirement(state, issuer, &[victim], input.minimum_level, thresholds)
+            .map_err(debug)?;
+    if eligible {
+        return Err("positive Backstab emergency member/invitation continuation".into());
+    }
     let definitions = sets::Runtime::from_initial(
         0,
         vec![(
@@ -156,11 +165,6 @@ pub fn check_target(
         .make_emergency_object(state, issuer, input.emergency_type, -1)
         .map_err(debug)?;
     let context = effects.object(object).map_err(debug)?.instance_id;
-    // Pending Emergency player-data is exactly [victim]. Native Test only
-    // reads alliance points and the current adjusted thresholds on this path.
-    let eligible =
-        backstab_alliance_requirement(state, issuer, &[victim], input.minimum_level, thresholds)
-            .map_err(debug)?;
     let mut factory = Factory {
         runtime: requirements.sets_mut(),
         child: &input.child,
@@ -175,9 +179,6 @@ pub fn check_target(
     )
     .map_err(debug)?
     .ok_or("backstab target set missing")?;
-    if eligible {
-        return Err("positive Backstab emergency member/invitation continuation".into());
-    }
     changes::release(&mut factory, set).map_err(debug)?;
     if factory.live.is_some() {
         return Err("backstab target requirement still live".into());
