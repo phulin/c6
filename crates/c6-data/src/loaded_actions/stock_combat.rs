@@ -758,14 +758,33 @@ impl<P> resolve::completion::stock::Effects for Runtime<'_, P> {
     }
     fn trigger_boost(
         &mut self,
-        _: &mut LoadedState,
+        state: &mut LoadedState,
         _: &mut resolve::completion::stock::Bindings,
-        _: i32,
-        _: usize,
+        owner: i32,
+        definition: usize,
     ) -> Result<(), Error> {
-        Err(Error::Missing(
-            "positive combat boost research continuation",
-        ))
+        use resolve::completion::boosts::{ResearchTrigger, Trigger};
+        let inputs = self
+            .unit_creation
+            .as_ref()
+            .and_then(|input| input.research)
+            .ok_or(Error::Missing("combat canonical research definitions"))?;
+        let mut runtime = self
+            .action_research
+            .take()
+            .ok_or(Error::Missing("combat canonical research loan"))?;
+        let result = {
+            let mut effects =
+                super::research::Effects::new(self, &mut runtime, inputs.choices, inputs.culture);
+            ResearchTrigger {
+                definitions: inputs.definitions,
+                effects: &mut effects,
+            }
+            .trigger(state, owner, definition)
+            .map_err(|error| Error::Requirement(format!("combat boost: {error:?}")))
+        };
+        self.action_research = Some(runtime);
+        result
     }
     fn change_era_score(
         &mut self,
