@@ -388,19 +388,30 @@ impl<'a, E: Effects<'a>> c6_core::found_city::creation::Context for Start<'_, '_
         first: bool,
         location: PlotCoord,
     ) -> Result<Vec<u8>, String> {
-        if !first {
-            return self.effects.generate_later_name(self.state, city, location);
-        }
         let naming = self
             .current
             .naming
             .iter()
             .find(|n| n.owner == i32::from(city.owner))
             .ok_or("current founding civilization/leader")?;
-        self.definitions
-            .names
-            .generate_first_capital(self.state, &naming.civilization, &naming.leader)
-            .map_err(text)
+        if first {
+            self.definitions
+                .names
+                .generate_first_capital(self.state, &naming.civilization, &naming.leader)
+                .map_err(text)
+        } else {
+            match self.definitions.names.generate_ordinary(
+                self.state,
+                &naming.civilization,
+                &naming.leader,
+            ) {
+                Ok(name) => Ok(name),
+                Err(crate::found_city::names::Error::FallbackRequired) => {
+                    self.effects.generate_later_name(self.state, city, location)
+                }
+                Err(error) => Err(text(error)),
+            }
+        }
     }
     fn renamed_signal(&mut self, city: ComponentId) -> Result<(), String> {
         self.effects.renamed_signal(self.state, city)
