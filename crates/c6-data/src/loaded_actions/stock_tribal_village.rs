@@ -773,6 +773,16 @@ impl<P> Runtime<'_, P> {
 }
 
 impl State<'_> {
+    /// Native definition index for the most recent selected reward, derived
+    /// from this binding's canonical subtype collection order.
+    pub fn selected_reward_index(&self) -> Option<usize> {
+        let hash = self.selections.last()?.1?.reward;
+        self.inputs
+            .definitions
+            .rewards
+            .iter()
+            .position(|r| r.hash == hash)
+    }
     /// Unsaved guard is retained even after an incomplete selected effect or a
     /// native null-selection prefix; it is never reset to manufacture success.
     pub fn applying(&self, owner: i32) -> Option<bool> {
