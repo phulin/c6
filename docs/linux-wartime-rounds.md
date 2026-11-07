@@ -41,8 +41,9 @@ same optimized build.
 
 Raw full-action equality remains false. Source-qualified native policy output
 and intermediate unsaved District observations remain visible in the receipts;
-this does not establish a complete RNG inventory. Visible or remembered hostile
-Unit forecast targets, other planner shapes, positive emergency eligibility,
+this does not establish a complete RNG inventory. Visible hostile Unit forecasts and a real melee followed by one round are
+separately qualified in the [Unit melee continuation](linux-wartime-unit-melee.md).
+Nearby unseen remembered Unit targets, other planner shapes, positive emergency eligibility,
 active military operations and executable behavior trees remain explicit
 unsupported branches. The interruption profile's deal, foreign-governor,
 shared-sight and expulsion restrictions also remain.
