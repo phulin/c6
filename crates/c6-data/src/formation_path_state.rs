@@ -4,6 +4,7 @@
 //! diplomacy and visibility; unsupported reached dependencies remain errors.
 //! This read-only search plus Formation cache writes is not complete MoveTo.
 pub mod breadth_first;
+pub mod planning;
 mod shore;
 mod visible_units;
 use crate::{
