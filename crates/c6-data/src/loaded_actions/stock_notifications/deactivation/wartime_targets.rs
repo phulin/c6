@@ -402,7 +402,19 @@ impl Queries for CurrentQueries<'_, '_> {
                 if !unit.value.b_delayed_death
                     && near((unit.value.k_location.x, unit.value.k_location.y))
                 {
-                    return Err("wartime planning nearby enemy Unit continuation".into());
+                    let x = usize::try_from(unit.value.k_location.x)
+                        .map_err(|_| "wartime enemy Unit x")?;
+                    let y = usize::try_from(unit.value.k_location.y)
+                        .map_err(|_| "wartime enemy Unit y")?;
+                    let index = y * map.header.width as usize + x;
+                    // CollectTargets enumerates live Units only in the visible
+                    // plot branch. Unseen Units require separate remembered
+                    // knowledge, guarded below; do not inspect hidden spawns.
+                    if crate::formation_path_state::shared_plot_visible(&sight, owner, index)
+                        .map_err(query_error)?
+                    {
+                        return Err(format!("wartime planning nearby visible enemy Unit continuation: planner {owner}/{}, enemy {enemy}/{}",plan.unit,unit.value.id));
+                    }
                 }
             }
             if let Some(army) = usize::try_from(enemy)
