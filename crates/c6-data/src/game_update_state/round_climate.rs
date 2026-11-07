@@ -41,6 +41,8 @@ pub struct Runtime {
     pub manager: game_climate::Manager,
     pub live: LiveFields,
     pub storms: Option<super::round_storm::Context>,
+    pub droughts: Vec<super::round_drought::Drought>,
+    pub(super) drought_context: Option<super::round_drought::Context>,
 }
 impl Runtime {
     pub fn from_initial(
@@ -63,6 +65,8 @@ impl Runtime {
             manager,
             live,
             storms: None,
+            droughts: Vec::new(),
+            drought_context: None,
         })
     }
     /// Install current rules/configuration for new storms; wire imports with
@@ -80,6 +84,24 @@ impl Runtime {
             return Err(Error::Requires("Climate existing storm live fields"));
         }
         self.storms = Some(context);
+        Ok(())
+    }
+    /// Explicitly import the live drought collection omitted by Climate14.
+    pub fn install_drought_context(
+        &mut self,
+        state: &LoadedState,
+        context: super::round_drought::Context,
+        droughts: Vec<super::round_drought::Drought>,
+    ) -> Result<(), Error> {
+        self.validate(state)?;
+        if self.drought_context.is_some()
+            || !self.live.active_droughts.is_empty()
+            || !droughts.is_empty()
+        {
+            return Err(Error::Requires("Climate existing drought effects"));
+        }
+        self.droughts = droughts;
+        self.drought_context = Some(context);
         Ok(())
     }
     pub fn validate(&self, state: &LoadedState) -> Result<(), Error> {

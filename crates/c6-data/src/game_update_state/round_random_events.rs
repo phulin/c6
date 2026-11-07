@@ -862,6 +862,11 @@ impl<P> Climate<P> for CurrentClimate<'_> {
             runtime.wire.historical_events.push(history);
             return Ok(());
         }
+        if definition.operator == linux_type_hash(b"DROUGHT") {
+            super::round_drought::apply(state, self.runtime, event, runtime, &mut history)?;
+            runtime.wire.historical_events.push(history);
+            return Ok(());
+        }
         if definition.operator != 0xf927ed0a {
             return Err(Error::Pending(event));
         }
