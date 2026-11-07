@@ -17,7 +17,9 @@ A [Slinger kill profile](docs/linux-slinger-archery.md) retains its positive Arc
 boost and an ordinary round through the next external decision.
 A [produced Builder expansion profile](docs/linux-produced-builder-expansion.md)
 joins queued Settler and Builder completion, second founding, external travel,
-a Farm and the following round on one Session.
+a Farm and the following round on one Session. The [resource Farm profile](docs/linux-resource-farm-irrigation.md)
+retains its Irrigation boost and resource acquisition; the [Plantation profile](docs/linux-plantation-luxury.md)
+adds a newly available luxury, both cities' amenities and following upkeep.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
