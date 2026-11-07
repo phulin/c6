@@ -1,6 +1,7 @@
 //! Source-ordered completion/continuation of the selected processor pass.
 //! Next-player activation is performed here; its first-activation upkeep and
 //! the next Game.Update remain mandatory caller continuations.
+pub mod wartime_targets;
 use super::{turn_reports, Runtime};
 use crate::{
     game_update_state as data,
@@ -281,9 +282,11 @@ pub fn finish_completed_human_pass<P>(
             0
         };
         if c.state.player_slot_status(owner).map_err(Error::State)? == 3 {
-            loaded::human_control::deactivate_with_priority_signal(
+            let backend = std::cell::RefCell::new(&mut *c.services.effects);
+            loaded::human_control::deactivate_with_callbacks(
                 c.state,
                 owner,
+                |state, owner| backend.borrow_mut().continue_human_wartime(state, owner),
                 |state, owner, _priority| {
                     let services =
                         inputs
@@ -302,8 +305,8 @@ pub fn finish_completed_human_pass<P>(
                         owner,
                         services.maintenance.maintenance.unit_registry(),
                         &sight,
-                        c.services
-                            .effects
+                        backend
+                            .borrow()
                             .movement()
                             .ok()
                             .map(|m| m.definitions.formation),
