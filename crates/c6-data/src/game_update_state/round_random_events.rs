@@ -79,6 +79,9 @@ pub struct Runtime {
     /// A zero status draw reached an unsupported positive setter. Retain the
     /// direction so a retry cannot consume this GameSync draw again.
     pub pending_volcano_status: Option<bool>,
+    /// Resolved UTF-8 names from the current localization input, keyed by the
+    /// NamedRivers definition hash. Never populated from comparison output.
+    pub(super) river_names: Option<Vec<(u32, Vec<u8>)>>,
 }
 #[derive(Debug)]
 pub enum Error {
@@ -116,7 +119,19 @@ impl Runtime {
             fire_allowance: input.fire_allowance,
             pending: None,
             pending_volcano_status: None,
+            river_names: None,
         })
+    }
+    pub fn install_river_names(
+        &mut self,
+        state: &LoadedState,
+        names: Vec<(u32, Vec<u8>)>,
+    ) -> Result<(), Error> {
+        if self.binding != *state.binding() || self.river_names.is_some() {
+            return Err(Error::Missing("RandomEvents river localization binding"));
+        }
+        self.river_names = Some(names);
+        Ok(())
     }
     fn realism(&self) -> i32 {
         if self.omitted.realism_override_ordinal == -1 {
@@ -183,6 +198,7 @@ pub struct Definitions {
     volcano_names: LinuxDefinitionRegistry,
     features: LinuxDefinitionRegistry,
     speed_turns: Vec<(u32, i32)>,
+    rivers: super::round_river::Definitions,
 }
 fn int(row: crate::Row<'_>, column: &'static str) -> Result<i32, Error> {
     i32::try_from(row.integer(column).map_err(Error::Rules)?).map_err(|_| Error::Missing(column))
@@ -282,6 +298,7 @@ impl Definitions {
             volcano_names: registry("NamedVolcanoes", "NamedVolcanoType")?,
             features: registry("Features", "FeatureType")?,
             speed_turns,
+            rivers: super::round_river::Definitions::from_rules(rules)?,
         })
     }
     fn expected_turns(&self, r: &Runtime) -> i32 {
@@ -806,7 +823,7 @@ impl<P> Climate<P> for CurrentClimate<'_> {
         runtime: &mut Runtime,
         definitions: &Definitions,
         event: PossibleEvent,
-        _backend: &mut crate::loaded_actions::stock_notifications::Runtime<'_, P>,
+        backend: &mut crate::loaded_actions::stock_notifications::Runtime<'_, P>,
     ) -> Result<(), Error> {
         self.runtime.validate(state).map_err(climate_error)?;
         let definition = definitions
@@ -816,21 +833,33 @@ impl<P> Climate<P> for CurrentClimate<'_> {
         if !allowed(runtime, definition)? {
             return Ok(());
         }
-        // Linux296d883..296d89c derives the required tile count from Hexes.
-        // FindRequiredTilesAroundPlot2971409..297140b returns false for zero,
-        // even when its terrain predicate accepts the plot. Therefore ALL
-        // scores are zero for Hexes<=2: no target draw, direction draw, active
-        // storm, damage, name generation, callback, or notification is reached.
-        // ApplyEvent nevertheless appends its initialized historical record.
-        if definition.operator != 0xf927ed0a {
-            return Err(Error::Pending(event));
-        }
-        let mut history = targetless_storm_history(
+        let mut history = initial_history(
             definition,
             event,
             state.retained().core.current_turn,
             definitions,
         )?;
+        if definition.operator == linux_type_hash(b"FLOODPLAIN") {
+            super::round_river::apply(
+                state,
+                self.runtime,
+                runtime,
+                &definitions.rivers,
+                event,
+                &mut history,
+                backend,
+            )?;
+            runtime.wire.historical_events.push(history);
+            return Ok(());
+        }
+        if definition.operator != 0xf927ed0a {
+            return Err(Error::Pending(event));
+        }
+        // Linux296d883..296d89c derives the required tile count from Hexes.
+        // FindRequiredTilesAroundPlot2971409..297140b returns false for zero,
+        // even when its terrain predicate accepts the plot. Therefore ALL
+        // storm scores are zero for Hexes<=2: no target/direction draw or
+        // effects are reached, but ApplyEvent appends initialized history.
         if storm_required_tiles(definition.hexes) != 0 || event.start_plot != -1 {
             super::round_storm::apply(state, self.runtime, event, &mut history)?;
         }
@@ -847,7 +876,7 @@ fn storm_required_tiles(hexes: i32) -> i32 {
     }
 }
 
-fn targetless_storm_history(
+fn initial_history(
     definition: &Event,
     event: PossibleEvent,
     turn: i32,

@@ -203,4 +203,5 @@ pub mod round_diplomatic_relations;
 
 pub mod round_signals;
 
+pub mod round_river;
 pub mod round_storm;

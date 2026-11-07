@@ -556,7 +556,12 @@ fn effects(
     }
     Ok(fertility)
 }
-fn add_yield(state: &mut LoadedState, index: i32, kind: u32, amount: i32) -> Result<(), Error> {
+pub(super) fn add_yield(
+    state: &mut LoadedState,
+    index: i32,
+    kind: u32,
+    amount: i32,
+) -> Result<(), Error> {
     let world = state.world_mut().map_err(Error::State)?;
     let feature = world
         .geographic_components_mut()
