@@ -19,6 +19,15 @@ pub struct InfluenceInputs<'a, 'r> {
     /// Current bound damage-strength rules, required by a live garrison.
     pub strength: Option<&'a crate::melee_attack::strength::Definitions>,
     pub cities: &'a crate::loaded_actions::city_range_attack::Queries<'a>,
+    /// Shared admitted path definitions and current city-domain/level providers.
+    pub path: Option<InfluencePath<'a, 'r>>,
+}
+#[derive(Clone, Copy)]
+pub struct InfluencePath<'a, 'r> {
+    pub definitions: &'a crate::formation_path_state::Definitions<'a, 'r>,
+    pub binding: &'a c6_core::core_player::initialization::WireBinding,
+    pub levels: &'a [(i32, u32)],
+    pub city_domains: Option<&'a [Option<c6_core::city_district::DomainMask>]>,
 }
 struct ResourceEffects {
     speed: u32,
@@ -169,6 +178,27 @@ impl<P> Runtime<'_, P> {
                 crate::influence_map_update::Error::Missing("current Influence sight borrow"),
             )
         })?;
+        let path_runtime = input
+            .path
+            .as_ref()
+            .map(|path| crate::formation_path_state::Runtime {
+                visibility: &visibility,
+                civilization_levels: Some(
+                    crate::movement_placement_state::CurrentCivilizationLevels {
+                        binding: path.binding,
+                        values: path.levels,
+                    },
+                ),
+                city_domains: path.city_domains.map(|masks| {
+                    crate::formation_path_state::CurrentCityDomains {
+                        binding: path.binding,
+                        stamp: state.action_stamp(),
+                        masks,
+                    }
+                }),
+                execution: crate::formation_path_state::ExecutionContext::Exclusive,
+                is_evaluating_operation: false,
+            });
         crate::influence_map_update::update(
             state,
             input.definitions,
@@ -179,8 +209,8 @@ impl<P> Runtime<'_, P> {
                 movement: input.movement,
                 formation: input.formation,
                 city_range: input.cities,
-                path: None,
-                path_runtime: None,
+                path: input.path.as_ref().map(|path| path.definitions),
+                path_runtime: path_runtime.as_ref(),
                 strength: input.strength,
             },
             owner,
