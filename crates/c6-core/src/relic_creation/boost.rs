@@ -1198,6 +1198,33 @@ mod tests {
         );
     }
     #[test]
+    fn technology_only_kill_boost_is_once_and_preserves_external_research_queue() {
+        let mut f = Fixture::new();
+        f.rules.boosts[0].civic = None;
+        f.rules.boosts[0].percent = 40;
+        f.techs[0].research_progress_q8[0].value = integer(7) + 128;
+        let queue = f.techs[0].research_queue_hashes.clone();
+        trigger_boost(&mut f, Some(0), 0).unwrap();
+        assert!(f.techs[0].boost_triggered.pairs[0].value);
+        assert_eq!(f.techs[0].research_progress_q8[0].value, integer(46) + 128);
+        assert_eq!(f.techs[0].research_queue_hashes, queue);
+        assert!(!f.techs[0].has_tech.pairs[0].value);
+        assert!(!f.culture[0].boost_triggered.pairs[0].value);
+        assert_eq!(
+            &f.log[..3],
+            [
+                "report bf48fda8 0 Some(7) Some(0)",
+                "notify 223fbe46",
+                "signal Technology 0",
+            ]
+        );
+        let log = f.log.clone();
+        trigger_boost(&mut f, Some(0), 0).unwrap();
+        assert_eq!(f.techs[0].research_progress_q8[0].value, integer(46) + 128);
+        assert_eq!(f.techs[0].research_queue_hashes, queue);
+        assert_eq!(f.log, log);
+    }
+    #[test]
     fn progress_award_rereads_state_after_synchronous_signal() {
         let mut f = Fixture::new();
         f.techs[0].research_progress_q8[0].value = integer(20);
