@@ -302,7 +302,14 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
                         .as_ref()
                         .ok_or(Error::Unsupported("current human Targets"))?;
                     if t.new_war_started.0 != 0 {
-                        return Err(Error::Unsupported("Targets pending war operations"));
+                        self.backend.continue_human_wartime(state, owner)?;
+                        state
+                            .combat_ai_targets_mut(owner)
+                            .map_err(|_| {
+                                Error::Unsupported("current activation wartime Targets write")
+                            })?
+                            .new_war_started
+                            .0 = 0;
                     }
                 }
                 // Governors and Espionage return on current IsHuman. Other

@@ -139,31 +139,6 @@ impl<'a> Profile<'a> {
                 "human wartime active military/tree continuation",
             ));
         }
-        let mut forecasts = Vec::new();
-        for &plan in &self.plans {
-            if plan.delayed_death {
-                let unit = state
-                    .world()
-                    .player(self.owner)
-                    .map_err(|_| Error::Unsupported("human wartime units"))?
-                    .unit(plan.unit)
-                    .map_err(|_| Error::Unsupported("human wartime dead planner"))?;
-                if unit.is_some_and(|u| !u.record.b_delayed_death) {
-                    return Err(Error::Unsupported("human wartime revived planner"));
-                }
-                continue;
-            }
-            forecasts.extend(
-                self.queries
-                    .forecasts(state, self.owner, plan)
-                    .map_err(|error| {
-                        runtime.last_error = Some(error);
-                        Error::Unsupported(
-                            "human wartime forecast query; inspect backend.last_error",
-                        )
-                    })?,
-            );
-        }
         let inputs = self
             .inputs
             .take()
@@ -181,7 +156,19 @@ impl<'a> Profile<'a> {
                 };
                 if result.is_ok() {
                     result=(|| {
-                        for forecast in forecasts {
+                        for &plan in &self.plans {
+                            if plan.delayed_death {
+                                let unit = state.world().player(self.owner)
+                                    .map_err(|_|Error::Unsupported("human wartime units"))?.unit(plan.unit)
+                                    .map_err(|_|Error::Unsupported("human wartime dead planner"))?;
+                                if unit.is_some_and(|u|!u.record.b_delayed_death) {
+                                    return Err(Error::Unsupported("human wartime revived planner"));
+                                }
+                                continue;
+                            }
+                            let forecasts = self.queries.forecasts(state,self.owner,plan)
+                                .map_err(|error|{detail=Some(error);Error::Unsupported("human wartime forecast query; inspect backend.last_error")})?;
+                            for forecast in forecasts {
                             let (id,_)=proposals::Context::new(state,&mut combat)
                                 .propose_unit_district(forecast.attacker,forecast.defender,forecast.attack_location)
                                 .map_err(|error|{detail=Some(format!("{error:?}"));Error::Unsupported("human wartime attack proposal callback")})?;
@@ -195,6 +182,7 @@ impl<'a> Profile<'a> {
                                     proposals::collection_modifiers::forget_combat(state,&mut combat,id)
                                         .map_err(|error|{detail=Some(format!("{error:?}"));Error::Unsupported("human wartime retaliation proposal destruction")})?;
                                 }
+                            }
                             }
                         }
                         Ok(())
@@ -283,7 +271,7 @@ impl<'a, P> Runtime<'a, P> {
             profile.plans.clear();
         }
     }
-    pub(super) fn continue_human_wartime(
+    pub(in crate::loaded_actions::stock_notifications) fn continue_human_wartime(
         &mut self,
         state: &mut LoadedState,
         owner: i32,
