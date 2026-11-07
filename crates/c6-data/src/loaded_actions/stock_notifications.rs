@@ -128,6 +128,11 @@ pub enum Notice {
         resource: i32,
         plot: u32,
     },
+    NaturalWonderDiscovered {
+        owner: i32,
+        feature: i32,
+        plot: u32,
+    },
     ImprovementPillaged {
         owner: i32,
         actor_owner: i32,
@@ -314,6 +319,7 @@ impl<'a, P> Runtime<'a, P> {
             | Notice::CivilianCaptured { owner, .. }
             | Notice::RoutesUpgraded { owner, .. }
             | Notice::ResourceDiscovered { owner, .. }
+            | Notice::NaturalWonderDiscovered { owner, .. }
             | Notice::ImprovementPillaged { owner, .. }
             | Notice::TechnologyCompleted { owner, .. }
             | Notice::CivicCompleted { owner, .. }

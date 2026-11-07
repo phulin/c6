@@ -55,6 +55,7 @@ pub(super) struct Bindings {
     pub(super) maximum_damage: i32,
     pub(super) bonuses: crate::registry::LinuxDefinitionRegistry,
     report_scope: Option<Scope>,
+    notice_scope: Option<Scope>,
     revealed_reports: Vec<RevealedReport>,
     decision_control: DecisionControl,
 }
@@ -162,6 +163,7 @@ impl<P> Runtime<'_, P> {
             maximum_damage,
             bonuses,
             report_scope: None,
+            notice_scope: None,
             revealed_reports: Vec::new(),
             decision_control: DecisionControl::default(),
         });
@@ -190,6 +192,49 @@ impl<P> Runtime<'_, P> {
             .as_ref()
             .and_then(|r| r.wonders.as_ref())
             .map_or(&[], |r| r.revealed_reports.as_slice())
+    }
+    /// Qualify the current b1c06f51 default manual notification factory,
+    /// supersession callbacks and added-report consumers. This does not admit
+    /// custom notification factories or other sight-discovery notices.
+    pub fn bind_wonder_discovery_notice(
+        &mut self,
+        state: &LoadedState,
+        scope: Scope,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("wonder notice identity"))?;
+        let binding = self
+            .resource_revelation
+            .as_mut()
+            .and_then(|r| r.wonders.as_mut())
+            .ok_or(Error::Missing("wonder discovery binding"))?;
+        if binding.notice_scope.is_some() {
+            return Err(Error::Missing("wonder notice already bound"));
+        }
+        binding.notice_scope = Some(scope);
+        Ok(())
+    }
+    pub(super) fn notify_wonder_discovered(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        plot: u32,
+        feature: i32,
+    ) -> Result<(), Error> {
+        self.resource_revelation
+            .as_ref()
+            .and_then(|r| r.wonders.as_ref())
+            .and_then(|r| r.notice_scope)
+            .ok_or(Error::Missing("wonder discovery notification consumers"))?;
+        self.publish_notice(
+            state,
+            super::Notice::NaturalWonderDiscovered {
+                owner,
+                feature,
+                plot,
+            },
+        )
+        .map_err(|e| Error::Requirement(format!("wonder notice: {e:?}")))
     }
     pub fn wonder_discovery_decision_control(&self) -> DecisionControl {
         self.resource_revelation
