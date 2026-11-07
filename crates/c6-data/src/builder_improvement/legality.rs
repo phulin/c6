@@ -282,12 +282,18 @@ pub fn can_start(
         // CanHaveImprovement's matched ValidResource bypasses terrain when
         // EnforceTerrain is false. This includes flat Iron Mines; feature
         // removal and replacement still require their own supported effects.
-        return Ok(defs
+        let visible = defs
             .legality
             .visibility
             .visible_resource(state, unit.e_owner, plot.resource_hash as i32)
             .map_err(|_| Error::Missing("current Farm resource visibility"))?
-            != -1);
+            != -1;
+        if visible || defs.kind != Kind::Mine {
+            return Ok(visible);
+        }
+        // An unrevealed resource does not prevent an ordinary terrain-legal
+        // Mine. It cannot supply resource-specific construction boosts or
+        // extraction until the canonical revelation prerequisite is acquired.
     }
     if defs.legality.hills.contains(&plot.terrain_hash) != (defs.kind == Kind::Mine) {
         return Err(Error::Unsupported("ordinary improvement terrain profile"));
