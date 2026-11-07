@@ -241,7 +241,7 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                     && report.specialization.is_some()
                     && report.index.is_none()
                     && report.old_progress.is_some()
-                    && report.source == Some(0) =>
+                    && matches!(report.source, Some(0 | 1)) =>
             {
                 self.boost_report(state, definitions, report)
             }
@@ -250,7 +250,7 @@ impl<P> research::Effects for Effects<'_, '_, P> {
                     (notice.kind, notice.notification_type),
                     (research::Kind::Civic, 0xf94c970d) | (research::Kind::Technology, 0x223fbe46)
                 ) && notice.old_progress.is_some()
-                    && notice.source == Some(0)
+                    && matches!(notice.source, Some(0 | 1))
                     && notice.percent.is_some() =>
             {
                 self.boost_notice(state, notice)
