@@ -28,10 +28,16 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
+struct OrdinaryName {
+    civilization: Vec<u8>,
+    leader: Option<Vec<u8>>,
+    name: Vec<u8>,
+    sort_index: i64,
+}
 pub struct Definitions {
     binding: WireBinding,
     capitals: Vec<CapitalRow>,
-    ordinary: Vec<(Vec<u8>, Option<Vec<u8>>, Vec<u8>, i64)>,
+    ordinary: Vec<OrdinaryName>,
     depths: Vec<(Vec<u8>, i32)>,
     continent_names: bool,
 }
@@ -80,22 +86,22 @@ impl Definitions {
                 row.get("ContinentType").map_err(Error::Rules)?,
                 SqlValue::Null
             );
-            ordinary.push((
-                bytes(
+            ordinary.push(OrdinaryName {
+                civilization: bytes(
                     row.get("CivilizationType").map_err(Error::Rules)?,
                     "CivilizationType",
                 )?,
-                match row.get("LeaderType").map_err(Error::Rules)? {
+                leader: match row.get("LeaderType").map_err(Error::Rules)? {
                     SqlValue::Null => None,
                     value => Some(bytes(value, "LeaderType")?),
                 },
-                bytes(row.get("CityName").map_err(Error::Rules)?, "CityName")?,
-                row.integer("SortIndex").map_err(Error::Rules)?,
-            ));
+                name: bytes(row.get("CityName").map_err(Error::Rules)?, "CityName")?,
+                sort_index: row.integer("SortIndex").map_err(Error::Rules)?,
+            });
         }
         // SQLite's ORDER BY SortIndex retains the rowid scan order for ties
         // in this admitted, no-continent stock query profile.
-        ordinary.sort_by_key(|row| row.3);
+        ordinary.sort_by_key(|row| row.sort_index);
         let depths = rules
             .gameplay()
             .table("Civilizations")
@@ -137,16 +143,18 @@ impl Definitions {
         }
         let owner = state.game_city_names().map_err(Error::State)?;
         let mut candidates = Vec::new();
-        for (civ, row_leader, name, _) in &self.ordinary {
-            if civ != civilization || row_leader.as_ref().is_some_and(|value| value != leader) {
+        for row in &self.ordinary {
+            if row.civilization != civilization
+                || row.leader.as_ref().is_some_and(|value| value != leader)
+            {
                 continue;
             }
             // The positive native UnsortedUnique branch needs its own ordering
             // qualification; never silently choose an invented duplicate order.
-            if candidates.contains(name) {
+            if candidates.contains(&row.name) {
                 return Err(Error::DuplicateCandidates);
             }
-            candidates.push(name.clone());
+            candidates.push(row.name.clone());
         }
         candidates.retain(|name| !names::was_used(owner, name));
         let depth = self

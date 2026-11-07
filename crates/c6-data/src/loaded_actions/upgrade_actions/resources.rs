@@ -17,6 +17,8 @@ struct Resource {
     co2: Option<i32>,
     strategic: bool,
     luxury: bool,
+    artifact: bool,
+    improvements: Vec<u32>,
 }
 struct Unit {
     hash: u32,
@@ -29,6 +31,8 @@ pub struct Definitions {
     resources: Vec<Resource>,
     units: Vec<Unit>,
     luxuries: crate::luxury_allocation::Definitions,
+    visibility: crate::city_turn::resources::Definitions,
+    districts: Vec<(u32, bool)>,
 }
 impl Definitions {
     pub fn from_rules(state: &LoadedState, rules: &Rules) -> Result<Self, String> {
@@ -65,6 +69,22 @@ impl Definitions {
                 hash: hash(&e.type_name),
                 strategic: hash(class.as_bytes()) == hash(b"RESOURCECLASS_STRATEGIC"),
                 luxury: hash(class.as_bytes()) == hash(b"RESOURCECLASS_LUXURY"),
+                artifact: class == "RESOURCECLASS_ARTIFACT",
+                improvements: rules
+                    .gameplay()
+                    .table("Improvement_ValidResources")
+                    .ok_or("Improvement_ValidResources")?
+                    .rows()
+                    .filter(|r| {
+                        r.text("ResourceType").ok().map(str::as_bytes)
+                            == Some(e.type_name.as_slice())
+                    })
+                    .map(|r| {
+                        r.text("ImprovementType")
+                            .map(|name| hash(name.as_bytes()))
+                            .map_err(|e| e.to_string())
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
                 accumulates: integer("Accumulate")?.is_some_and(|v| v != 0),
                 co2: integer("CO2perkWh")?,
             });
@@ -109,6 +129,28 @@ impl Definitions {
             binding: state.binding().clone(),
             resources,
             units,
+            visibility: crate::city_turn::resources::Definitions::from_rules(rules)
+                .map_err(|e| e.to_string())?,
+            districts: rules
+                .gameplay()
+                .table("Districts")
+                .ok_or("Districts")?
+                .rows()
+                .map(|row| {
+                    Ok((
+                        hash(
+                            row.text("DistrictType")
+                                .map_err(|e| e.to_string())?
+                                .as_bytes(),
+                        ),
+                        row.get("InternalOnly")
+                            .ok()
+                            .and_then(sql_integer)
+                            .ok_or("District InternalOnly")?
+                            != 0,
+                    ))
+                })
+                .collect::<Result<Vec<_>, String>>()?,
             luxuries: crate::luxury_allocation::Definitions::from_rules(state, rules)
                 .map_err(|e| format!("{e:?}"))?,
         })
@@ -397,6 +439,81 @@ pub fn change_owned_amount<P>(
         });
     Ok(())
 }
+/// Resources.OnDistrictConstructed2b70b40 and HandleResourceChangeOnTile2b708c0.
+/// Compute current/previous extraction on the same canonical plot before the
+/// normal owned-resource mutation, luxury redistribution and ordered callbacks.
+pub fn district_constructed<P>(
+    state: &mut LoadedState,
+    backend: &mut Runtime<'_, P>,
+    defs: &Definitions,
+    signals: &Signals,
+    owner: i32,
+    district: ComponentId,
+) -> Result<(), String> {
+    if &defs.binding != state.binding() {
+        return Err("district resource definitions binding".into());
+    }
+    if district.component_type != 3 {
+        return Err("district resource component type".into());
+    }
+    let record = state
+        .district(i32::from(district.owner), district.id)
+        .map_err(|e| e.to_string())?;
+    if i32::from(district.owner) != owner {
+        return Ok(());
+    }
+    let internal = defs
+        .districts
+        .iter()
+        .find(|(hash, _)| *hash == record.district_hash)
+        .ok_or("district resource definition")?
+        .1;
+    if internal {
+        return Ok(());
+    }
+    let plot = state
+        .world()
+        .map()
+        .plot_at(record.location.0, record.location.1)
+        .ok_or("district resource plot")?;
+    let resource = plot.resource_hash;
+    if resource == u32::MAX
+        || plot.resource_count == 0
+        || plot
+            .city_attributes
+            .as_ref()
+            .map_or(-1, |a| i32::from(a.player))
+            != owner
+    {
+        return Ok(());
+    }
+    if defs
+        .visibility
+        .visible_resource(state, owner, resource as i32)
+        .map_err(|e| e.to_string())?
+        == -1
+    {
+        return Ok(());
+    }
+    let definition = defs
+        .resources
+        .iter()
+        .find(|r| r.hash == resource)
+        .ok_or("district current resource definition")?;
+    // With the completed District override the current resource is extractable.
+    // The source's previous query supplies NO_DISTRICT, retaining the actual
+    // nonpillaged improvement. Equal old/new resources exit HandleChange early.
+    if definition.artifact {
+        return Err("district construction artifact removal unsupported".into());
+    }
+    let previous = !plot.flags.get(c6_core::map::PlotFlag::ImprovementPillaged)
+        && definition.improvements.contains(&plot.improvement_hash);
+    if previous || definition.accumulates {
+        return Ok(());
+    }
+    let amount = i32::from(plot.resource_count);
+    change_owned_amount(state, backend, defs, signals, owner, resource, amount)
+}
 /// UnitUpgraded updates maxima in melee/ranged/bombard order, without changing
 /// UnitsConstructed. Queries use the transferred new Unit and canonical state.
 pub fn upgraded(
@@ -463,6 +580,8 @@ mod tests {
             co2: Some(0),
             strategic: true,
             luxury: false,
+            artifact: false,
+            improvements: vec![],
         };
         // Spending stockpiled Iron does not forward a loss even when both
         // suzerainty and strategic-copy relationships are present.
@@ -477,6 +596,8 @@ mod tests {
             co2: None,
             strategic: false,
             luxury: true,
+            artifact: false,
+            improvements: vec![],
         };
         assert!(forwards(&luxury, -1, &[], &[1], 0, -1));
         assert!(forwards(&luxury, 1, &[], &[], 0, -1));

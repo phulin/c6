@@ -203,3 +203,26 @@ impl<P> data::Effects for Runtime<'_, P> {
         }
     }
 }
+
+impl<P> Runtime<'_, P> {
+    /// Current completed-District resource callback using retained resource
+    /// definitions and the same initialized ResourceChanged subscriber order.
+    pub fn district_resource_constructed(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        district: c6_core::unit::ComponentId,
+    ) -> Result<(), String> {
+        let (definitions, signals) = self
+            .research_resource_amount
+            .ok_or("current District resource amount services")?;
+        crate::loaded_actions::upgrade_actions::resources::district_constructed(
+            state,
+            self,
+            definitions,
+            signals,
+            owner,
+            district,
+        )
+    }
+}
