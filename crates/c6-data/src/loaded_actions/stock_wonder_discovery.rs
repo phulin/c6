@@ -17,6 +17,26 @@ pub enum Subscriber {
     History,
     Boost { row: i64 },
 }
+/// Actual stock NaturalWonderRevealed routes, including both Host publishers,
+/// with no added synchronous gameplay consumers. The discovery popup and the
+/// UI's SkipNextAutoEndTurn flag become semantic headless output.
+#[derive(Clone, Copy, Debug)]
+pub enum Scope {
+    StockPlainHeadlessExternalPoliciesNoAddedConsumers,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RevealedReport {
+    pub propagation: c6_core::visibility_change::Propagation,
+    pub feature: i32,
+}
+/// Controller requests retained at the external policy boundary. An ordinary
+/// explicit command can inhibit UI auto-end-turn without forcing a new player
+/// decision. A positive reactivation during automation remains unsupported.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct DecisionControl {
+    pub skip_next_automatic_end_turn: bool,
+    pub reactivation_requested_for: Option<i32>,
+}
 #[derive(Clone, Copy)]
 enum Current {
     SummaryMajorsOnly,
@@ -31,8 +51,12 @@ pub(super) struct Bindings {
     pub(super) unit_wonder_empty: bool,
     pub(super) promotion_classes: Vec<(u32, Option<String>)>,
     pub(super) experience: i32,
+    pub(super) change_definitions: Option<crate::melee_attack::experience::Definitions>,
     pub(super) maximum_damage: i32,
     pub(super) bonuses: crate::registry::LinuxDefinitionRegistry,
+    report_scope: Option<Scope>,
+    revealed_reports: Vec<RevealedReport>,
+    decision_control: DecisionControl,
 }
 impl<P> Runtime<'_, P> {
     /// Complete actual GameSignals+678 order and its WasEverAlive-major pointer
@@ -134,9 +158,102 @@ impl<P> Runtime<'_, P> {
             unit_wonder_empty,
             promotion_classes,
             experience,
+            change_definitions: None,
             maximum_damage,
             bonuses,
+            report_scope: None,
+            revealed_reports: Vec::new(),
+            decision_control: DecisionControl::default(),
         });
+        Ok(())
+    }
+    pub fn bind_wonder_discovery_reports(
+        &mut self,
+        state: &LoadedState,
+        scope: Scope,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("wonder report identity"))?;
+        let binding = self
+            .resource_revelation
+            .as_mut()
+            .and_then(|r| r.wonders.as_mut())
+            .ok_or(Error::Missing("wonder discovery binding"))?;
+        if binding.report_scope.is_some() {
+            return Err(Error::Missing("wonder reports already bound"));
+        }
+        binding.report_scope = Some(scope);
+        Ok(())
+    }
+    pub fn wonder_revealed_reports(&self) -> &[RevealedReport] {
+        self.resource_revelation
+            .as_ref()
+            .and_then(|r| r.wonders.as_ref())
+            .map_or(&[], |r| r.revealed_reports.as_slice())
+    }
+    pub fn wonder_discovery_decision_control(&self) -> DecisionControl {
+        self.resource_revelation
+            .as_ref()
+            .and_then(|r| r.wonders.as_ref())
+            .map_or(DecisionControl::default(), |r| r.decision_control)
+    }
+    pub(super) fn report_wonder_revealed(
+        &mut self,
+        state: &LoadedState,
+        propagation: c6_core::visibility_change::Propagation,
+        feature: i32,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("wonder report identity"))?;
+        let processing = state.processing_automation().map_err(Error::State)?;
+        let observer = self
+            .movement()?
+            .local_observer
+            .ok_or(Error::Missing("wonder report local observer"))?;
+        let binding = self
+            .resource_revelation
+            .as_mut()
+            .and_then(|r| r.wonders.as_mut())
+            .ok_or(Error::Missing("wonder discovery binding"))?;
+        binding
+            .report_scope
+            .ok_or(Error::Missing("wonder reveal report consumers"))?;
+        // HOST3214fe0 compares GetPlayerProcessingAutomation, not the acting
+        // player. It requests reactivation only for the current local pass.
+        // HOST320e2e0 inhibits auto-end-turn in either case. External policies
+        // retain their explicit EndTurn choice; no policy is selected here.
+        binding.decision_control.skip_next_automatic_end_turn = true;
+        if processing == observer {
+            binding.decision_control.reactivation_requested_for = Some(observer);
+            return Err(Error::Missing("wonder automation player reactivation"));
+        }
+        binding.revealed_reports.push(RevealedReport {
+            propagation,
+            feature,
+        });
+        Ok(())
+    }
+    /// Bind canonical XP definitions from this state's authoritative resources.
+    pub fn bind_wonder_experience(
+        &mut self,
+        state: &LoadedState,
+        rules: &Rules,
+        authority: &crate::resource_binding::ResourceAuthority<'_>,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("wonder experience identity"))?;
+        let definitions =
+            crate::melee_attack::experience::Definitions::from_rules(state, rules, authority)
+                .map_err(|e| Error::Requirement(format!("wonder experience definitions: {e:?}")))?;
+        let binding = self
+            .resource_revelation
+            .as_mut()
+            .and_then(|r| r.wonders.as_mut())
+            .ok_or(Error::Missing("wonder discovery binding"))?;
+        if binding.change_definitions.is_some() {
+            return Err(Error::Missing("wonder experience already bound"));
+        }
+        binding.change_definitions = Some(definitions);
         Ok(())
     }
     pub(super) fn wonder_discovered(
@@ -156,7 +273,7 @@ impl<P> Runtime<'_, P> {
         let ever_alive = binding.ever_alive_majors.clone();
         for subscriber in order {
             match subscriber {
-                Current::SummaryMajorsOnly | Current::Gossip => {
+                Current::SummaryMajorsOnly => {
                     // GeneralPlayerDataProvider's actual include flags select
                     // majors only; NaturalWonderFound explicitly tests IsMajor.
                     let level = self
@@ -166,10 +283,24 @@ impl<P> Runtime<'_, P> {
                         .find(|r| r.0 == player)
                         .ok_or(Error::Missing("wonder current civilization level"))?
                         .1;
-                    if level == 0x253718b0 {
-                        return Err(Error::Missing(
-                            "major wonder summary or gossip continuation",
-                        ));
+                    // OnFindWonder26445f0 only increments the Summary
+                    // repository dataset. It has no gameplay subscribers or
+                    // RNG; like UnitCreated's HistoricalSummary this output
+                    // is omitted at the stock headless boundary.
+                    let _major = level == 0x253718b0;
+                }
+                Current::Gossip => {
+                    let level = self
+                        .movement()?
+                        .civilization_levels
+                        .iter()
+                        .find(|r| r.0 == player)
+                        .ok_or(Error::Missing("wonder current civilization level"))?
+                        .1;
+                    if level == 0x253718b0 && self.current_gossip_history_empty() != Some(true) {
+                        // AddGossipItem29b25d0 tests the live history size
+                        // before storing an occurrence or reporting it.
+                        return Err(Error::Missing("wonder gossip nonempty live history"));
                     }
                 }
                 Current::EraScore => {
@@ -226,16 +357,8 @@ impl<P> Runtime<'_, P> {
                         .as_ref()
                         .and_then(|u| u.history.as_ref())
                         .ok_or(Error::Missing("wonder canonical history owner"))?;
-                    if history
-                        .inputs
-                        .civilization_levels
-                        .iter()
-                        .find(|r| r.0 == player)
-                        .ok_or(Error::Missing("wonder history player level"))?
-                        .1
-                        == 0x253718b0
-                    {
-                        return Err(Error::Missing("major natural wonder history continuation"));
+                    if !history.presentation_qualified {
+                        return Err(Error::Missing("wonder history report consumers"));
                     }
                     let mut effects =
                         crate::loaded_actions::government_actions::history::StockEffects {

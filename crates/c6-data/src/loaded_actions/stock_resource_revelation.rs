@@ -326,7 +326,7 @@ impl<P> Runtime<'_, P> {
                 UnitPlotSubscriber::Unavailable { receiver } => {
                     return Err(Error::Requirement(format!(
                         "UnitPlotVisibility subscriber {receiver}"
-                    )))
+                    )));
                 }
             }
         }
@@ -383,7 +383,32 @@ impl<P> Runtime<'_, P> {
             )
             .map_err(|e| Error::Requirement(format!("{e:?}")))?;
             if !revealed {
-                return Err(Error::Missing("sight natural wonder CompleteMovement"));
+                // CompleteMovement(ComponentID) rejects invalid/non-Unit IDs
+                // and a missing current Unit, then delegates to the same live
+                // completion flag/report path used by ordinary movement.
+                let source = event.source;
+                if source.owner != -1
+                    && source.id != u32::MAX
+                    && source.component_type == 1
+                    && state
+                        .world()
+                        .player(i32::from(source.owner))
+                        .map_err(Error::World)?
+                        .unit(source.id)
+                        .map_err(Error::World)?
+                        .is_some()
+                {
+                    crate::loaded_upkeep::complete_unit_movement(
+                        state,
+                        i32::from(source.owner),
+                        source.id,
+                        self,
+                    )
+                    .map_err(|e| {
+                        Error::Requirement(format!("wonder movement completion: {e:?}"))
+                    })?;
+                }
+                self.report_wonder_revealed(state, event, feature)?;
             }
         }
         Ok(())
