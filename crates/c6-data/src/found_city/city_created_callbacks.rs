@@ -158,7 +158,7 @@ impl Definitions {
                 .landmasses
                 .entries
                 .iter()
-                .find(|r| r.index == plot.landmass_id)
+                .find(|r| r.value.id == plot.landmass_id)
                 .is_some_and(|r| r.value.plot_count >= self.ocean_min_size)
             {
                 return Ok(true);

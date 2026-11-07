@@ -126,12 +126,8 @@ impl Context {
             if self.water.contains(&adjacent.terrain_hash)
                 && !adjacent.flags.get(PlotFlag::Impassable)
                 && (self.ocean_min_size <= 0
-                    || map
-                        .landmasses
-                        .entries
-                        .iter()
-                        .find(|r| r.index == adjacent.landmass_id)
-                        .is_some_and(|r| r.value.plot_count >= self.ocean_min_size))
+                    || landmass_size(&map.landmasses.entries, adjacent.landmass_id)
+                        .is_some_and(|size| size >= self.ocean_min_size))
             {
                 return Ok(false);
             }
@@ -170,6 +166,15 @@ impl Context {
         Ok(true)
     }
 }
+// Plot stores the full logical ID, including generation bits. Slot.index is
+// only the recycle-container slot; native GetLandmass returns the live object.
+fn landmass_size(entries: &[c6_core::map::Slot<c6_core::map::Landmass>], id: i32) -> Option<i32> {
+    entries
+        .iter()
+        .find(|r| r.value.id == id)
+        .map(|r| r.value.plot_count)
+}
+
 fn neighbor(state: &LoadedState, index: usize, direction: usize) -> Result<Option<usize>, Error> {
     let map = state.world().map();
     let (x, y) = map
@@ -257,4 +262,40 @@ pub(super) fn apply(
     let scaled = (q8.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32) >> 8;
     history.end_turn = history.start_turn.wrapping_add(scaled);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::landmass_size;
+    use c6_core::map::{Landmass, Slot};
+
+    #[test]
+    fn coastal_ocean_uses_full_landmass_identity_after_recycling() {
+        let landmasses = [
+            Slot {
+                index: 0,
+                value: Landmass {
+                    id: 65_536,
+                    plot_count: 684,
+                    water: true,
+                    centroid_delta: [0, 0],
+                },
+            },
+            Slot {
+                index: 2,
+                value: Landmass {
+                    id: 196_610,
+                    plot_count: 3,
+                    water: true,
+                    centroid_delta: [0, 0],
+                },
+            },
+        ];
+        // The ocean qualifies for the native minimum10; the inland lake does
+        // not. A bare slot index or stale generation cannot resolve either.
+        assert!(landmass_size(&landmasses, 65_536).is_some_and(|n| n >= 10));
+        assert!(!landmass_size(&landmasses, 196_610).is_some_and(|n| n >= 10));
+        assert_eq!(landmass_size(&landmasses, 0), None);
+        assert_eq!(landmass_size(&landmasses, 131_072), None);
+    }
 }
