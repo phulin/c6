@@ -47,6 +47,7 @@ pub struct State {
     resource_boost_checks: Option<Vec<ResourceBoostCheck>>,
     pub(super) continent_subscribers: Option<Vec<ContinentSubscriber>>,
     pub(super) unit_continent_empty: bool,
+    pub(super) wonders: Option<super::wonder_discovery::Bindings>,
     pub dispatches: Vec<(i32, i32)>,
     pub reports: Vec<Report>,
     pub(super) natural_wonders: Vec<u32>,
@@ -169,6 +170,7 @@ impl<P> Runtime<'_, P> {
             resource_boost_checks: None,
             continent_subscribers: None,
             unit_continent_empty: false,
+            wonders: None,
             unit_plot_subscribers: None,
             unit_plot_dispatches: Vec::new(),
         });

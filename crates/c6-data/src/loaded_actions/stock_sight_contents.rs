@@ -256,6 +256,18 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
                 Ok(())
             }
             Signal::UnitContinent { .. } if self.definitions()?.unit_continent_empty => Ok(()),
+            Signal::PlayerWonder {
+                player, feature, ..
+            } => self.backend.wonder_discovered(self.state, player, feature),
+            Signal::UnitWonder { .. }
+                if self
+                    .definitions()?
+                    .wonders
+                    .as_ref()
+                    .is_some_and(|b| b.unit_wonder_empty) =>
+            {
+                Ok(())
+            }
             _ => Err(Error::Requirement(format!(
                 "unsupported sight discovery signal {event:?}"
             ))),
@@ -286,7 +298,13 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
         Err(Error::Missing("positive sight discovery notification"))
     }
     fn natural_wonder_relic_count(&mut self, player: i32) -> Result<i32, Self::Error> {
-        Err(Error::Missing("sight discovery natural_wonder_relic_count"))
+        self.state
+            .retained()
+            .players
+            .iter()
+            .find(|p| p.header.owner == player)
+            .map(|p| p.religion.natural_wonder_relic)
+            .ok_or(Error::Missing("sight discovery current player religion"))
     }
     fn capital(&mut self, player: i32) -> Result<Option<Self::Capital>, Self::Error> {
         Err(Error::Missing("sight discovery capital"))

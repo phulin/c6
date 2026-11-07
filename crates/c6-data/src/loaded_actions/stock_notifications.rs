@@ -75,6 +75,8 @@ pub mod turn_loop;
 #[path = "stock_turn_reports.rs"]
 pub mod turn_reports;
 pub mod unit_creation;
+#[path = "stock_wonder_discovery.rs"]
+pub mod wonder_discovery;
 use c6_core::{
     core_player::initialization::WireBinding,
     diplomacy_manager::{ProcessStatement, StatementHandle},
