@@ -576,13 +576,36 @@ pub fn change<E: Reports>(
     amount: i32,
     effects: &mut E,
 ) -> Result<(), ChangeError<E::Error>> {
+    change_with_maximum(
+        state,
+        defs,
+        |unit| maximum.maximum_damage(unit),
+        levels,
+        unit,
+        amount,
+        effects,
+    )
+}
+
+/// Canonical ChangeExperience with the current maximum-damage property provider.
+/// Sight and combat share every XP write, promotion guard and reached report.
+#[allow(clippy::too_many_arguments)]
+pub fn change_with_maximum<E: Reports>(
+    state: &mut LoadedState,
+    defs: &Definitions,
+    maximum: impl FnOnce(&c6_core::unit::Unit) -> Result<i32, crate::formation_movement_cost::Error>,
+    levels: &[(i32, u32)],
+    unit: UnitReference,
+    amount: i32,
+    effects: &mut E,
+) -> Result<(), ChangeError<E::Error>> {
     if amount <= 0 {
         return Ok(());
     }
     if state.binding().inputs != defs.identities {
         return Err(ChangeError::Query(Error::Binding));
     }
-    if !change_eligible(state, levels, unit, |unit| maximum.maximum_damage(unit))? {
+    if !change_eligible(state, levels, unit, maximum)? {
         return Ok(());
     }
     let experience = &mut state

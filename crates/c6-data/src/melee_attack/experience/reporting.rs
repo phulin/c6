@@ -12,6 +12,7 @@ pub enum Error {
     World(c6_core::world::MissingInput),
     Maximum(formation_movement_cost::Error),
     Unsupported(&'static str),
+    Interruption(c6_core::unit_operation_interruption::Error),
 }
 
 /// Semantic output after the caller has executed the reached gameplay effects.
@@ -49,15 +50,30 @@ pub fn promotion_available_after_change(
     maximum: &formation_movement_cost::Definitions,
     unit: UnitReference,
 ) -> Result<bool, Error> {
+    promotion_available_after_change_with_interruption(state, maximum, unit, |_| {
+        Err(Error::Unsupported(
+            "Promote CanStart operation queue IsInterruptible",
+        ))
+    })
+}
+
+/// The manager invokes this provider only for a nonempty current operation
+/// queue, with the requested operation ID -1. The provider must resolve the
+/// actual front runtime ID and source-qualified current handler; a wire hash
+/// alone does not establish its virtual interruption behavior.
+pub fn promotion_available_after_change_with_interruption(
+    state: &LoadedState,
+    maximum: &formation_movement_cost::Definitions,
+    unit: UnitReference,
+    interruptible: impl FnOnce(&c6_core::unit::Unit) -> Result<bool, Error>,
+) -> Result<bool, Error> {
     let current = crate::melee_attack::actor(state, unit).map_err(Error::Actor)?;
     state
         .world()
         .player(current.e_owner)
         .map_err(Error::World)?;
-    if !current.k_operations.nodes.is_empty() {
-        return Err(Error::Unsupported(
-            "Promote CanStart operation queue IsInterruptible",
-        ));
+    if !current.k_operations.nodes.is_empty() && !interruptible(current)? {
+        return Ok(false);
     }
     if current.i_damage >= maximum.maximum_damage(current).map_err(Error::Maximum)? {
         return Ok(false);

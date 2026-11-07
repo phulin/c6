@@ -153,9 +153,10 @@ impl<'d, P> sight::Effects for Runtime<'d, P> {
             .and_then(|r| r.wonders.as_ref())
             .ok_or(Error::Missing("sight experience maximum damage"))?
             .maximum_damage;
+        let levels = self.movement()?.civilization_levels.clone();
         if !crate::melee_attack::experience::change_eligible::<Error>(
             state,
-            &self.movement()?.civilization_levels,
+            &levels,
             unit,
             |unit| crate::formation_movement_cost::unit_maximum_damage(unit, maximum),
         )
@@ -165,7 +166,29 @@ impl<'d, P> sight::Effects for Runtime<'d, P> {
                 .push("stock sight experience native early guard");
             return Ok(());
         }
-        Err(Error::Missing("positive sight experience continuation"))
+        // Move the immutable definitions out while Runtime owns the reached
+        // report callbacks, and restore them on both success and failure.
+        let definitions = self
+            .resource_revelation
+            .as_mut()
+            .and_then(|r| r.wonders.as_mut())
+            .and_then(|w| w.change_definitions.take())
+            .ok_or(Error::Missing("positive sight experience definitions"))?;
+        let result = crate::melee_attack::experience::change_with_maximum(
+            state,
+            &definitions,
+            |unit| crate::formation_movement_cost::unit_maximum_damage(unit, maximum),
+            &levels,
+            unit,
+            amount,
+            self,
+        );
+        self.resource_revelation
+            .as_mut()
+            .and_then(|r| r.wonders.as_mut())
+            .expect("wonder definitions owner retained during XP reports")
+            .change_definitions = Some(definitions);
+        result.map_err(|e| Error::Requirement(format!("sight experience change: {e:?}")))
     }
     fn update_resource_revealed(
         &mut self,
