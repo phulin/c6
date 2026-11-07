@@ -32,6 +32,7 @@ pub struct Definitions {
     gold: i32,
     on_remove: Option<u32>,
     goody: Vec<bool>,
+    removable: Vec<(u32, i32, Option<u32>)>,
     modifier_improvements: Vec<u32>,
     units: Vec<(u32, bool, bool)>,
     speed: Option<i32>,
@@ -55,11 +56,24 @@ impl Definitions {
         };
         let mut camp = None;
         let mut goody = Vec::new();
+        let mut removable = Vec::new();
         for entry in improvements.entries() {
             let row = table
                 .row_by_id(entry.database_rowid)
                 .ok_or(missing("camp improvement row"))?;
             goody.push(integer(row, "Goody")? != 0);
+            if integer(row, "RemoveOnEntry")? != 0 {
+                let on_remove = match row.get("ImprovementOnRemove").map_err(error)? {
+                    SqlValue::Null => None,
+                    SqlValue::Text(name) => Some(linux_type_hash(name)),
+                    _ => return Err(missing("removable ImprovementOnRemove type")),
+                };
+                removable.push((
+                    linux_type_hash(&entry.type_name),
+                    integer(row, "DispersalGold")?,
+                    on_remove,
+                ));
+            }
             if camp.is_none() && integer(row, "BarbarianCamp")? != 0 {
                 let on_remove = match row.get("ImprovementOnRemove").map_err(error)? {
                     SqlValue::Null => None,
@@ -148,6 +162,7 @@ impl Definitions {
             gold,
             on_remove,
             goody,
+            removable,
             modifier_improvements,
             units,
             speed,
@@ -305,9 +320,17 @@ impl State<'_> {
             .plots
             .get(plot as usize)
             .ok_or(missing("camp plot"))?;
-        if p.improvement_hash != defs.camp_hash {
-            return Err(missing("non-camp removable improvement"));
-        }
+        let improvement = p.improvement_hash;
+        let (raw_gold, on_remove) = if improvement == defs.camp_hash {
+            (defs.gold, defs.on_remove)
+        } else {
+            let row = defs
+                .removable
+                .iter()
+                .find(|r| r.0 == improvement)
+                .ok_or(missing("unsupported removable improvement"))?;
+            (row.1, row.2)
+        };
         let unit = state
             .world()
             .player(actor.0)
@@ -331,25 +354,32 @@ impl State<'_> {
             .ok_or(missing("camp Player tail"))?
             .improvement_replacements
             .iter()
-            .rfind(|p| p.definition_hash == defs.camp_hash)
+            .rfind(|p| p.definition_hash == improvement)
             .ok_or(missing("current camp replacement"))?
             .value;
-        if replacement != u32::MAX
+        let replacement_goody = replacement != u32::MAX
             && defs
                 .improvements
                 .find_index(replacement)
                 .and_then(|i| defs.goody.get(i))
                 .copied()
-                .ok_or(missing("camp replacement definition"))?
-        {
-            return Err(missing("camp modified goody continuation"));
-        }
-        if defs.goody[defs
+                .ok_or(missing("camp replacement definition"))?;
+        let goody = defs.goody[defs
             .improvements
-            .find_index(defs.camp_hash)
-            .ok_or(missing("camp definition"))?]
-        {
-            return Err(missing("camp is goody hut"));
+            .find_index(improvement)
+            .ok_or(missing("removable improvement definition"))?]
+            || replacement_goody;
+        if goody {
+            let level = backend
+                .movement()?
+                .civilization_levels
+                .iter()
+                .find(|r| r.0 == actor.0)
+                .ok_or(missing("goody current civilization level"))?
+                .1;
+            if level != 0x253718b0 {
+                return Ok(false);
+            }
         }
         let identity = ComponentId {
             owner: actor.0 as i16,
@@ -360,15 +390,28 @@ impl State<'_> {
             actor: identity,
             plot,
         });
+        if goody {
+            backend.apply_tribal_village(
+                state,
+                sight,
+                actor,
+                plot,
+                if replacement == u32::MAX {
+                    improvement
+                } else {
+                    replacement
+                },
+            )?;
+        }
         let modifier = player(state, actor.0)?
             .treasury
             .gold_dispersal_change_q8
             .iter()
-            .rfind(|p| p.definition_hash == defs.camp_hash)
+            .rfind(|p| p.definition_hash == improvement)
             .ok_or(missing("camp Treasury dispersal change"))?
             .value
             >> 8;
-        let raw = defs.gold.wrapping_add(modifier);
+        let raw = raw_gold.wrapping_add(modifier);
         let mut gold = 0;
         if raw != 0 {
             gold = c6_core::research_acquisition::units::adjust_for_game_speed(
@@ -464,42 +507,44 @@ impl State<'_> {
             plot,
             gold,
         });
-        self.remove(state, sight, backend, plot)?;
-        let value = &mut state
-            .player_stats_mut(actor.0)
-            .map_err(error)?
-            .barbarian_camps_cleared;
-        *value = value.wrapping_add(1);
-        for callback in self.inputs.dispersed.clone() {
-            match callback {
-                Dispersed::Gossip if self.inputs.gossip_history.is_empty() => {}
-                Dispersed::History => self.history(state, actor, plot)?,
-                Dispersed::Quests => {
-                    self.inputs.quests.borrow().validate(state).map_err(error)?;
-                    if !self.inputs.quests.borrow().current.is_empty() {
-                        return Err(missing("positive clear camp quest"));
+        self.remove(state, sight, backend, plot, improvement)?;
+        if improvement == defs.camp_hash {
+            let value = &mut state
+                .player_stats_mut(actor.0)
+                .map_err(error)?
+                .barbarian_camps_cleared;
+            *value = value.wrapping_add(1);
+            for callback in self.inputs.dispersed.clone() {
+                match callback {
+                    Dispersed::Gossip if self.inputs.gossip_history.is_empty() => {}
+                    Dispersed::History => self.history(state, actor, plot)?,
+                    Dispersed::Quests => {
+                        self.inputs.quests.borrow().validate(state).map_err(error)?;
+                        if !self.inputs.quests.borrow().current.is_empty() {
+                            return Err(missing("positive clear camp quest"));
+                        }
                     }
-                }
-                Dispersed::Boost(row) => self.boost(state, backend, actor.0, row)?,
-                Dispersed::PlayerStats(owner) => {
-                    if owner != actor.0
-                        && state
-                            .game_relations()
-                            .map_err(error)?
-                            .has_met(owner, actor.0)
-                            .map_err(error)?
-                    {
-                        let value = &mut state
-                            .player_stats_mut(owner)
-                            .map_err(error)?
-                            .cleared_bandit_camp_counts[actor.0 as usize];
-                        *value = value.wrapping_add(1);
+                    Dispersed::Boost(row) => self.boost(state, backend, actor.0, row)?,
+                    Dispersed::PlayerStats(owner) => {
+                        if owner != actor.0
+                            && state
+                                .game_relations()
+                                .map_err(error)?
+                                .has_met(owner, actor.0)
+                                .map_err(error)?
+                        {
+                            let value = &mut state
+                                .player_stats_mut(owner)
+                                .map_err(error)?
+                                .cleared_bandit_camp_counts[actor.0 as usize];
+                            *value = value.wrapping_add(1);
+                        }
                     }
+                    _ => return Err(error(("unsupported camp dispersed receiver", callback))),
                 }
-                _ => return Err(error(("unsupported camp dispersed receiver", callback))),
             }
         }
-        if defs.on_remove.is_some() {
+        if on_remove.is_some() {
             return Err(missing("camp ImprovementOnRemove placement"));
         }
         Ok(true)
@@ -510,6 +555,7 @@ impl State<'_> {
         sight: &mut crate::unit_sight_state::Runtime,
         backend: &mut Runtime<'_, P>,
         plot: u32,
+        improvement: u32,
     ) -> Result<(), Error> {
         let defs = self.inputs.definitions;
         let at = location(state, plot)?;
@@ -521,7 +567,7 @@ impl State<'_> {
             if let Some(v) = area
                 .improvement_counts
                 .iter_mut()
-                .find(|p| p.hash == defs.camp_hash)
+                .find(|p| p.hash == improvement)
             {
                 v.value = v.value.wrapping_sub(1);
             }
@@ -581,13 +627,13 @@ impl State<'_> {
         for callback in self.inputs.destroyed.clone() {
             match callback {
                 Destroyed::DetachModifiers
-                    if !defs.modifier_improvements.contains(&defs.camp_hash) => {}
+                    if !defs.modifier_improvements.contains(&improvement) => {}
                 Destroyed::Resources(_) => {
                     if state.world().map().plots[plot as usize].resource_hash != u32::MAX {
                         return Err(missing("resource-bearing camp removal"));
                     }
                 }
-                Destroyed::Barbarian => self.destroyed(state, plot)?,
+                Destroyed::Barbarian => self.destroyed(state, plot, improvement)?,
                 _ => {
                     return Err(error((
                         "unsupported camp removed receiver",
@@ -600,12 +646,15 @@ impl State<'_> {
         self.reports.push(Report::Removed { plot });
         Ok(())
     }
-    fn destroyed(&mut self, state: &mut LoadedState, plot: u32) -> Result<(), Error> {
+    fn destroyed(
+        &mut self,
+        state: &mut LoadedState,
+        plot: u32,
+        improvement: u32,
+    ) -> Result<(), Error> {
         let at = location(state, plot)?;
         let manager = &state.retained().barbarian;
-        if manager.flag_168_raw != 0
-            || manager.improvement_hash != self.inputs.definitions.camp_hash
-        {
+        if manager.flag_168_raw != 0 || manager.improvement_hash != improvement {
             return Ok(());
         }
         let indices = manager

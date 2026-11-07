@@ -503,3 +503,6 @@ pub mod unit_creation;
 pub mod geographic_names;
 
 pub mod diplomatic_delegation_policy;
+
+/// Linux tribal-village random reward selection; application remains separate.
+pub mod tribal_village;

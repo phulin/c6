@@ -69,6 +69,8 @@ pub mod sight_discovery;
 #[path = "stock_skip_turn.rs"]
 pub mod skip_turn;
 pub mod social;
+#[path = "stock_tribal_village.rs"]
+pub mod tribal_village;
 #[path = "stock_turn.rs"]
 pub mod turn;
 pub mod turn_loop;
@@ -217,6 +219,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     city_queries: Option<city_queries::Inputs<'a>>,
     gold_signals: Option<gold::Signals>,
     camp_clear: Option<camp_clear::State<'a>>,
+    tribal_village: Option<tribal_village::State<'a>>,
     pub(crate) action_research: Option<crate::research::Runtime>,
     pub(super) research_resource_amount: Option<(
         &'a super::upgrade_actions::resources::Definitions,
@@ -290,6 +293,7 @@ impl<'a, P> Runtime<'a, P> {
             city_queries: None,
             gold_signals: None,
             camp_clear: None,
+            tribal_village: None,
             action_research: None,
             research_resource_amount: None,
             research_acquisition: None,

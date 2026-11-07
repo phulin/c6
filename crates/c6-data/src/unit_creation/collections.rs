@@ -63,6 +63,23 @@ impl Runtime {
             policy_units: Vec::new(),
         })
     }
+    /// Reached permanent RunOnce owner-only experience reward. Activation and
+    /// application run on the stock backend so XP reports share its live owners.
+    pub(crate) fn register_village_reward(&mut self, receiver: u64) -> Result<(), Error> {
+        self.log_disabled(2)?;
+        self.log_disabled(3)?;
+        // AdjustUnitGrantExperience.Apply returns false even after granting XP.
+        self.log_disabled(1)?;
+        if self.definitions.iter().any(|d| d.receiver == receiver) {
+            return Err(Error::Missing("duplicate village modifier"));
+        }
+        self.definitions.push(Definition {
+            receiver,
+            subject_requirements: Vec::new(),
+            repeatable: false,
+        });
+        Ok(())
+    }
     fn definition(&self, id: u64) -> Result<&Definition, Error> {
         self.definitions
             .iter()

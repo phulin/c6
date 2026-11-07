@@ -13,6 +13,9 @@ pub enum Effect {
     Unsupported(u64),
     Common(c6_core::unit_modifier_effect::Effect),
     ExperienceModifier(i32),
+    /// AdjustUnitGrantExperience is a permanent one-shot; native Remove has
+    /// no inverse and returns false. Apply requires the retained XP callbacks.
+    GrantedExperience(i32),
     DiploVisibilityCombat {
         amount: i32,
         higher: bool,
@@ -97,6 +100,12 @@ pub fn remove_fields<C, P>(
     let resolved = match effect {
         Effect::Unsupported(_) => {
             return Err(Error::Missing("unimplemented Unit effect Remove class"))
+        }
+        Effect::GrantedExperience(_) => {
+            return Ok(FieldRemoval {
+                success: false,
+                ability_lost: None,
+            })
         }
         Effect::Common(_) => unreachable!("common UnitEffect returned above"),
         Effect::CombatStrength { .. } => unreachable!("strength effect returned above"),

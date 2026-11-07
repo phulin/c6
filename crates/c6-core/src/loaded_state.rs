@@ -27,6 +27,7 @@ pub mod player_governors;
 pub mod player_social;
 pub mod player_treasury;
 pub mod research;
+pub mod tribal_village;
 pub mod turn_completion;
 pub mod typed_components;
 pub mod unit_creation_control;
