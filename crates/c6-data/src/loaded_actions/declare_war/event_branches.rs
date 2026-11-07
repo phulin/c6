@@ -2,6 +2,8 @@
 //!
 //! These operations do not dispatch the signal or fulfill DiplomaticState's
 //! state-change callback. Callers retain that separately ordered boundary.
+pub mod backstab;
+
 use crate::{game_parameters::sql_integer, Rules};
 use c6_core::{core_player::initialization::WireBinding, loaded_state::LoadedState};
 
