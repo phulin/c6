@@ -182,8 +182,9 @@ impl sets::changes::Context for Release<'_> {
             .sets
             .requirement_definition(label)
             .ok_or(sets::Error::MissingDefinitionInput)?;
-        if definition.predicate
+        if (definition.predicate
             == sets::Predicate::Unsupported(linux_type_hash(b"REQUIREMENT_UNIT_ON_HOME_CONTINENT"))
+            || definition.predicate == sets::Predicate::Unsupported(super::on_coast::TYPE_HASH))
             && matches!(
                 self.0.sets.requirement_context(label),
                 Some((_, sets::Subject::Proposal(_)))

@@ -1,5 +1,6 @@
 //! Current constant combat requirements and their persistent native-ID owner.
 pub mod home_continent;
+pub mod on_coast;
 use super::{ContextObject, EffectRuntime, Requirements};
 use c6_core::{
     loaded_state::LoadedState,
@@ -30,6 +31,7 @@ pub struct Runtime {
     logging_priority: Option<i32>,
     units: Option<crate::melee_attack::proposals::unit_subject_predicates::Definitions>,
     home: Option<home_continent::Definitions>,
+    coast: Option<on_coast::Definitions>,
 }
 impl Runtime {
     pub fn new(
@@ -56,6 +58,7 @@ impl Runtime {
             logging_priority,
             units: None,
             home: None,
+            coast: None,
         })
     }
     pub fn with_home_continent_definitions(
@@ -63,6 +66,10 @@ impl Runtime {
         definitions: home_continent::Definitions,
     ) -> Self {
         self.home = Some(definitions);
+        self
+    }
+    pub fn with_on_coast_definitions(mut self, definitions: on_coast::Definitions) -> Self {
+        self.coast = Some(definitions);
         self
     }
     pub fn sets(&self) -> &sets::Runtime {
@@ -316,6 +323,21 @@ impl sets::Context for Context<'_> {
         instance: i32,
         subject: registry::Handle,
     ) -> Result<Option<c6_core::simple_requirement::Requirement>, Error> {
+        if definition.predicate == sets::Predicate::Unsupported(on_coast::TYPE_HASH) {
+            if instance != self.instance || subject != self.subject {
+                return Err(Error::Missing("coast requirement identity changed"));
+            }
+            return on_coast::initialize(
+                self.state,
+                self.runtime
+                    .coast
+                    .as_ref()
+                    .ok_or(Error::Missing("coast definitions"))?,
+                subject,
+                definition,
+            )
+            .map(Some);
+        }
         if definition.predicate
             != sets::Predicate::Unsupported(crate::registry::linux_type_hash(
                 b"REQUIREMENT_UNIT_ON_HOME_CONTINENT",
