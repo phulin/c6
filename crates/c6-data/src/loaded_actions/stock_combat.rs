@@ -86,6 +86,23 @@ impl<'a> State<'a> {
             city_strike_report_scope: None,
         }
     }
+    /// Bind attack inputs and callback rings while retaining the caller's existing
+    /// canonical modifier owners. The caller must install those owners on Runtime
+    /// before binding this State; no mutable gameplay stores are constructed here.
+    pub fn for_attack(
+        state: &LoadedState,
+        inputs: backend::Inputs,
+        bindings: resolve::completion::stock::Bindings,
+        observer: Option<i32>,
+        promotion: &'a dyn PromotionQuery,
+        scope: Scope,
+    ) -> Self {
+        let mut combat = Self::for_unit_cleanup(state, observer, promotion, scope);
+        combat.configuration = Some(inputs.configuration);
+        combat.inputs = Some(inputs);
+        combat.bindings = Some(bindings);
+        combat
+    }
     /// Split an initialized backend once; install returned stores in the SAME
     /// stock ModifierOwners, alongside the current collection/factory owners.
     pub fn from_backend(
