@@ -26,7 +26,9 @@ A [Scout natural-wonder profile](docs/linux-natural-wonder-discovery.md) preserv
 positive sight experience, Astrology, History and era effects through the next
 ordinary round on the same Session. A [Scout Alpine profile](docs/linux-scout-alpine.md)
 extends discovery through an explicitly selected promotion, ordinary upkeep and
-hill movement that demonstrates the earned effect.
+hill movement that demonstrates the earned effect. The [tribal-village profile](docs/linux-tribal-village-reward.md)
+continues that Scout into an original village, retains its randomly selected
+experience reward and completes the following ordinary round on the same Session.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
