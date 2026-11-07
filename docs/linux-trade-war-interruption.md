@@ -3,7 +3,8 @@
 One persistent Rust Session can initiate a supported major-to-major foreign
 route and interrupt it by an external surprise-war decision. Both actions use
 the same current state, callback owners and RNG; the candidate imports no native
-AFTER state. This is bounded action coverage, not complete Civ VI gameplay,
+AFTER state. A separately compared [wartime continuation](linux-wartime-rounds.md)
+advances three ordinary rounds on that same Session. This page describes bounded action coverage, not complete Civ VI gameplay,
 arbitrary actions, full turns or a complete RNG inventory.
 
 The ordered war subscriber uses
