@@ -76,6 +76,9 @@ pub struct Runtime {
     pub scheduling: Scheduling,
     pub fire_allowance: Option<i32>,
     pub pending: Option<PossibleEvent>,
+    /// A zero status draw reached an unsupported positive setter. Retain the
+    /// direction so a retry cannot consume this GameSync draw again.
+    pub pending_volcano_status: Option<bool>,
 }
 #[derive(Debug)]
 pub enum Error {
@@ -112,6 +115,7 @@ impl Runtime {
             scheduling: input.scheduling,
             fire_allowance: input.fire_allowance,
             pending: None,
+            pending_volcano_status: None,
         })
     }
     fn realism(&self) -> i32 {
@@ -607,6 +611,45 @@ pub fn compile_possible_events(
     Ok(())
 }
 
+/// ChangeVolcanoStatus2a0f590. Normal named count gates the operation;
+/// percentage includes all normal volcanoes and always-active natural wonders.
+fn volcano_status_draw(
+    counts: (i32, i32, i32, i32),
+    expected_turns: i32,
+    target_percent: i32,
+) -> Result<Option<(bool, u16)>, Error> {
+    let (normal, named, active, wonders) = counts;
+    if named <= 0 || expected_turns <= 0 {
+        return Ok(None);
+    }
+    let divisor = normal.wrapping_mul(2);
+    let mut bound = expected_turns
+        .checked_div(divisor)
+        .ok_or(Error::Requires("volcano status native division trap"))?;
+    let total = normal.wrapping_add(wonders) as u32;
+    let percent = if total == 0 {
+        100
+    } else {
+        ((active.wrapping_add(wonders).wrapping_mul(100) as u32) / total) as i32
+    };
+    let activate = percent < target_percent;
+    if activate {
+        if named <= active {
+            return Ok(None);
+        }
+        let deficit = target_percent.wrapping_sub(percent).wrapping_mul(named);
+        if deficit >= 200 {
+            bound = bound
+                .checked_div(deficit / 100)
+                .ok_or(Error::Requires("volcano status native division trap"))?;
+        }
+    } else if active <= 0 {
+        return Ok(None);
+    }
+    // Native passes only the low16 bits to Game.GetRandNum, including zero.
+    Ok(Some((activate, bound as u16)))
+}
+
 /// Executes the mandatory world-system leaf over current canonical state.
 /// A selected positive event remains in `runtime.pending` until its effects
 /// succeed; retrying the turn cannot silently consume its RNG a second time.
@@ -621,6 +664,9 @@ pub fn run<P, C: Climate<P>>(
 ) -> Result<(), Error> {
     if runtime.binding != *state.binding() {
         return Err(Error::Missing("RandomEvents current binding"));
+    }
+    if runtime.pending_volcano_status.is_some() {
+        return Err(Error::Requires("pending named volcano status setter"));
     }
     if let Some(pending) = runtime.pending {
         climate.apply_event(state, runtime, definitions, pending, backend)?;
@@ -647,11 +693,24 @@ pub fn run<P, C: Climate<P>>(
     }
     climate.continue_events(state, runtime, backend)?;
     let f = feature(state.world().map())?;
-    // ChangeVolcanoStatus2a0f590 exits before a random draw when no normal
-    // volcano has a bound discovered name. Dormant, undiscovered plots remain.
-    if f.volcanoes.iter().any(|v| v.name_hash != u32::MAX) {
-        let _ = level.percent_active;
-        return Err(Error::Requires("named volcano status transition"));
+    let counts = (
+        f.volcanoes.len() as i32,
+        f.volcanoes
+            .iter()
+            .filter(|v| v.name_hash != u32::MAX)
+            .count() as i32,
+        f.volcanoes.iter().filter(|v| v.turn_active > 0).count() as i32,
+        f.natural_wonder_volcanoes.len() as i32,
+    );
+    if let Some((activate, bound)) = volcano_status_draw(
+        counts,
+        definitions.expected_turns(runtime),
+        level.percent_active,
+    )? {
+        if state.game_sync_rand(bound).map_err(Error::Random)? == 0 {
+            runtime.pending_volcano_status = Some(activate);
+            return Err(Error::Requires("named volcano status setter"));
+        }
     }
     let temperature = climate.temperature_change(state)?;
     let current = climate.climate_level(state, level.climate_points)?;
@@ -832,6 +891,39 @@ fn targetless_storm_history(
 #[cfg(test)]
 mod continuation_tests {
     use super::*;
+
+    #[test]
+    fn volcano_status_uses_named_gate_all_normal_active_count_and_wonders() {
+        assert_eq!(volcano_status_draw((8, 0, 0, 0), 500, 60).unwrap(), None);
+        assert_eq!(volcano_status_draw((8, 1, 0, 0), 0, 60).unwrap(), None);
+        assert_eq!(
+            volcano_status_draw((8, 1, 0, 0), 500, 60).unwrap(),
+            Some((true, 31))
+        );
+        // Already-active unnamed normals count too; named<=active suppresses activation.
+        assert_eq!(volcano_status_draw((8, 1, 1, 0), 500, 60).unwrap(), None);
+        // Natural wonders are always active and contribute to percentage only.
+        assert_eq!(volcano_status_draw((2, 1, 0, 3), 500, 60).unwrap(), None);
+        assert_eq!(
+            volcano_status_draw((2, 1, 1, 0), 500, 50).unwrap(),
+            Some((false, 125))
+        );
+    }
+    #[test]
+    fn volcano_status_accelerates_activation_and_preserves_low16_bound() {
+        assert_eq!(
+            volcano_status_draw((10, 10, 0, 0), 500, 60).unwrap(),
+            Some((true, 4))
+        );
+        assert_eq!(
+            volcano_status_draw((1, 1, 0, 0), 131074, 60).unwrap(),
+            Some((true, 1))
+        );
+        assert_eq!(
+            volcano_status_draw((10, 10, 0, 0), 1, 60).unwrap(),
+            Some((true, 0))
+        );
+    }
 
     #[test]
     fn storm_required_tile_boundaries_match_linux_signed_comparisons() {
