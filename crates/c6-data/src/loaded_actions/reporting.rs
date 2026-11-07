@@ -11,6 +11,8 @@ pub mod yield_monitor;
 pub mod attacks;
 #[path = "reporting_damage.rs"]
 pub mod damage;
+#[path = "reporting_formation.rs"]
+pub mod formation;
 use super::{arena::ActorRecords, Error, IdentityReport, Reports};
 use crate::resource_binding::ResourceAuthority;
 use crate::{
@@ -444,6 +446,8 @@ pub struct Provider<'a> {
     trade_route_handler: Option<i32>,
     damage_changed_bound: bool,
     attacks_changed_bound: bool,
+    formation_movement_changed_bound: bool,
+    pub formation_movement_changes: Vec<c6_core::unit_turn_start::FormationRestoredReport>,
     pub attack_changes: Vec<c6_core::unit_turn_upkeep::AttacksRemainingReport>,
     pub damage_changes: Vec<c6_core::unit_healing::DamageChangedReport>,
     snapshots: Vec<SnapshotObservation>,
@@ -484,6 +488,8 @@ impl<'a> Provider<'a> {
             trade_route_handler: None,
             damage_changed_bound: false,
             attacks_changed_bound: false,
+            formation_movement_changed_bound: false,
+            formation_movement_changes: Vec::new(),
             attack_changes: Vec::new(),
             damage_changes: Vec::new(),
             snapshots: Vec::new(),

@@ -131,6 +131,11 @@ impl<P> crate::loaded_upkeep::FormationRestoreContinuations for FormationContinu
         state: &mut LoadedState,
         report: c6_core::unit_turn_start::FormationRestoredReport,
     ) -> Result<(), Self::Error> {
+        if report.event_hash == 0x3d75b3ed {
+            return self
+                .backend
+                .deliver_formation_movement_restored(state, report);
+        }
         if report.event_hash != 0xc52231ab {
             return Err(Self::Error::Missing("stock FormationRestored event"));
         }

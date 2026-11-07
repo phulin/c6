@@ -61,3 +61,24 @@ impl<P> loaded_upkeep::AlertVisibility for Runtime<'_, P> {
         Err(Error::Missing("activation Alert hidden layer definition"))
     }
 }
+
+impl<P> Runtime<'_, P> {
+    /// Same native FormationOnUpdate route as ZOC restoration, qualified for
+    /// the separately registered changed-movement event. Preserve current
+    /// member snapshot query effects before omitting cache DTO storage.
+    pub(super) fn deliver_formation_movement_restored(
+        &mut self,
+        state: &LoadedState,
+        report: c6_core::unit_turn_start::FormationRestoredReport,
+    ) -> Result<(), Error> {
+        if self.binding != *state.binding() {
+            return Err(Error::Missing("activation formation state identity"));
+        }
+        if self.movement()?.reporting_suspended {
+            return Ok(());
+        }
+        self.reporting
+            .formation_movement_changed(state, report)
+            .map_err(Error::Rules)
+    }
+}
