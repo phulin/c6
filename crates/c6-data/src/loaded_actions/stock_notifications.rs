@@ -56,6 +56,8 @@ pub mod queued_operations;
 pub mod research;
 #[path = "stock_resource_revelation.rs"]
 pub mod resource_revelation;
+#[path = "stock_river_flood.rs"]
+pub mod river_flood;
 pub mod round_ai;
 pub mod round_backend;
 pub mod round_dispatch;
@@ -220,6 +222,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     gold_signals: Option<gold::Signals>,
     camp_clear: Option<camp_clear::State<'a>>,
     tribal_village: Option<tribal_village::State<'a>>,
+    river_flood: Option<river_flood::Inputs>,
     pub(crate) action_research: Option<crate::research::Runtime>,
     pub(super) research_resource_amount: Option<(
         &'a super::upgrade_actions::resources::Definitions,
@@ -294,6 +297,7 @@ impl<'a, P> Runtime<'a, P> {
             gold_signals: None,
             camp_clear: None,
             tribal_village: None,
+            river_flood: None,
             action_research: None,
             research_resource_amount: None,
             research_acquisition: None,
