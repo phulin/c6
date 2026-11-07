@@ -119,6 +119,7 @@ pub struct Inputs<'a, 'd, 'r> {
     pub post_yields: &'a resolve::post_yields::Inputs<'a, 'a>,
     pub callbacks: &'a resolve::completion::stock::Inputs<'a, 'd, 'r>,
     pub death_report_status: u32,
+    pub weariness: Option<&'a resolve::completion::weariness::Definitions>,
 }
 pub(crate) struct Reports<'a, E>(pub(crate) &'a mut E);
 impl<E: loaded_upkeep::OperationReports> loaded_upkeep::OperationReports for Reports<'_, E> {
@@ -406,9 +407,16 @@ impl<R: backend::Requirements> Session<R> {
                 inputs: inputs.callbacks,
                 effects: backend.reporting.0,
             };
-            resolve::completion::finish(state, &mut completion, inputs.generation.levels, pending)
-                .map(Outcome::Resolved)
-                .map_err(|e| failure(Stage::Completion, e))
+            resolve::completion::finish(
+                state,
+                &mut completion,
+                inputs.generation.levels,
+                inputs.weariness,
+                inputs.generation.maximum_damage,
+                pending,
+            )
+            .map(Outcome::Resolved)
+            .map_err(|e| failure(Stage::Completion, e))
         })();
         let (_, backend) = backend.with_reporting(());
         self.backend = Some(backend);

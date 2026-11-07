@@ -4,12 +4,12 @@ use super::{error, Error, Generated};
 use crate::{registry::LinuxDefinitionRegistry, Rules};
 use c6_core::{core_player::initialization::WireBinding, loaded_state::LoadedState};
 pub struct Definitions {
-    binding: WireBinding,
-    allied: i32,
-    foreign: i32,
-    killed: i32,
-    base: i32,
-    eras: Vec<i32>,
+    pub(crate) binding: WireBinding,
+    pub(crate) allied: i32,
+    pub(crate) foreign: i32,
+    pub(crate) killed: i32,
+    pub(crate) base: i32,
+    pub(crate) eras: Vec<i32>,
     actions: Vec<(u32, i32)>,
 }
 impl Definitions {
@@ -65,7 +65,7 @@ impl Definitions {
             actions,
         })
     }
-    fn dow(&self, state: &LoadedState, owner: i32, other: i32) -> Result<i32, Error> {
+    pub(crate) fn dow(&self, state: &LoadedState, owner: i32, other: i32) -> Result<i32, Error> {
         let war = state
             .game_relations()
             .map_err(|e| error("weariness relations", e))?
@@ -93,7 +93,7 @@ impl Definitions {
         Ok(percentage.min(player(state, owner)?.diplomacy.war_and_alliance_modifiers[6]))
     }
 }
-fn player(
+pub(crate) fn player(
     state: &LoadedState,
     owner: i32,
 ) -> Result<&c6_core::loaded_components::RetainedPlayer, Error> {
@@ -104,7 +104,7 @@ fn player(
         .find(|p| p.header.owner == owner)
         .ok_or_else(|| error("weariness owner", owner))
 }
-fn delta(modifier: i32, factor: i32, combat: i32) -> i32 {
+pub(crate) fn delta(modifier: i32, factor: i32, combat: i32) -> i32 {
     if modifier <= -100 {
         return 0;
     }

@@ -423,9 +423,16 @@ impl<R: backend::Requirements> Session<R> {
                 inputs: inputs.callbacks,
                 effects: backend.reporting.0,
             };
-            resolve::completion::finish(state, &mut completion, inputs.generation.levels, pending)
-                .map(Some)
-                .map_err(|e| error("completion", e))
+            resolve::completion::finish(
+                state,
+                &mut completion,
+                inputs.generation.levels,
+                inputs.weariness,
+                inputs.generation.maximum_damage,
+                pending,
+            )
+            .map(Some)
+            .map_err(|e| error("completion", e))
         })();
         let (_, backend) = backend.with_reporting(());
         self.backend = Some(backend);

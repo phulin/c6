@@ -39,6 +39,8 @@ pub struct Definitions {
     city_resources: resource_cities::Definitions,
     luxuries: crate::luxury_allocation::Definitions,
     denounce: i32,
+    weariness_decay_war: i32,
+    weariness_decay_peace: i32,
     earliest_major_dow_turn: i32,
     casus_prerequisites: Vec<(u32, Option<u32>, bool)>,
     denounce_by_speed: Vec<(u32, i32)>,
@@ -229,6 +231,8 @@ impl Definitions {
             traders,
             resources,
             denounce,
+            weariness_decay_war: parameter("WAR_WEARINESS_DECAY_TURN_AT_WAR")?,
+            weariness_decay_peace: parameter("WAR_WEARINESS_DECAY_TURN_AT_PEACE")?,
             earliest_major_dow_turn: parameter("DIPLOMACY_EARLIEST_MAJOR_DOW_TURN")?,
             casus_prerequisites,
             denounce_by_speed,
@@ -537,6 +541,10 @@ pub(super) fn update_tracker(t: &mut DiplomaticModifierTracker) {
         }
     }
 }
+fn decay_weariness(amount: i32, decay: i32) -> i32 {
+    amount.wrapping_sub(decay).max(0)
+}
+
 fn diplomacy(
     state: &mut LoadedState,
     defs: &Definitions,
@@ -577,7 +585,25 @@ fn diplomacy(
                 .ok_or(missing("war weariness owner"))?
                 > 0
         {
-            return Err(missing("positive war weariness decay"));
+            let at_war = state
+                .game_relations()
+                .map_err(state_error)?
+                .is_at_war(owner, other)
+                .map_err(|_| missing("weariness current war"))?;
+            let decay = if at_war {
+                defs.weariness_decay_war
+            } else {
+                defs.weariness_decay_peace
+            };
+            // DoWarWearinessDecay uses the raw parameter, without game-speed
+            // scaling. ChangeWarWearinessFrom wraps then clamps at zero; its
+            // only publication is a log record (no signals, callbacks or RNG).
+            let diplomacy = &mut state
+                .activation_managers_mut(owner)
+                .map_err(state_error)?
+                .diplomacy;
+            diplomacy.war_weariness[other as usize] =
+                decay_weariness(diplomacy.war_weariness[other as usize], decay);
         }
     }
     state
@@ -1018,6 +1044,14 @@ pub fn on_congress_turn_started(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn weariness_decay_clamps_after_wrapping_and_uses_raw_parameter() {
+        assert_eq!(super::decay_weariness(32, 50), 0);
+        assert_eq!(super::decay_weariness(200, 50), 150);
+        assert_eq!(super::decay_weariness(200, 200), 0);
+        assert_eq!(super::decay_weariness(i32::MAX, -1), 0);
+    }
+
     #[test]
     fn unavailable_casus_belli_clears_stale_flags_and_preserves_wire_tag() {
         let mut row = c6_core::player_diplomacy::CasusBelliData {

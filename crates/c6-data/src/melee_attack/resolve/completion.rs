@@ -8,6 +8,7 @@ pub mod mayhem;
 pub mod stock;
 pub mod stock_guards;
 pub mod targets;
+pub mod weariness;
 use super::{post_yields::RequiresCombatAftermath, GeneratedMembers};
 use c6_core::{loaded_state::LoadedState, map::UnitReference};
 #[derive(Debug)]
@@ -16,7 +17,8 @@ pub enum Error<E> {
     Statistics(c6_core::loaded_state::game_statistics::AccessError),
     Effect(E),
     MissingLevel(i32),
-    MajorWarWeariness,
+    MissingWarWeariness,
+    WarWeariness(crate::melee_attack::city::Error),
     RetreatWhenKilled,
 }
 /// Resolved gameplay results. The containing operation/queued action still has
@@ -65,12 +67,13 @@ fn major_pair<E>(
     }
     major(defender)
 }
-/// Ordinary unit/unit combat. Major-v-major weariness remains a reached typed
-/// error; major-v-barbarian/minor/free-city computes the native no-effect guard.
+/// Ordinary unit/unit combat, including current major-pair war weariness.
 pub fn finish<E: Effects>(
     state: &mut LoadedState,
     effects: &mut E,
     levels: &[(i32, u32)],
+    weariness: Option<&weariness::Definitions>,
+    maximum: &crate::formation_movement_cost::Definitions<'_>,
     pending: RequiresCombatAftermath,
 ) -> Result<ResolvedCombat, Error<E::Error>> {
     let members = pending.members;
@@ -92,7 +95,13 @@ pub fn finish<E: Effects>(
             .map(|row| row.1 == 0x253718b0)
             .ok_or(Error::MissingLevel(owner))
     })? {
-        return Err(Error::MajorWarWeariness);
+        weariness::apply(
+            state,
+            weariness.ok_or(Error::MissingWarWeariness)?,
+            maximum,
+            &members,
+        )
+        .map_err(Error::WarWeariness)?;
     }
     if super::super::actor(state, defender)
         .map_err(Error::Actor)?
