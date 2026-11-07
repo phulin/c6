@@ -24,11 +24,18 @@ impl OwnedMathRng {
         Self(None)
     }
     fn install(&mut self, snapshot: NativeSnapshot) -> Result<(), ScriptMathRngError<()>> {
+        let header = snapshot.state_header();
+        self.install_supplied(snapshot.into_state(), header)
+    }
+    fn install_supplied(
+        &mut self,
+        state: State,
+        header: u32,
+    ) -> Result<(), ScriptMathRngError<()>> {
         if self.0.is_some() {
             return Err(ScriptMathRngError::AlreadyBound);
         }
-        let header = snapshot.state_header();
-        self.0 = Some((snapshot.into_state(), header));
+        self.0 = Some((state, header));
         Ok(())
     }
     fn random<E>(
@@ -73,6 +80,20 @@ impl ScriptState {
             return Err(ScriptMathRngError::Binding);
         }
         self.math_rng.install(snapshot)
+    }
+    /// Install the caller's exact initialized logical stream and serialization
+    /// header. This consistency check neither authenticates a native observation
+    /// nor creates an observation witness. No seed or host RNG is substituted.
+    pub fn bind_supplied_math_rng(
+        &mut self,
+        state: &LoadedState,
+        random: State,
+        state_header: u32,
+    ) -> Result<(), ScriptMathRngError<()>> {
+        if !state.is_pristine() || !self.matches(state) {
+            return Err(ScriptMathRngError::Binding);
+        }
+        self.math_rng.install_supplied(random, state_header)
     }
     pub fn math_rng(&self) -> Option<&State> {
         self.math_rng.0.as_ref().map(|(state, _)| state)
@@ -120,6 +141,30 @@ mod tests {
             [0; 4],
         )
         .unwrap()
+    }
+    #[test]
+    fn supplied_logical_state_retains_words_cursors_and_header() {
+        let state = State::from_parts(
+            lua_math_random::Kind::Additive7,
+            vec![u32::MAX, 2, 3, 4, 5, 6, 7],
+            5,
+            2,
+        )
+        .unwrap();
+        let mut owner = OwnedMathRng::unobserved();
+        owner.install_supplied(state.clone(), 91).unwrap();
+        assert_eq!(owner.0, Some((state.clone(), 91)));
+        assert_eq!(
+            owner.install_supplied(state.clone(), 92),
+            Err(ScriptMathRngError::AlreadyBound)
+        );
+        let mut expected = state;
+        let expected_result = expected.math_random::<()>(0, |_| unreachable!());
+        assert_eq!(
+            owner.random::<()>(0, |_| unreachable!()),
+            expected_result.map_err(ScriptMathRngError::Random)
+        );
+        assert_eq!(owner.0, Some((expected, 91)));
     }
     #[test]
     fn missing_owner_does_not_check_arguments_or_seed_a_default() {
