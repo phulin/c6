@@ -361,39 +361,7 @@ pub fn interrupt_for_war<P>(
         return Err("Trade war interruption binding".into());
     }
     let graph = state.trade_graph().map_err(|e| format!("{e:?}"))?.graph();
-    let mut pairs = Vec::new();
-    for (owner, other) in [(issuer, target), (target, issuer)] {
-        let mut direction = Vec::new();
-        for origin in graph.origins() {
-            for destination in &origin.destinations {
-                let edge = &destination.edge;
-                if !edge.has_active_route
-                    || edge.from_vertex.kind != 0
-                    || edge.to_vertex.kind != 0
-                    || edge.from_vertex.data1 != owner
-                    || edge.to_vertex.data1 != other
-                {
-                    continue;
-                }
-                direction.push((
-                    ComponentId {
-                        owner: owner as i16,
-                        component_type: 2,
-                        id: edge.from_vertex.data2 as u32,
-                    },
-                    ComponentId {
-                        owner: other as i16,
-                        component_type: 2,
-                        id: edge.to_vertex.data2 as u32,
-                    },
-                ));
-            }
-        }
-        if direction.len() > 1 {
-            return Err("Trade war interruption multiple-edge native cleanup order".into());
-        }
-        pairs.extend(direction);
-    }
+    let pairs = war_pairs(graph, issuer, target)?;
     let mut removed = Vec::new();
     for (origin, destination) in pairs {
         if let Some(route) = state
@@ -420,4 +388,138 @@ pub fn interrupt_for_war<P>(
         )?;
     }
     Ok(())
+}
+
+fn war_pairs(
+    graph: &c6_core::trade::Graph,
+    issuer: i32,
+    target: i32,
+) -> Result<Vec<(ComponentId, ComponentId)>, String> {
+    let edges = graph
+        .origins()
+        .iter()
+        .flat_map(|o| o.destinations.iter().map(|d| &d.edge))
+        .collect::<Vec<_>>();
+    let mut pairs = Vec::new();
+    for (owner, other) in [(issuer, target), (target, issuer)] {
+        let mut direction = Vec::new();
+        for edge in edges.iter().copied() {
+            if !edge.has_active_route
+                || edge.from_vertex.kind != 0
+                || edge.to_vertex.kind != 0
+                || edge.from_vertex.data1 != owner
+                || edge.to_vertex.data1 != other
+            {
+                continue;
+            }
+            direction.push((
+                ComponentId {
+                    owner: owner as i16,
+                    component_type: 2,
+                    id: edge.from_vertex.data2 as u32,
+                },
+                ComponentId {
+                    owner: other as i16,
+                    component_type: 2,
+                    id: edge.to_vertex.data2 as u32,
+                },
+            ));
+        }
+        if direction.len() > 1 {
+            return Err("Trade war interruption multiple-edge native cleanup order".into());
+        }
+        pairs.extend(direction);
+    }
+    Ok(pairs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use c6_core::trade::{Destination, Edge, Graph, Origin, Vertex};
+    fn graph(pairs: &[(i32, i32, u32, bool)]) -> Graph {
+        let origins = pairs
+            .iter()
+            .enumerate()
+            .map(|(index, &(owner, other, id, active))| {
+                let from = Vertex {
+                    kind: 0,
+                    data1: owner,
+                    data2: id as i32,
+                };
+                let to = Vertex {
+                    kind: 0,
+                    data1: other,
+                    data2: 7,
+                };
+                let null = ComponentId {
+                    owner: -1,
+                    component_type: 1,
+                    id: u32::MAX,
+                };
+                Origin {
+                    vertex: from,
+                    destinations: vec![Destination {
+                        vertex: to,
+                        edge: Edge {
+                            wire_version: 3,
+                            id: index as i32,
+                            most_recent_route: Route {
+                                id: 1,
+                                start_turn: 1,
+                                trader_unit: null,
+                                resource_type_hash: u32::MAX,
+                                resource_quantity: 0,
+                                origin_city: null,
+                                destination_city: null,
+                                origin_yields: vec![],
+                                destination_yields: vec![],
+                            },
+                            has_active_route: active,
+                            routes_started: 1,
+                            routes_completed: 0,
+                            most_recent_path: vec![1, 2],
+                            path_traversal_index: 1,
+                            path_traversal_going_forward: true,
+                            from_vertex: from,
+                            to_vertex: to,
+                        },
+                    }],
+                }
+            })
+            .collect();
+        Graph::new(pairs.len() as i32, origins).unwrap()
+    }
+    #[test]
+    fn war_removes_issuer_direction_before_target_and_ignores_unrelated_edges() {
+        let graph = graph(&[
+            (1, 0, 9, true),
+            (0, 2, 4, true),
+            (0, 1, 5, true),
+            (0, 1, 6, false),
+        ]);
+        let pairs = war_pairs(&graph, 0, 1).unwrap();
+        assert_eq!(
+            pairs
+                .iter()
+                .map(|p| (p.0.owner, p.0.id, p.1.owner))
+                .collect::<Vec<_>>(),
+            vec![(0, 5, 1), (1, 9, 0)]
+        );
+        assert!(graph
+            .origins()
+            .iter()
+            .all(|o| o.destinations[0].edge.routes_completed == 0));
+    }
+    #[test]
+    fn multiple_active_edges_in_one_direction_require_native_order_before_mutation() {
+        let graph = graph(&[(0, 1, 5, true), (0, 1, 6, true)]);
+        assert!(war_pairs(&graph, 0, 1)
+            .unwrap_err()
+            .contains("native cleanup order"));
+        assert!(graph
+            .origins()
+            .iter()
+            .all(|o| o.destinations[0].edge.has_active_route));
+    }
 }
