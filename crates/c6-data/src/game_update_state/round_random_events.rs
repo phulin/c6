@@ -91,6 +91,7 @@ pub enum Error {
     State(c6_core::loaded_state::Error),
     Random(c6_core::loaded_state::game_sync::AccessError),
     Requires(&'static str),
+    RiverUnitDamage(String),
     Pending(PossibleEvent),
     RiverOccupied {
         plot: i32,
