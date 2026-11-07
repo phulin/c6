@@ -12,6 +12,53 @@ use c6_core::{
     player_notifications_owner::OccurrenceLimits,
 };
 
+/// Source-qualified current FaithChanged consumers. Unknown receivers never
+/// silently succeed, even when the visible balance change looks harmless.
+#[derive(Clone, Copy, Debug)]
+pub enum FaithListener {
+    ScriptOnFaithEarned,
+    Unsupported(u64),
+}
+/// Stock cache/report publishers with no added consumers. Native cache buffers
+/// and UI publication are omitted; their current gameplay query effects remain.
+#[derive(Clone, Copy, Debug)]
+pub enum FaithScope {
+    StockPlainHeadlessExternalPoliciesNoAddedReportConsumers,
+}
+pub struct FaithSignals {
+    binding: c6_core::core_player::initialization::WireBinding,
+    instance: c6_core::loaded_state::ActionStamp,
+    changed: Vec<FaithListener>,
+    purchase_changed: Vec<u64>,
+    scope: FaithScope,
+}
+impl FaithSignals {
+    pub fn from_initial(
+        state: &LoadedState,
+        binding: &c6_core::core_player::initialization::WireBinding,
+        changed: Vec<FaithListener>,
+        purchase_changed: Vec<u64>,
+        scope: FaithScope,
+    ) -> Result<Self, Error> {
+        if state.binding() != binding {
+            return Err(Error::Unsupported("faith signal initial binding"));
+        }
+        Ok(Self {
+            binding: binding.clone(),
+            instance: state.action_stamp(),
+            changed,
+            purchase_changed,
+            scope,
+        })
+    }
+    fn check(&self, state: &LoadedState) -> Result<(), Error> {
+        if state.binding() != &self.binding || !self.instance.same_instance(state.action_stamp()) {
+            return Err(Error::Unsupported("current faith signal binding"));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Kind {
     Pantheon,
@@ -301,8 +348,88 @@ impl<P> upkeep::Effects for Effects<'_, '_, '_, P> {
         self.backend.check(state).map_err(|e| self.failure(e))?;
         self.send(state, owner, hash)
     }
-    fn faith_changed(&mut self, _: &mut LoadedState, _: i32, _: i32) -> Result<(), Error> {
-        Err(Error::Unsupported("faith changed signal and report"))
+    fn check_new_faith_purchases(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        _: i32,
+        _: i32,
+    ) -> Result<(), Error> {
+        self.backend.check(state).map_err(|e| self.failure(e))?;
+        if !self.accepts(state, owner)? {
+            return Ok(());
+        }
+        let signals = self
+            .backend
+            .social_faith
+            .as_ref()
+            .ok_or(Error::Unsupported(
+                "current faith purchase signal registrations",
+            ))?;
+        signals.check(state)?;
+        if !signals.purchase_changed.is_empty() {
+            return Err(Error::Unsupported(
+                "positive faith purchase availability signal",
+            ));
+        }
+        // CheckNewPurchases2b5f550's ordinary eligibility/cost getters are
+        // read-only. Their only result-dependent effects are localization and
+        // the optional affordability notification0c0377c5. Stock headless
+        // output omits that presentation; the independent +618 ring above is
+        // checked against the actual current input, never assumed absent.
+        self.backend
+            .reached
+            .push("stock faith affordability presentation boundary");
+        Ok(())
+    }
+    fn faith_changed(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        new_q8: i32,
+    ) -> Result<(), Error> {
+        self.backend.check(state).map_err(|e| self.failure(e))?;
+        let signals = self
+            .backend
+            .social_faith
+            .as_ref()
+            .ok_or(Error::Unsupported("current FaithChanged registrations"))?;
+        signals.check(state)?;
+        let listeners = signals.changed.clone();
+        let scope = signals.scope;
+        if player(state, owner)?.religion.faith_balance_q8 != new_q8 {
+            return Err(Error::Unsupported("current changed faith balance"));
+        }
+        for listener in listeners {
+            match listener {
+                FaithListener::ScriptOnFaithEarned => self
+                    .backend
+                    .script
+                    .call_empty(state, "OnFaithEarned", &[owner, new_q8 >> 8])
+                    .map_err(|e| self.failure(e))?,
+                FaithListener::Unsupported(_) => {
+                    return Err(Error::Unsupported("unknown FaithChanged receiver"));
+                }
+            }
+        }
+        match scope {
+            FaithScope::StockPlainHeadlessExternalPoliciesNoAddedReportConsumers => {
+                // Native PlayerReligion cache Add calculates the CURRENT faith
+                // yield before publishing, then Fill reads current scalar
+                // religion state. Preserve the gameplay query; omit buffers.
+                upkeep::faith_yield(state, self.definitions, self.queries, owner)?;
+                self.backend
+                    .turn_report_records
+                    .push(super::turn_reports::Record::Report {
+                        event: 0xb3495127,
+                        player: owner,
+                    });
+                self.backend
+                    .reached
+                    .push("stock faith balance report current cache consumers");
+            }
+        }
+        Ok(())
     }
     fn report(&mut self, state: &mut LoadedState, owner: i32, event: u32) -> Result<(), Error> {
         self.backend.check(state).map_err(|e| self.failure(e))?;
@@ -347,6 +474,22 @@ pub fn run<P>(
 }
 
 impl<P> Runtime<'_, P> {
+    /// Install current rings once on this same state/runtime. Values are
+    /// source-qualified BEFORE subscriptions, never callback result answers.
+    pub fn bind_faith_signals(
+        &mut self,
+        state: &LoadedState,
+        signals: FaithSignals,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Unsupported("faith runtime binding"))?;
+        signals.check(state)?;
+        if self.social_faith.is_some() {
+            return Err(Error::Unsupported("faith signal replacement"));
+        }
+        self.social_faith = Some(signals);
+        Ok(())
+    }
     /// Bind complete current capability membership for attached Pantheon
     /// notification queries, including notifications imported before upkeep.
     pub fn bind_social_capabilities(

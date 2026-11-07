@@ -163,6 +163,16 @@ pub trait Effects {
     fn report(&mut self, state: &mut LoadedState, owner: i32, event: u32) -> Result<(), Error>;
     fn notification(&mut self, state: &mut LoadedState, owner: i32, kind: u32)
         -> Result<(), Error>;
+    /// CheckNewPurchases runs before the balance setter. A concrete headless
+    /// provider may omit pure presentation scans, but must deliver the current
+    /// +618 signal and preserve any gameplay/RNG consumers.
+    fn check_new_faith_purchases(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        old_q8: i32,
+        new_q8: i32,
+    ) -> Result<(), Error>;
     /// Changed faith writes precede +600 dispatch and the b3495127 report.
     fn faith_changed(
         &mut self,
@@ -554,8 +564,6 @@ pub fn religion(
 ) -> Result<(), Error> {
     defs.validate(state)?;
     let yield_q8 = faith_yield(state, defs, queries, owner)?;
-    // CheckNewPurchases2b5f550 only publishes newly affordable purchases.
-    // The unchanged-balance case cannot enter its notification construction.
     let old = player(state, owner)?.religion.faith_balance_q8;
     // CheckNewPurchases2b5f550 calls CanTrain2851040(type,true,null,0,
     // false,false), and CanConstruct with a null output map. The ordinary
@@ -568,11 +576,11 @@ pub fn religion(
         if defs.religious_purchase_heroes {
             return Err(Error::Unsupported("religious Hero purchase queries"));
         }
-        if old.saturating_add(yield_q8) != old {
-            return Err(Error::Unsupported("changed faith purchase availability"));
-        }
     }
     let new = old.saturating_add(yield_q8);
+    if old != new {
+        effects.check_new_faith_purchases(state, owner, old, new)?;
+    }
     if old != new {
         state
             .social_components_mut(owner)

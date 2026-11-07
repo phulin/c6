@@ -160,6 +160,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     pub script: stock_script::Runtime<P>,
     growth: Option<growth::Inputs>,
     social_capabilities: Option<c6_core::game_capabilities::Membership>,
+    social_faith: Option<social::FaithSignals>,
     era_changes: Option<era_changes::State<'a>>,
     /// Derived from the SAME Session history only for the current ordinary
     /// action scope; restored on every normal result, never an imported answer.
@@ -261,6 +262,7 @@ impl<'a, P> Runtime<'a, P> {
             modifier_owners: None,
             growth: None,
             social_capabilities: None,
+            social_faith: None,
             era_changes: None,
             action_gossip_history_empty: None,
             unit_production_signals: None,
