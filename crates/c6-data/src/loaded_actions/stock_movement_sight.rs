@@ -75,17 +75,62 @@ impl<'d, P> sight::Effects for Runtime<'d, P> {
         state: &LoadedState,
         actor: (i32, u32),
     ) -> Result<Option<&str>, Self::Error> {
-        Err(Error::Missing("sight promotion_class"))
+        self.current_actor(state, actor)?;
+        let index = usize::try_from(
+            state
+                .unit_runtime(actor.0, actor.1)
+                .map_err(Error::State)?
+                .definition_index,
+        )
+        .map_err(|_| Error::Missing("sight Unit definition index"))?;
+        let classes = &self
+            .resource_revelation
+            .as_ref()
+            .and_then(|r| r.wonders.as_ref())
+            .ok_or(Error::Missing("sight current Unit promotion rules"))?
+            .promotion_classes;
+        let (hash, class) = classes
+            .get(index)
+            .ok_or(Error::Missing("sight Unit promotion definition"))?;
+        let unit = state
+            .world()
+            .player(actor.0)
+            .map_err(Error::World)?
+            .unit(actor.1)
+            .map_err(Error::World)?
+            .ok_or(Error::Missing("sight current Unit"))?
+            .record;
+        if unit.e_type_index != *hash {
+            return Err(Error::Missing("sight Unit definition identity"));
+        }
+        Ok(class.as_deref())
     }
     fn natural_wonder_experience(&mut self, state: &LoadedState) -> Result<i32, Self::Error> {
-        Err(Error::Missing("sight natural_wonder_experience"))
+        Ok(self
+            .resource_revelation
+            .as_ref()
+            .and_then(|r| r.wonders.as_ref())
+            .ok_or(Error::Missing("sight experience rules"))?
+            .experience)
     }
     fn experience_modifier(
         &mut self,
         state: &LoadedState,
         actor: (i32, u32),
     ) -> Result<i32, Self::Error> {
-        Err(Error::Missing("sight experience_modifier"))
+        let unit = c6_core::map::UnitReference::from_component_id(c6_core::unit::ComponentId {
+            owner: actor.0 as i16,
+            component_type: 1,
+            id: actor.1,
+        });
+        let bonuses = &self
+            .resource_revelation
+            .as_ref()
+            .and_then(|r| r.wonders.as_ref())
+            .ok_or(Error::Missing("sight experience bonus definitions"))?
+            .bonuses;
+        crate::melee_attack::experience::general_modifier(state, bonuses, unit)
+            .map_err(|e| Error::Requirement(format!("sight experience modifier: {e:?}")))
     }
     fn change_experience(
         &mut self,
@@ -94,7 +139,33 @@ impl<'d, P> sight::Effects for Runtime<'d, P> {
         actor: (i32, u32),
         amount: i32,
     ) -> Result<(), Self::Error> {
-        Err(Error::Missing("sight change_experience"))
+        if amount <= 0 {
+            return Ok(());
+        }
+        let unit = c6_core::map::UnitReference::from_component_id(c6_core::unit::ComponentId {
+            owner: actor.0 as i16,
+            component_type: 1,
+            id: actor.1,
+        });
+        let maximum = self
+            .resource_revelation
+            .as_ref()
+            .and_then(|r| r.wonders.as_ref())
+            .ok_or(Error::Missing("sight experience maximum damage"))?
+            .maximum_damage;
+        if !crate::melee_attack::experience::change_eligible::<Error>(
+            state,
+            &self.movement()?.civilization_levels,
+            unit,
+            |unit| crate::formation_movement_cost::unit_maximum_damage(unit, maximum),
+        )
+        .map_err(|e| Error::Requirement(format!("sight experience guard: {e:?}")))?
+        {
+            self.reached
+                .push("stock sight experience native early guard");
+            return Ok(());
+        }
+        Err(Error::Missing("positive sight experience continuation"))
     }
     fn update_resource_revealed(
         &mut self,

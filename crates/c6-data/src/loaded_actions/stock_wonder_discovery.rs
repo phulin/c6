@@ -29,6 +29,10 @@ pub(super) struct Bindings {
     order: Vec<Current>,
     ever_alive_majors: Vec<Option<i32>>,
     pub(super) unit_wonder_empty: bool,
+    pub(super) promotion_classes: Vec<(u32, Option<String>)>,
+    pub(super) experience: i32,
+    pub(super) maximum_damage: i32,
+    pub(super) bonuses: crate::registry::LinuxDefinitionRegistry,
 }
 impl<P> Runtime<'_, P> {
     /// Complete actual GameSignals+678 order and its WasEverAlive-major pointer
@@ -66,6 +70,57 @@ impl<P> Runtime<'_, P> {
                 })
             })
             .collect::<Result<Vec<_>, Error>>()?;
+        let units = crate::unit_initialization_definitions::collection(rules, "Units", "UnitType")
+            .map_err(|e| Error::Requirement(format!("{e:?}")))?;
+        let classes = crate::unit_initialization_definitions::collection(
+            rules,
+            "UnitPromotionClasses",
+            "PromotionClassType",
+        )
+        .map_err(|e| Error::Requirement(format!("{e:?}")))?;
+        let unit_rows = rules
+            .gameplay()
+            .table("Units")
+            .ok_or(Error::Missing("sight Unit rules"))?;
+        let promotion_classes = units
+            .entries()
+            .iter()
+            .map(|entry| {
+                let row = unit_rows
+                    .row_by_id(entry.database_rowid)
+                    .ok_or(Error::Missing("sight Unit row"))?;
+                let class = match row
+                    .get("PromotionClass")
+                    .map_err(|e| Error::Requirement(format!("{e:?}")))?
+                {
+                    crate::SqlValue::Null => None,
+                    crate::SqlValue::Text(value) => classes
+                        .find_index(crate::registry::linux_type_hash(value))
+                        .map(|_| String::from_utf8(value.to_vec()))
+                        .transpose()
+                        .map_err(|e| Error::Requirement(format!("{e:?}")))?,
+                    _ => return Err(Error::Missing("sight Unit promotion reference")),
+                };
+                Ok((crate::registry::linux_type_hash(&entry.type_name), class))
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
+        let parameter = |name| -> Result<i32, Error> {
+            rules
+                .gameplay()
+                .table("GlobalParameters")
+                .and_then(|t| t.rows().find(|r| r.text("Name").ok() == Some(name)))
+                .and_then(|r| r.get("Value").ok())
+                .and_then(crate::game_parameters::sql_integer)
+                .ok_or(Error::Missing("sight experience parameter"))
+        };
+        let experience = parameter("EXPERIENCE_REVEAL_NATURAL_WONDER")?;
+        let maximum_damage = parameter("COMBAT_MAX_HIT_POINTS")?;
+        let bonuses = crate::unit_initialization_definitions::collection(
+            rules,
+            "GovernmentBonusNames",
+            "GovernmentBonusType",
+        )
+        .map_err(|e| Error::Requirement(format!("{e:?}")))?;
         let current = self
             .resource_revelation
             .as_mut()
@@ -77,6 +132,10 @@ impl<P> Runtime<'_, P> {
             order,
             ever_alive_majors,
             unit_wonder_empty,
+            promotion_classes,
+            experience,
+            maximum_damage,
+            bonuses,
         });
         Ok(())
     }

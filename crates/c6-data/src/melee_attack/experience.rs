@@ -124,6 +124,40 @@ struct Context<'a> {
     ranged: bool,
     bombard: bool,
 }
+/// Native GetExperienceModifier(false): canonical current government bonus
+/// plus the retained general Q8 modifier, without the attack-only component.
+pub fn general_modifier(
+    state: &LoadedState,
+    bonuses: &LinuxDefinitionRegistry,
+    unit: UnitReference,
+) -> Result<i32, Error> {
+    let unit = super::actor(state, unit).map_err(Error::Actor)?;
+    let player = state
+        .retained()
+        .players
+        .iter()
+        .find(|p| p.header.owner == unit.e_owner)
+        .ok_or(Error::Missing("current Player"))?;
+    let flat = if let Some(index) = bonuses.find_index(0xc819e0a3) {
+        if player.culture.anarchy_end_turn >= 0 {
+            0
+        } else {
+            *player
+                .bonuses
+                .apply(bonuses, Limits::default())
+                .map_err(Error::Bonus)?
+                .get(index)
+                .ok_or(Error::Missing("Government bonus"))?
+        }
+    } else {
+        0
+    };
+    let government = MovementPoints::route_float_bits((flat as f32 * 0.01f32).to_bits()).0;
+    Ok(unit
+        .k_experience
+        .x_general_experience_modifier
+        .wrapping_add(government))
+}
 impl Context<'_> {
     fn unit(&self, side: kernel::Side) -> Result<&c6_core::unit::Unit, Error> {
         super::actor(
@@ -194,28 +228,15 @@ impl kernel::Context for Context<'_> {
     }
     fn modifier(&mut self, side: kernel::Side) -> Result<i32, Error> {
         let unit = self.unit(side)?;
-        let player = self
-            .state
-            .retained()
-            .players
-            .iter()
-            .find(|p| p.header.owner == unit.e_owner)
-            .ok_or(Error::Missing("current Player"))?;
-        let flat = if let Some(index) = self.defs.bonuses.find_index(0xc819e0a3) {
-            if player.culture.anarchy_end_turn >= 0 {
-                0
+        let general = general_modifier(
+            self.state,
+            &self.defs.bonuses,
+            if side == kernel::Side::Attacker {
+                self.attacker
             } else {
-                *player
-                    .bonuses
-                    .apply(&self.defs.bonuses, Limits::default())
-                    .map_err(Error::Bonus)?
-                    .get(index)
-                    .ok_or(Error::Missing("Government bonus"))?
-            }
-        } else {
-            0
-        };
-        let government = MovementPoints::route_float_bits((flat as f32 * 0.01f32).to_bits()).0;
+                self.defender
+            },
+        )?;
         let raw = unit.k_experience.x_attacking_experience_modifier_percent;
         let attack = if side == kernel::Side::Attacker {
             MovementPoints::route_float_bits(
@@ -225,11 +246,7 @@ impl kernel::Context for Context<'_> {
         } else {
             0
         };
-        Ok(unit
-            .k_experience
-            .x_general_experience_modifier
-            .wrapping_add(government)
-            .wrapping_add(attack))
+        Ok(general.wrapping_add(attack))
     }
     fn combat(&mut self, side: kernel::Side) -> Result<i32, Error> {
         if self.bombard && side == kernel::Side::Attacker {
@@ -520,6 +537,32 @@ pub enum ChangeError<E> {
     Effect(E),
     RandomPromotionOptions,
 }
+/// Shared source-ordered ChangeExperience prefix. Call only after the positive
+/// amount check. Locked/dead/barbarian units return before XP writes, callbacks
+/// and promotion-option RNG; maximum damage uses the current Unit property.
+pub fn change_eligible<E>(
+    state: &LoadedState,
+    levels: &[(i32, u32)],
+    unit: UnitReference,
+    maximum: impl FnOnce(&c6_core::unit::Unit) -> Result<i32, crate::formation_movement_cost::Error>,
+) -> Result<bool, ChangeError<E>> {
+    let actor = super::actor(state, unit).map_err(|e| ChangeError::Query(Error::Actor(e)))?;
+    if actor.k_experience.b_experience_locked {
+        return Ok(false);
+    }
+    if actor.i_damage >= maximum(actor).map_err(ChangeError::Maximum)? {
+        return Ok(false);
+    }
+    let level = levels
+        .iter()
+        .find(|r| r.0 == actor.e_owner)
+        .ok_or(ChangeError::Query(Error::Missing("current player level")))?
+        .1;
+    if level == 0xd959ec24 {
+        return Ok(false);
+    }
+    Ok(true)
+}
 /// Unit.Experience.ChangeExperience. Delayed/dead Units remain owned but do not
 /// gain XP. Random promotion-option generation remains an explicit continuation
 /// after the native XP clamp/lock/promotable writes, never a fabricated choice.
@@ -539,23 +582,7 @@ pub fn change<E: Reports>(
     if state.binding().inputs != defs.identities {
         return Err(ChangeError::Query(Error::Binding));
     }
-    let actor = super::actor(state, unit).map_err(|e| ChangeError::Query(Error::Actor(e)))?;
-    if actor.k_experience.b_experience_locked {
-        return Ok(());
-    }
-    if actor.i_damage
-        >= maximum
-            .maximum_damage(actor)
-            .map_err(ChangeError::Maximum)?
-    {
-        return Ok(());
-    }
-    let level = levels
-        .iter()
-        .find(|r| r.0 == actor.e_owner)
-        .ok_or(ChangeError::Query(Error::Missing("current player level")))?
-        .1;
-    if level == 0xd959ec24 {
+    if !change_eligible(state, levels, unit, |unit| maximum.maximum_damage(unit))? {
         return Ok(());
     }
     let experience = &mut state
