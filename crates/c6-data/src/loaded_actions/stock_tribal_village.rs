@@ -790,7 +790,7 @@ impl<P> Runtime<'_, P> {
                 .take()
                 .ok_or(missing("village canonical research loan"))?;
             let result = {
-                let mut effects = crate::loaded_actions::research::Effects::new(
+                let mut effects = super::research::Effects::new(
                     self,
                     &mut runtime,
                     inputs.choices,
