@@ -1,6 +1,6 @@
 //! Bounded Linux planning forecast inputs, without selecting or issuing orders.
 //!
-//! This preserves Planning::Instance's two-turn Warrior search and ordered
+//! This preserves Planning::Instance's two-turn Warrior/Scout search and ordered
 //! District combat positions. The caller executes every reached forecast's
 //! proposal creation/cleanup callbacks; these inputs are not completed combat.
 use super::*;
@@ -20,6 +20,7 @@ struct Search<'s, 'a, 'r> {
     context: Context<'s, 'a, 'r>,
     target: PlotCoord,
     unit_location: PlotCoord,
+    max_moves: i32,
     positions: Vec<PlotCoord>,
 }
 impl Search<'_, '_, '_> {
@@ -112,8 +113,9 @@ impl PathCallbacks for Search<'_, '_, '_> {
     fn initialize(&mut self, s: &mut TwoLayer) -> Result<(), Error> {
         self.context.initialize(s)?;
         // CustomMovesRemainingPathInitialize uses full Formation.MaxMoves.
-        // This boundary requires a single current Warrior with canonical max2.
-        self.context.starting_remaining_override = Some(2 << 8);
+        // A single member makes the native min/escort reduction equal the
+        // canonical current Unit.MaxMoves admitted before this search.
+        self.context.starting_remaining_override = Some(self.max_moves.wrapping_shl(8));
         Ok(())
     }
     fn uninitialize(&mut self, s: &mut TwoLayer) -> Result<(), Error> {
@@ -277,8 +279,21 @@ impl PathCallbacks for Search<'_, '_, '_> {
     }
 }
 
-/// Compute forecast positions for one live, unembarked Warrior/searchTurns2,
-/// range0 planner and one current enemy combat District. The caller admits the
+/// Current Unit.IsCombat gate for appending District combat positions. Source
+/// AddReachablePosition21b8832..885f requires Unit.IsCombat for a District;
+/// religious strength only substitutes for that gate on religious Unit targets.
+/// This does not admit those other targets or complete any planning transition.
+pub fn has_district_combat_forecasts(
+    state: &LoadedState,
+    definitions: &crate::formation_rules::Definitions,
+    unit: &c6_core::unit::Unit,
+) -> Result<bool, Error> {
+    crate::combat_defender::is_combat(state, definitions, unit)
+        .map_err(|_| Error::Missing("planning Unit.IsCombat query"))
+}
+
+/// Compute positions for one live, unembarked range0 planner: Warrior/max2
+/// or Scout/max3, with searchTurns2 and one current enemy combat District. The caller admits the
 /// complete planner/target roster and rejects other nearby combat targets.
 /// Unsupported reached movement/placement inputs remain errors.
 pub fn district_forecast(
@@ -298,9 +313,20 @@ pub fn district_forecast(
         .state
         .unit_runtime(owner, planner_unit)
         .map_err(Error::State)?;
+    let max_moves = unit_moves::unit_max_moves(
+        context.state,
+        unit,
+        &unit_moves::Inputs {
+            definitions: &context.definitions.units,
+        },
+    )
+    .map_err(Error::UnitMoves)?;
+    let supported = unit.e_type_index == crate::registry::linux_type_hash(b"UNIT_WARRIOR")
+        && max_moves == 2
+        || unit.e_type_index == crate::registry::linux_type_hash(b"UNIT_SCOUT") && max_moves == 3;
     if search_turns != 2
         || context.record().unit_ids.as_slice() != [planner_unit]
-        || unit.e_type_index != crate::registry::linux_type_hash(b"UNIT_WARRIOR")
+        || !supported
         || unit.b_delayed_death
         || unit_moves::unit_is_embarked(unit)
         || runtime.domain != 2
@@ -308,21 +334,11 @@ pub fn district_forecast(
             formation.owner != owner || formation.resolved_id != context.record().id
         })
         || unit.k_location != context.record().location
-        || !crate::combat_defender::is_combat(context.state, &context.definitions.formation, unit)
-            .map_err(|_| Error::Missing("planning Warrior combat query"))?
+        || !has_district_combat_forecasts(context.state, &context.definitions.formation, unit)?
         || unit.k_attack_range_modifiers.i_attack_range != 0
-        || unit_moves::unit_max_moves(
-            context.state,
-            unit,
-            &unit_moves::Inputs {
-                definitions: &context.definitions.units,
-            },
-        )
-        .map_err(Error::UnitMoves)?
-            != 2
     {
         return Err(Error::Missing(
-            "planning Warrior/searchTurns2/range0/maxMoves2 scope",
+            "planning Warrior/max2 or Scout/max3, searchTurns2/range0 scope",
         ));
     }
     let unit_location = unit.k_location;
@@ -366,12 +382,13 @@ pub fn district_forecast(
         context,
         target: target_location,
         unit_location,
+        max_moves,
         positions: Vec::new(),
     };
     if !search.at_war(district.0)? {
         return Err(Error::Missing("planning target enemy District"));
     }
-    if distance > 4 {
+    if distance > max_moves.wrapping_mul(search_turns) {
         return Ok(None);
     }
     engine.generate(
