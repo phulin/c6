@@ -36,8 +36,11 @@ impl<P> Runtime<'_, P> {
     }
 
     /// Borrow the sole current diplomatic modifier owner across a callback.
+    /// The callback may loan the same requirement store through
+    /// `with_modifier_requirement_sets` and `with_modifier_owners` for action
+    /// callbacks that share these diplomatic effects with ordinary turn upkeep.
     /// Restore it after errors so partial native transitions remain inspectable.
-    pub(crate) fn with_growth_requirement_effects<T>(
+    pub fn with_growth_requirement_effects<T>(
         &mut self,
         state: &mut LoadedState,
         apply: impl FnOnce(
