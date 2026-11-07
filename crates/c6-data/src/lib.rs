@@ -19,6 +19,7 @@ pub mod formation_rules;
 pub mod game_parameters;
 pub mod game_relations;
 pub mod geographic_names;
+pub mod initialized_input;
 pub mod loaded_actions;
 pub mod loaded_upkeep;
 pub mod luxury_allocation;
