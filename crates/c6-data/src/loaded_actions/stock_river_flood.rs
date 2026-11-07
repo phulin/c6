@@ -110,6 +110,20 @@ impl<'a, P> Runtime<'a, P> {
         }
         Ok(())
     }
+    /// River::Instance::DoTurn publishes flooded=false at exact expiry. The
+    /// same qualified TerrainStateChanged route as SetFlooded only fills
+    /// presentation output; coordinate/revealed-state getters and queued host output
+    /// have no gameplay or RNG effects. Flood history remains canonical.
+    pub(crate) fn river_flood_expired(
+        &mut self,
+        state: &mut LoadedState,
+        plot: i32,
+    ) -> Result<(), Error> {
+        self.river_flood_report(state, 0xfc5eac6e, 0x1c8fa8d7, plot, 0, false)?;
+        self.reached
+            .push("stock river flood expiry TerrainStateChanged");
+        Ok(())
+    }
     /// Called only by the preflighted unowned/no-unit flood branch: the entire
     /// PlayerRandomDamageArray, including affected-plot vectors, is zero/empty.
     pub(crate) fn river_flood_damage_signals(

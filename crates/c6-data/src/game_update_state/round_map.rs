@@ -55,11 +55,14 @@ pub trait Effects {
     fn expired(&mut self, state: &mut LoadedState, event: Expired) -> Result<(), Error>;
 }
 impl<P> Effects for crate::loaded_actions::stock_notifications::Runtime<'_, P> {
-    fn expired(&mut self, state: &mut LoadedState, _event: Expired) -> Result<(), Error> {
+    fn expired(&mut self, state: &mut LoadedState, event: Expired) -> Result<(), Error> {
         self.check(state).map_err(|_| Error::Binding)?;
-        Err(Error::Requires(
-            "stock eruption/flood expiry report consumers",
-        ))
+        match event {
+            Expired::Flood { plot } => self
+                .river_flood_expired(state, plot)
+                .map_err(|_| Error::Requires("current flood expiry report consumers")),
+            _ => Err(Error::Requires("stock eruption expiry report consumers")),
+        }
     }
 }
 pub struct Runtime {
