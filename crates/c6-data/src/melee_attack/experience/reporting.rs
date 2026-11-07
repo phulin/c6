@@ -27,6 +27,11 @@ pub enum Event {
     Changed {
         unit: UnitReference,
     },
+    /// Host UnitPromoted79 announces availability after XP changes. It is
+    /// presentation output, separate from actually earning a chosen promotion.
+    PromotionAvailable {
+        unit: UnitReference,
+    },
 }
 
 /// Reports::CanSeePlayer (290ba60), for a stable current local observer.

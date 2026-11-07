@@ -26,6 +26,12 @@ pub enum CombatNoticeScope {
     /// presentation are omitted; ordered semantic combat statuses are retained.
     StockPlainHeadlessNoAddedConsumers,
 }
+/// Actual positive XP translator publication qualified against its current
+/// host79 dispatcher. Native presentation payload/cache allocation is omitted.
+#[derive(Clone, Copy, Debug)]
+pub enum PromotionAvailableReportScope {
+    StockHeadlessNoSynchronousConsumers,
+}
 pub trait PromotionQuery {
     fn available(&self, state: &LoadedState, unit: UnitReference) -> Result<bool, String>;
 }
@@ -71,6 +77,7 @@ pub struct State<'a> {
     pub experience_events: Vec<experience::reporting::Event>,
     pub statuses: Vec<resolve::surviving::Status>,
     combat_notice_scope: Option<CombatNoticeScope>,
+    promotion_available_report_scope: Option<PromotionAvailableReportScope>,
     pub deaths: Vec<resolve::UnitDeath>,
     pub resolved: Vec<resolve::completion::ResolvedCombat>,
     pub city_melees: Vec<melee::city::resolve::Resolved>,
@@ -88,6 +95,17 @@ impl<'a> State<'a> {
     /// Constructors leave this absent, retaining the explicit unsupported path.
     pub fn with_combat_notice_scope(mut self, scope: CombatNoticeScope) -> Self {
         self.combat_notice_scope = Some(scope);
+        self
+    }
+
+    /// Qualify only the host79 publication reached when XP makes an ordinary
+    /// promotion legal. Caller must bind the current initial dispatcher and
+    /// preserve all intervening callback changes on this same Runtime.
+    pub fn with_promotion_available_report_scope(
+        mut self,
+        scope: PromotionAvailableReportScope,
+    ) -> Self {
+        self.promotion_available_report_scope = Some(scope);
         self
     }
 
@@ -118,6 +136,7 @@ impl<'a> State<'a> {
             experience_events: Vec::new(),
             statuses: Vec::new(),
             combat_notice_scope: None,
+            promotion_available_report_scope: None,
             deaths: Vec::new(),
             resolved: Vec::new(),
             city_melees: Vec::new(),
@@ -171,6 +190,7 @@ impl<'a> State<'a> {
                 experience_events: Vec::new(),
                 statuses: Vec::new(),
                 combat_notice_scope: None,
+                promotion_available_report_scope: None,
                 deaths: Vec::new(),
                 resolved: Vec::new(),
                 city_melees: Vec::new(),
@@ -706,7 +726,16 @@ impl<P> experience::Reports for Runtime<'_, P> {
             .available(state, unit)
             .map_err(Error::Requirement)?
         {
-            return Err(Error::Missing("positive UnitPromoted publication"));
+            if combat.promotion_available_report_scope.is_none() {
+                return Err(Error::Missing("positive UnitPromoted publication scope"));
+            }
+            // Host Translate::UnitExperienceChanged320cee0 publishes host79
+            // after the real visible-only CanStart query. Its first-choice
+            // native index is a display hint; it neither earns a promotion nor
+            // executes a policy. Qualified synchronous slots are empty.
+            combat
+                .experience_events
+                .push(experience::reporting::Event::PromotionAvailable { unit });
         }
         Ok(())
     }
