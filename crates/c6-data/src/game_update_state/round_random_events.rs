@@ -93,6 +93,10 @@ pub enum Error {
     Requires(&'static str),
     RiverUnitDamage(String),
     Pending(PossibleEvent),
+    DroughtApplication {
+        event: PossibleEvent,
+        start_plot: i32,
+    },
     RiverOccupied {
         plot: i32,
         reference: c6_core::map::UnitReference,

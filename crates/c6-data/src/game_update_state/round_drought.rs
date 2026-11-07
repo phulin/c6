@@ -204,7 +204,10 @@ pub(super) fn apply(
     if event.start_plot >= 0
         && context.valid(state, climate, definition, event.start_plot as usize)?
     {
-        return Err(Error::Requires("positive drought application"));
+        return Err(Error::DroughtApplication {
+            event,
+            start_plot: event.start_plot,
+        });
     }
     for index in 0..state.world().map().plots.len() {
         if !context.footprint(state, climate, definition, index)? {
@@ -236,7 +239,10 @@ pub(super) fn apply(
             .wrapping_add(1)
             .wrapping_add(distance.wrapping_sub(definition.spacing).min(0));
         if score > 0 {
-            return Err(Error::Requires("positive drought application"));
+            return Err(Error::DroughtApplication {
+                event,
+                start_plot: index as i32,
+            });
         }
     }
     // Unlike storms, ApplyEvent scales DROUGHT history duration by game speed
