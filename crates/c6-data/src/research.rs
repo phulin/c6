@@ -836,7 +836,9 @@ impl<E: Effects> Context<'_, E> {
             && report.specialization.is_some()
             && report.index.is_none()
             && report.old_progress.is_some()
-            && report.source == Some(0);
+            // Qualified OnCultureUpdated forwards only the player to
+            // PublishUpdate; village source 1 uses the same culture queries.
+            && matches!(report.source, Some(0 | 1));
         if !completed && !boosted {
             return Err(Error::Missing("unsupported stock civic publication"));
         }
