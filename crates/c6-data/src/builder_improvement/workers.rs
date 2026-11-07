@@ -200,8 +200,8 @@ impl<P> citizens::Effects for Current<'_, '_, P> {
         else {
             return Ok(());
         };
-        // Native286f2b0 sends output-only PlotWorkersChanged, then the
-        // ImprovementActivated visual event only when activity crosses zero.
+        // Native286f2b0 sends PlotWorkersChanged, then ImprovementChanged
+        // with an activity subtype when activity crosses zero.
         self.reports.push(Report::WorkersChanged {
             city: ComponentId {
                 owner: o as i16,
@@ -212,12 +212,28 @@ impl<P> citizens::Effects for Current<'_, '_, P> {
             current,
             previous: old,
         });
-        let (_, p) = c6_core::movement_world::plot_at(s.world().map(), location)
+        let (plot, p) = c6_core::movement_world::plot_at(s.world().map(), location)
             .map_err(|_| Error::Unsupported("Farm worker plot"))?;
         if p.improvement_hash != u32::MAX
             && i32::from(p.improvement_owner) == o
             && (current > 0) != (old > 0)
         {
+            // Same reached Map recipient as ordinary upkeep worker changes:
+            //30ae2a3d ->27bcc60 refreshes current/adjacent contribution queries.
+            // Preserve their logical IDs, owned modifiers and callbacks on the
+            // canonical owner before omitting presentation DTOs.
+            let query = self
+                .backend
+                .city_query_inputs()
+                .ok_or(Error::Unsupported("Farm worker current query owner"))?;
+            let mut territory = query.current.territory.write()?;
+            crate::loaded_actions::pillage::reporting::improvement_changed_with_registry(
+                s,
+                &mut territory,
+                self.definitions.improvement_registry(),
+                plot,
+            )
+            .map_err(Error::Unsupported)?;
             self.reports.push(Report::ImprovementActivated {
                 location,
                 active: current > 0,
