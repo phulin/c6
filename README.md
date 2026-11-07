@@ -15,6 +15,9 @@ one Session from pre-founding state through research and production choices,
 Fortify, and three ordinary rounds with explicit decisions for every player.
 A [Slinger kill profile](docs/linux-slinger-archery.md) retains its positive Archery
 boost and an ordinary round through the next external decision.
+A [produced Builder expansion profile](docs/linux-produced-builder-expansion.md)
+joins queued Settler and Builder completion, second founding, external travel,
+a Farm and the following round on one Session.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
