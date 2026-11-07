@@ -13,6 +13,8 @@ nonlethal city-center melee without walls, plus bounded turn progression. A Linu
 comparison now follows
 one Session from pre-founding state through research and production choices,
 Fortify, and three ordinary rounds with explicit decisions for every player.
+A [Slinger kill profile](docs/linux-slinger-archery.md) retains its positive Archery
+boost and an ordinary round through the next external decision.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
