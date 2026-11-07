@@ -9,7 +9,8 @@ use c6_data::{
         choose_tech,
         session::{
             advance::{Request, TurnServices},
-            initialized::{Initialized, Rejected},
+            initialized::Rejected,
+            runtime::{self, Builder, Owners},
             Session,
         },
         stock_notifications::{deactivation, research::CultureInputs, turn_loop},
@@ -49,6 +50,29 @@ pub fn cache_rules(
     })
 }
 
+/// Typed assembly example: initialized data and registrations are inputs;
+/// canonical owner joins and callback dispatch are public library composition.
+/// Importers do not implement gameplay callbacks to use this stock path.
+/// Keep immutable definitions/live query owners outside the Session arena and
+/// retain the returned builder until `play` consumes it into the same Session.
+pub fn assemble<'a>(
+    state: &LoadedState,
+    inputs: runtime::Inputs<'a>,
+    factory: c6_data::loaded_actions::stock_notifications::unit_creation::State<'a>,
+    owners: c6_data::loaded_actions::stock_notifications::unit_creation::ModifierOwners,
+    combat: Option<runtime::Combat<'a>>,
+) -> Result<Builder<'a>, String> {
+    let mut builder =
+        Builder::new(state, inputs).map_err(|rejected| format!("{:?}", rejected.error))?;
+    builder
+        .factory(state, factory, owners)
+        .map_err(|rejected| rejected.error.to_string())?;
+    if let Some(combat) = combat {
+        runtime::combat(&mut builder, state, combat).map_err(|rejected| rejected.error)?;
+    }
+    Ok(builder)
+}
+
 /// Explicit policy inputs. The example never chooses a research index/building
 /// for the player and never automatically ends another player's turn.
 pub struct Choices {
@@ -66,12 +90,13 @@ pub struct Progress<'s, 'a> {
 /// Select research, select city production, then advance the SAME Session.
 /// Supply a live active human City with a legal empty queue. Gameplay services
 /// must be bound before construction (city queries, modifiers, scripts, etc.).
-/// `TurnServices` must call the real public stock upkeep/control compositions;
+/// Use `stock_turn_services::StockTurnServices` for public stock upkeep/control;
 /// missing services return their existing explicit error.
 #[allow(clippy::too_many_arguments)]
 pub fn play<'s, 'a, S: TurnServices<'a>>(
     state: &'s mut LoadedState,
-    initialized: Initialized<'s, 'a>,
+    builder: Builder<'a>,
+    owners: Owners<'s>,
     rules: &CachedRules,
     choices: Choices,
     culture: Option<&CultureInputs<'_>>,
@@ -81,7 +106,7 @@ pub fn play<'s, 'a, S: TurnServices<'a>>(
     services: &mut S,
     budget: &mut usize,
 ) -> Result<Progress<'s, 'a>, Box<Rejected<'s, 'a, c6_core::unit::OperationParameters>>> {
-    let mut session = Session::from_initialized(state, initialized)?;
+    let mut session = builder.finish(state, owners)?;
     let result = (|| {
         session
             .request_technology(
@@ -125,8 +150,8 @@ pub fn play<'s, 'a, S: TurnServices<'a>>(
 fn main() {
     println!(
         "early_game_session: typed Rust embedding example\n\
-        Supply initialized LoadedState, rules/resource authority, stock backend,\n\
-        notification inputs and real TurnServices to cache_rules() and play().\n\
+        Supply initialized LoadedState, rules/resource authority, typed runtime inputs,\n\
+        notification inputs and StockTurnServices to assemble(), cache_rules() and play().\n\
         play() selects research and building production, then advances one Session.\n\
         No private workspace, original engine, save loader or default game is used."
     );

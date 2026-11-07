@@ -259,6 +259,15 @@ impl<'a, P> Runtime<'a, P> {
         Ok(())
     }
 
+    pub(crate) fn check_combat_slot(&self, state: &LoadedState) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("combat World"))?;
+        self.modifier_owners()?;
+        if self.combat.is_some() {
+            return Err(Error::Missing("combat already bound"));
+        }
+        Ok(())
+    }
     pub fn bind_combat(&mut self, state: &LoadedState, combat: State<'a>) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Missing("combat World"))?;

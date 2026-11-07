@@ -54,6 +54,7 @@ pub mod promotion;
 pub mod purchase;
 #[path = "session_repair.rs"]
 pub mod repair;
+pub mod runtime;
 pub mod stock_turn_services;
 #[path = "session_trade_route.rs"]
 pub mod trade_route;

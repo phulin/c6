@@ -10,8 +10,12 @@ percentage of the whole game established by the current comparisons.
 The gameplay entry point is
 [`c6_data::loaded_actions::session::Session`](../crates/c6-data/src/loaded_actions/session.rs).
 It retains typed state and callback owners across requests. Callers supply
-initialized state, matching rules and required services; `Session::from_initialized`
-does not initialize a new Civ VI game. See the
+initialized state, matching rules and typed service inputs. The public
+[`runtime::Builder`](../crates/c6-data/src/loaded_actions/session/runtime.rs)
+composes common research/player services, canonical factory owners and combat
+callbacks before retaining them in Session. Neither this builder nor
+`Session::from_initialized` initializes a new Civ VI game or loads arbitrary
+Civ VI saves. See the
 [early-game example](../crates/c6-data/examples/early_game_session.rs) and
 [stock turn services](../crates/c6-data/src/loaded_actions/session/stock_turn_services.rs).
 

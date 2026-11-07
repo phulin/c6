@@ -12,6 +12,39 @@ The workspace has no source/build dependency on investigative tools, native
 harnesses or private captures. Its current components do not compose into a
 complete playable simulator; [status](status.md) defines the remaining boundary.
 
+## Supported gameplay runtime construction
+
+Use `c6_data::loaded_actions::session::runtime::Builder` with an explicitly
+initialized `LoadedState` and matching typed rules/services. Its `Inputs` moves
+the script/RNG and player services once and binds the shared research query,
+visibility and unit-update definitions. `factory` joins one canonical bundle of
+modifier, requirement, combat collection and factory collection owners to unit
+lifecycle callbacks and the same research definitions. `runtime::combat` composes
+qualified damage, attacks and formation reports with attack completion callbacks
+on that existing bundle. `finish` joins notification inputs, update/research
+owners and visibility history into one persistent `Session`.
+
+Keep immutable definitions and live shared query providers in the embedding
+arena for the Session lifetime. Rust borrows enforce their lifetime; construction
+uses no leaked allocations, self references, second mutable world or per-request
+reset. Rejected common construction and factory joins return supplied owners.
+Combat report assembly can retain a report-binding prefix on error and returns
+its attack inputs. Session failures retain the existing partial gameplay state
+and pending decisions. Inspect errors before issuing another request.
+
+The importer supplies typed initialized state, callback registrations and scope
+qualifications. It also supplies feature inputs for sight/resource discovery,
+city queries, diplomacy and round owners through the existing typed stock
+bindings. It does not implement the stock gameplay callback dispatch.
+`session::stock_turn_services::StockTurnServices` composes supported upkeep and
+control from typed inputs; retain that same service value across `advance` calls.
+All policy choices remain external. Missing services and unsupported reached
+branches remain errors. This is bounded runtime assembly, not a complete game
+initializer, arbitrary save loader or general legal-action enumeration. The
+[embedding example](../crates/c6-data/examples/early_game_session.rs) shows typed
+assembly followed by requests against the same Session; native capture decoding
+is deliberately absent from the public workspace.
+
 ## Two state boundaries
 
 `Engine` owns a small `Snapshot` with explicit identities, caller-identified RNG

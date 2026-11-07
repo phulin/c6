@@ -14,6 +14,12 @@ pub struct ModifierOwners {
     pub collections: c6_core::melee_attack::proposals::collections::Runtime,
     pub unit_created: collections::Runtime,
 }
+/// Every supplied mutable owner is recoverable after a rejected factory join.
+pub struct RejectedFactory<'a> {
+    pub error: movement::Error,
+    pub input: State<'a>,
+    pub owners: ModifierOwners,
+}
 pub struct Achievement {
     pub context_present: bool,
     pub integrity: bool,
@@ -194,6 +200,41 @@ impl<'a, P> Runtime<'a, P> {
             ));
         }
         self.city_placement = Some(input);
+        Ok(())
+    }
+    /// Atomically join initialized factory callbacks and their canonical mutable
+    /// modifier/requirement/collection owners. A rejected join returns both
+    /// inputs; existing runtime services and RNG remain untouched.
+    pub fn bind_factory(
+        &mut self,
+        state: &LoadedState,
+        input: State<'a>,
+        owners: ModifierOwners,
+    ) -> Result<(), Box<RejectedFactory<'a>>> {
+        let error = self
+            .check(state)
+            .err()
+            .map(|_| movement::Error::Missing("factory World identity"))
+            .or_else(|| {
+                (self.unit_creation.is_some()
+                    || self.modifier_owners.is_some()
+                    || input.build_maps.binding != *state.binding()
+                    || input
+                        .research
+                        .is_some_and(|r| r.definitions.binding() != state.binding()))
+                .then_some(movement::Error::Missing(
+                    "factory occupied or identity mismatch",
+                ))
+            });
+        if let Some(error) = error {
+            return Err(Box::new(RejectedFactory {
+                error,
+                input,
+                owners,
+            }));
+        }
+        self.modifier_owners = Some(owners);
+        self.unit_creation = Some(input);
         Ok(())
     }
     pub fn bind_modifier_owners(
