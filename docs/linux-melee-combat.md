@@ -24,6 +24,12 @@ kill lifecycle and influence callbacks using the canonical requirement and effec
 stores. Pass this dispatcher to `Session::melee_attack` with an explicit target
 request. The containing MoveTo operation can continue after combat.
 
+For a [major-player defender killed through a retained ordinary round](linux-wartime-lethal-melee.md),
+compose `melee_attack::stock::RetainedDamage` around `Damage`, with the live
+default-defeat bindings and current movement definitions. This composition also
+loans the same creation collections during death callbacks. Keep the canonical
+requirements around the action with `Session::with_modifier_requirement_sets`.
+
 Resolution restores its borrowed owners on success or error. Reached unsupported
 branches preserve earlier gameplay updates, callbacks and RNG draws; the Session
 then freezes and rejects later requests. Callers can extract its owners for

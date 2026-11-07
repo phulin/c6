@@ -56,7 +56,8 @@ targets, other planner shapes, positive emergency eligibility, active military
 operations and executable behavior trees remain explicit unsupported branches.
 The interruption profile's deal, foreign-governor, shared-sight and expulsion
 restrictions remain. This comparison qualifies surviving Unit melee plus one
-round; it does not qualify killed defenders through later rounds.
+round. A separate [lethal major-player melee case](linux-wartime-lethal-melee.md)
+qualifies defender death and cleanup through one retained ordinary round.
 
 Raw full-action/trajectory equality remains false for preserved source-qualified
 policy output and intermediate unsaved District observations. Complete runtime
