@@ -667,6 +667,17 @@ fn at_war(state: &LoadedState, owner: i32, other: i32) -> Result<bool, Error> {
         .map_err(Error::Relations)
 }
 
+// UnitContainer entries retain a ComponentID word, not a plain PlayerTypes.
+fn hostile_zoc_reference(
+    reference: c6_core::map::UnitReference,
+    owner: i32,
+    layer: u32,
+    mut war: impl FnMut(i32) -> Result<bool, Error>,
+) -> Result<bool, Error> {
+    let other = reference.player();
+    Ok(other != owner && (layer == 3 || war(other)?))
+}
+
 /// Cache fields are the actual PathInitialize projection, not a spatial ZOC
 /// answer. The direct wrapper below obtains these values from current state.
 #[derive(Clone, Copy, Debug)]
@@ -839,10 +850,9 @@ pub fn is_in_enemy_zoc(
             c6_core::skip_turn::placement::units_at(state.world(), Some(identity.layer), location)
                 .map_err(|_| Error::Missing("ZOC occupancy layer"))?
         {
-            if reference.owner == identity.owner {
-                continue;
-            }
-            if identity.layer != 3 && !at_war(state, identity.owner, reference.owner)? {
+            if !hostile_zoc_reference(reference, identity.owner, identity.layer, |other| {
+                at_war(state, identity.owner, other)
+            })? {
                 continue;
             }
             let Some(found) = state.world().unit(reference).map_err(Error::World)? else {
@@ -1017,6 +1027,31 @@ mod tests {
         ] {
             assert_eq!(native_property_integer(source), wanted, "{source:?}");
         }
+    }
+    #[test]
+    fn unit_zoc_war_query_decodes_component_owner() {
+        use c6_core::{map::UnitReference, unit::ComponentId};
+        let reference = UnitReference::from_component_id(ComponentId {
+            owner: 1,
+            component_type: 1,
+            id: 262147,
+        });
+        assert_ne!(reference.owner, 1);
+        let mut queried = Vec::new();
+        assert!(hostile_zoc_reference(reference, 0, 0, |other| {
+            queried.push(other);
+            Ok(other == 1)
+        })
+        .unwrap());
+        assert_eq!(queried, [1]);
+        assert!(!hostile_zoc_reference(reference, 1, 0, |_| {
+            panic!("same-owner unit must not query war")
+        })
+        .unwrap());
+        assert!(hostile_zoc_reference(reference, 0, 3, |_| {
+            panic!("religious layer must not query war")
+        })
+        .unwrap());
     }
     fn empty<T>() -> c6_core::map::Recycled<T> {
         c6_core::map::Recycled {
