@@ -177,13 +177,25 @@ pub(super) fn apply<P>(
         if plot.city_attributes.is_some() || plot.improvement_hash != u32::MAX {
             return Err(Error::Requires("river owned floodplain effects"));
         }
-        if !state
+        if let Some(&reference) = state
             .world()
             .plot_units(0, index as usize)
             .map_err(|_| Error::Missing("river layer0 units"))?
-            .is_empty()
+            .first()
         {
-            return Err(Error::Requires("river occupied floodplain effects"));
+            let unit = state
+                .world()
+                .unit(reference)
+                .map_err(|_| Error::Missing("river current unit resolution"))?;
+            return Err(Error::RiverOccupied {
+                plot: index,
+                reference,
+                resolved_id: unit.as_ref().map(|u| u.resolved_id),
+                location: unit.as_ref().map(|u| u.record.k_location),
+                unit_type: unit.as_ref().map(|u| u.record.e_type_index),
+                damage: unit.as_ref().map(|u| u.record.i_damage),
+                delayed_death: unit.as_ref().map(|u| u.record.b_delayed_death),
+            });
         }
     }
     let turn = state.retained().core.current_turn;

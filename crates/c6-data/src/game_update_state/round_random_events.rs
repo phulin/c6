@@ -92,6 +92,15 @@ pub enum Error {
     Random(c6_core::loaded_state::game_sync::AccessError),
     Requires(&'static str),
     Pending(PossibleEvent),
+    RiverOccupied {
+        plot: i32,
+        reference: c6_core::map::UnitReference,
+        resolved_id: Option<u32>,
+        location: Option<c6_core::unit::PlotCoord>,
+        unit_type: Option<u32>,
+        damage: Option<i32>,
+        delayed_death: Option<bool>,
+    },
 }
 impl Runtime {
     pub fn from_initial(state: &LoadedState, input: Initial) -> Result<Self, Error> {
