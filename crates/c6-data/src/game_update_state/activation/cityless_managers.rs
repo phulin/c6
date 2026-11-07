@@ -914,10 +914,10 @@ pub fn after_cities(
                 }
             }
             if outgoing < capacity && !defs.available_capacity_output_owners.contains(&owner) {
-                return Err(missing("available trade-capacity notification"));
+                e.notification(state, owner, 0xcce487d2)?;
             }
-            // Qualified cce487d2 output has no gameplay/RNG/decision effects.
-            // Keep the native capacity reread and notified-capacity write below.
+            // The qualified output or stock headless effect preserves the
+            // native capacity reread and notified-capacity write below.
         }
         // Native rereads capacity after the optional synchronous notification.
         let capacity = player(state, owner)?.trade.outgoing_route_capacity;

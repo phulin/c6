@@ -173,13 +173,33 @@ impl<P> data::Effects for Runtime<'_, P> {
     fn notification(
         &mut self,
         state: &mut LoadedState,
-        _owner: i32,
-        _kind: u32,
+        owner: i32,
+        kind: u32,
     ) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("activation notification binding"))?;
-        Err(Error::Unsupported(
-            "activation manager positive notification",
-        ))
+        state
+            .world()
+            .player(owner)
+            .map_err(|_| Error::Unsupported("activation notification owner"))?;
+        match kind {
+            0xcce487d2 => {
+                // CheckCapacityNotification2b95d30 -> Send2d4b390 is a
+                // default manual, null-parameter informational notification.
+                // Under this Runtime's stock plain/no-added-consumer scope,
+                // creation, duplicate checks and supersession only affect
+                // presentation storage. Default OnAdd is RET; the stock
+                // DiplomacySession supersession override exits on incoming
+                // type mismatch before gameplay/RNG. Added f26f3acf only
+                // queues the stock host presentation event. Omit that output;
+                // the caller retains its capacity reread/write in source order.
+                self.reached
+                    .push("available trade capacity informational output");
+                Ok(())
+            }
+            _ => Err(Error::Unsupported(
+                "activation manager positive notification",
+            )),
+        }
     }
 }
