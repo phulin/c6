@@ -399,7 +399,65 @@ impl<P> shared::VisualContext for Current<'_, '_, '_, '_, P> {
             None => Err(err("revealed normal layer", "cell")),
         }
     }
-    fn report(&mut self, _: &mut LoadedState, _: usize, _: u32, _: i32) -> Result<(), Error> {
+    fn report(
+        &mut self,
+        state: &mut LoadedState,
+        plot: usize,
+        event: u32,
+        _: i32,
+    ) -> Result<(), Error> {
+        if event == 0xe5b20b82 {
+            // RestoreVisualState sends OnImprovementAddedToMap before updating
+            // visibility. The Map recipient (return27bcc05) queries this
+            // improvement with a nonnull contribution vector. Preserve its
+            // temporary PlotYields lifecycle on the SAME canonical owner even
+            // when the resulting presentation values are omitted.
+            let current = state
+                .world()
+                .map()
+                .plots
+                .get(plot)
+                .ok_or_else(|| err("added improvement report", "plot"))?;
+            if current.improvement_hash != self.dispatcher.definitions.improvement_hash {
+                return Err(err(
+                    "added improvement report",
+                    "current definition changed",
+                ));
+            }
+            let city = match &current.city_attributes {
+                Some(attributes)
+                    if attributes.player >= 0 && attributes.owning_city != u32::MAX =>
+                {
+                    let owner = i32::from(attributes.player);
+                    state
+                        .city(owner, attributes.owning_city)
+                        .map_err(|e| err("added improvement report owning city", e))?;
+                    Some(c6_core::city_territory::CityId {
+                        owner,
+                        id: attributes.owning_city,
+                    })
+                }
+                _ => None,
+            };
+            let query = self
+                .backend
+                .city_query_inputs()
+                .ok_or_else(|| err("added improvement report", "current city query owner"))?;
+            let mut territory = query
+                .current
+                .territory
+                .write()
+                .map_err(|e| err("added improvement report mutable territory", e))?;
+            crate::loaded_actions::pillage::reporting::temporary_plot_yields(
+                &mut territory,
+                plot as u32,
+                city,
+                self.dispatcher.definitions.improvement_index,
+            )
+            .map_err(|e| err("added improvement report effects", e))?;
+        } else if !matches!(event, 0xa625c726 | 0xf391d7b3) {
+            return Err(err("improvement visual report", "unsupported event"));
+        }
         Ok(())
     }
 }
