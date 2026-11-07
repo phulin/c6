@@ -80,6 +80,8 @@ fn player(state: &LoadedState, owner: i32) -> Result<&RetainedPlayer, Error> {
         .ok_or(Error::Unsupported("human activation current player"))
 }
 struct Effects<'s, 'a, 'i, P> {
+    requirements:
+        Option<&'s mut crate::game_update_state::activation::requirement_changes::Runtime>,
     backend: &'s mut Runtime<'a, P>,
     inputs: &'i Inputs,
     definitions: &'i maintenance::Definitions,
@@ -252,7 +254,11 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
             }
             Self::controller_callbacks(state, owner, kind)?;
             match kind {
-                Kind::Planning => self.backend.continue_human_planning(state, owner)?,
+                Kind::Planning => self.backend.continue_human_planning(
+                    state,
+                    owner,
+                    self.requirements.as_deref_mut(),
+                )?,
                 Kind::Religious => {
                     if self
                         .inputs
@@ -302,7 +308,11 @@ impl<P> core::Effects for Effects<'_, '_, '_, P> {
                         .as_ref()
                         .ok_or(Error::Unsupported("current human Targets"))?;
                     if t.new_war_started.0 != 0 {
-                        self.backend.continue_human_wartime(state, owner)?;
+                        self.backend.continue_human_wartime(
+                            state,
+                            owner,
+                            self.requirements.as_deref_mut(),
+                        )?;
                         state
                             .combat_ai_targets_mut(owner)
                             .map_err(|_| {
@@ -364,6 +374,7 @@ impl OffTurn<'_> {
         }
         core::Effects::off_turn(
             &mut Effects {
+                requirements: None,
                 backend,
                 inputs: self.inputs,
                 definitions: self.definitions,
@@ -390,6 +401,34 @@ pub fn run<P>(
     full_turn: bool,
     visibility: &crate::unit_sight_state::Runtime,
 ) -> Result<(), Error> {
+    run_with_requirements(
+        state,
+        backend,
+        definitions,
+        inputs,
+        units,
+        major,
+        initialized,
+        scout,
+        full_turn,
+        visibility,
+        None,
+    )
+}
+#[allow(clippy::too_many_arguments)]
+pub fn run_with_requirements<P>(
+    state: &mut LoadedState,
+    backend: &mut Runtime<'_, P>,
+    definitions: &maintenance::Definitions,
+    inputs: &Inputs,
+    units: &[u32],
+    major: bool,
+    initialized: bool,
+    scout: &ScoutInputs,
+    full_turn: bool,
+    visibility: &crate::unit_sight_state::Runtime,
+    requirements: Option<&mut crate::game_update_state::activation::requirement_changes::Runtime>,
+) -> Result<(), Error> {
     if state.binding() != &inputs.binding {
         return Err(Error::Unsupported("human activation runtime binding"));
     }
@@ -399,6 +438,7 @@ pub fn run<P>(
         units,
         full_turn,
         &mut Effects {
+            requirements,
             backend,
             inputs,
             definitions,

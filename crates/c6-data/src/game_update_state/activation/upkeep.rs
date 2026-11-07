@@ -253,7 +253,7 @@ impl<P> Context<'_, '_, P> {
                 .iter()
                 .map(|row| row.value.id)
                 .collect::<Vec<_>>();
-            stock_notifications::human_activation::run(
+            stock_notifications::human_activation::run_with_requirements(
                 self.state,
                 self.backend,
                 self.maintenance_definitions,
@@ -268,6 +268,7 @@ impl<P> Context<'_, '_, P> {
                     .visibility
                     .try_borrow()
                     .map_err(|e| failure("human controller sight", e))?,
+                Some(signal.requirements),
             )
             .map_err(|e| failure("human controller activation", e))?;
         }

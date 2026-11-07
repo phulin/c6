@@ -286,7 +286,11 @@ pub fn finish_completed_human_pass<P>(
             loaded::human_control::deactivate_with_callbacks(
                 c.state,
                 owner,
-                |state, owner| backend.borrow_mut().continue_human_wartime(state, owner),
+                |state, owner| {
+                    backend
+                        .borrow_mut()
+                        .continue_human_wartime(state, owner, None)
+                },
                 |state, owner, _priority| {
                     let services =
                         inputs

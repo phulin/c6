@@ -113,6 +113,7 @@ impl<'a> Profile<'a> {
         &mut self,
         runtime: &mut Runtime<'_, P>,
         state: &mut LoadedState,
+        current: Option<&mut crate::game_update_state::activation::requirement_changes::Runtime>,
     ) -> Result<(), Error> {
         let player = state
             .retained()
@@ -139,11 +140,27 @@ impl<'a> Profile<'a> {
                 "human wartime active military/tree continuation",
             ));
         }
+        let mut guard;
+        let shared = match current {
+            Some(current) => {
+                if !std::ptr::eq(current, self.requirements.as_ptr()) {
+                    return Err(Error::Unsupported(
+                        "human wartime canonical requirement loan",
+                    ));
+                }
+                current
+            }
+            None => {
+                guard = self.requirements.try_borrow_mut().map_err(|_| {
+                    Error::Unsupported("human wartime requirement owner already borrowed")
+                })?;
+                &mut *guard
+            }
+        };
         let inputs = self
             .inputs
             .take()
             .ok_or(Error::Unsupported("human wartime callback inputs borrowed"))?;
-        let mut shared = self.requirements.borrow_mut();
         let mut owned_inputs = Some(inputs);
         let mut detail = None;
         let result=runtime.with_modifier_requirement_sets(shared.sets_mut(),|runtime| {
@@ -226,6 +243,7 @@ impl<'a, P> Runtime<'a, P> {
         &mut self,
         state: &mut LoadedState,
         owner: i32,
+        current: Option<&mut crate::game_update_state::activation::requirement_changes::Runtime>,
     ) -> Result<(), Error> {
         let Some(at) = self.human_wartime.iter().position(|p| p.owner == owner) else {
             // Other stock profiles retain their established peaceful query scope.
@@ -262,7 +280,7 @@ impl<'a, P> Runtime<'a, P> {
                 delayed_death: row.value.b_delayed_death,
             })
             .collect();
-        self.continue_human_wartime(state, owner)
+        self.continue_human_wartime(state, owner, current)
     }
     pub(super) fn clear_human_planning(&mut self, owner: i32) {
         if let Some(profile) = self.human_wartime.iter_mut().find(|p| p.owner == owner) {
@@ -275,6 +293,7 @@ impl<'a, P> Runtime<'a, P> {
         &mut self,
         state: &mut LoadedState,
         owner: i32,
+        current: Option<&mut crate::game_update_state::activation::requirement_changes::Runtime>,
     ) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Unsupported("human wartime current binding"))?;
@@ -284,7 +303,7 @@ impl<'a, P> Runtime<'a, P> {
             .position(|p| p.owner == owner)
             .ok_or(Error::Unsupported("current human wartime planner inputs"))?;
         let mut profile = self.human_wartime.remove(at);
-        let result = profile.run(self, state);
+        let result = profile.run(self, state, current);
         self.human_wartime.insert(at, profile);
         result
     }
