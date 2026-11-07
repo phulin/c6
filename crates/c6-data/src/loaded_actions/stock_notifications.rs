@@ -128,6 +128,10 @@ pub enum Notice {
         resource: i32,
         plot: u32,
     },
+    GoodyDiscovered {
+        owner: i32,
+        plot: u32,
+    },
     NaturalWonderDiscovered {
         owner: i32,
         feature: i32,
@@ -320,6 +324,7 @@ impl<'a, P> Runtime<'a, P> {
             | Notice::RoutesUpgraded { owner, .. }
             | Notice::ResourceDiscovered { owner, .. }
             | Notice::NaturalWonderDiscovered { owner, .. }
+            | Notice::GoodyDiscovered { owner, .. }
             | Notice::ImprovementPillaged { owner, .. }
             | Notice::TechnologyCompleted { owner, .. }
             | Notice::CivicCompleted { owner, .. }

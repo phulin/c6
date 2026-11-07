@@ -53,6 +53,7 @@ pub struct State {
     pub(super) natural_wonders: Vec<u32>,
     pub(super) continents: LinuxDefinitionRegistry,
     pub(super) goody_notify: Vec<u32>,
+    pub(super) goody_notice_scope: Option<super::wonder_discovery::Scope>,
     pub(super) geography: Option<super::sight_discovery::Geography>,
     pub propagation: Vec<c6_core::visibility_change::Propagation>,
     pub visibility_blocks: Vec<u32>,
@@ -163,6 +164,7 @@ impl<P> Runtime<'_, P> {
             continents: collection(rules, "Continents", "ContinentType")
                 .map_err(|e| Error::Requirement(format!("{e:?}")))?,
             goody_notify,
+            goody_notice_scope: None,
             geography: None,
             propagation: Vec::new(),
             visibility_blocks: Vec::new(),

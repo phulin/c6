@@ -296,6 +296,9 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
             return Ok(());
         }
         match kind {
+            Notification::Goody => self
+                .backend
+                .notify_goody_discovered(self.state, player, plot),
             Notification::NaturalWonder(feature) => self
                 .backend
                 .notify_wonder_discovered(self.state, player, plot, feature),

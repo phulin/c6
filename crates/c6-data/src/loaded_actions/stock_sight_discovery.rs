@@ -22,6 +22,50 @@ pub struct Geography {
     toa_index: Option<u32>,
 }
 impl<P> Runtime<'_, P> {
+    /// Qualify the reached stock default manual sight-discovery notice. The
+    /// current factory, null creation parameters, setters, supersession and
+    /// NotificationAdded consumers must be established from this same input.
+    /// Only Goody sighting e5cc5a74 is supported here; claiming its reward is a
+    /// separate gameplay operation and is not executed by this output path.
+    pub fn bind_sight_discovery_notice(
+        &mut self,
+        state: &LoadedState,
+        type_hash: u32,
+        scope: super::wonder_discovery::Scope,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("sight notice identity"))?;
+        if type_hash != 0xe5cc5a74 {
+            return Err(Error::Missing("unsupported sight discovery notice type"));
+        }
+        let binding = self
+            .resource_revelation
+            .as_mut()
+            .ok_or(Error::Missing("sight discovery services"))?;
+        if binding.goody_notice_scope.is_some() {
+            return Err(Error::Missing("Goody sight notice already bound"));
+        }
+        binding.goody_notice_scope = Some(scope);
+        Ok(())
+    }
+    pub(super) fn notify_goody_discovered(
+        &mut self,
+        state: &LoadedState,
+        owner: i32,
+        plot: u32,
+    ) -> Result<(), Error> {
+        self.resource_revelation
+            .as_ref()
+            .and_then(|r| r.goody_notice_scope)
+            .ok_or(Error::Missing("Goody sight notice consumers"))?;
+        // ViewPlotContents2bc3b49..bb0 only localizes text, selects manual type
+        // e5cc5a74 and calls the shared Send2d4b710 overload. Reached default
+        // factory/consumers are qualified by the binding. No hut is entered,
+        // reward selected, gameplay callback skipped or RNG draw synthesized.
+        self.publish_notice(state, super::Notice::GoodyDiscovered { owner, plot })
+            .map_err(|e| Error::Requirement(format!("Goody sight notice: {e:?}")))
+    }
+
     /// Current configuration civilizations and the actual WasEverAlive major
     /// player list. Neither is inferred from the currently alive list.
     pub fn bind_sight_geography(
