@@ -42,7 +42,7 @@ fn family_weight(count: usize, weight: i32, prior: i32) -> i32 {
     for _ in 0..prior {
         raw = if raw < 512 { 256 } else { raw / 2 };
     }
-    raw.wrapping_add(128) >> 8
+    (raw >> 8).wrapping_add(((raw as u32 >> 7) & 1) as i32)
 }
 fn choose<C: Context>(
     context: &mut C,
