@@ -72,3 +72,28 @@ and intermediate unsaved District observations. Complete runtime and RNG
 inventory coverage is not established. This representative wounded-major kill
 qualifies the positive Archery path; it does not qualify arbitrary research
 boosts or combat aftermath.
+
+The public `session::runtime::Builder` now supplies reusable typed runtime
+composition for this retained sequence. It joins common research/player
+services, canonical factory owners and stock combat/formation callbacks, then
+moves the update/research/notification owners into Session. Importers supply
+initialized typed state, definitions and registrations; native capture decoding
+remains private. The same API also passes the lethal Warrior retained-round
+regression. See [runtime construction](architecture.md#supported-gameplay-runtime-construction).
+
+The constructor replay uses public `0d4e84c3` and private `e82efd86`, the same
+native Slinger inputs and unchanged target/configuration above. Private receipts
+`evidence/linux/public-runtime-slinger-release.json` and
+`evidence/linux/public-runtime-lethal-regression-release.json` retain exact
+source/input/executable identities, commands and actual results. Represented
+trajectory, terminal gameplay, known RNG, requirements/modifiers and opinion
+graph remain equal; raw full trajectory remains unequal for the existing
+preserved exclusions. No original engine was launched for these replays.
+
+One release observation measured 498.20 ms for stock runtime construction,
+typed feature binding and the Session owner join, excluding earlier fixture,
+rules and query import. Separately, the Slinger request took 4.33 ms and the
+ordinary-round requests took 29.15 ms with the request exclusions above. These
+single observations are not a full-game benchmark. The public workspace tests,
+clippy, C ABI smoke and embedding example run from temporary committed public
+build inputs with no private sibling.
