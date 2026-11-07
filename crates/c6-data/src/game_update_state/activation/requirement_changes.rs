@@ -43,6 +43,9 @@ pub enum OpinionKind {
     Warmonger,
     Bushido,
     Exploitative,
+    /// The shared base/subject lifecycle is retained; positive concrete naval
+    /// opinion application requires a separately bound leaf.
+    LastVikingKing,
 }
 /// Supported current opinion-only subject tests contain no script/random leaf.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -271,7 +274,7 @@ fn no_opinion_statement(state: &LoadedState, row: &OwnerModifier) -> Result<bool
                     .all(|(kind, turns)| *kind != promise || turns.is_empty())
             }))
         }
-        OpinionKind::Bushido | OpinionKind::Exploitative => {
+        OpinionKind::Bushido | OpinionKind::Exploitative | OpinionKind::LastVikingKing => {
             // Subject requirements gate Apply, before score/statement queries.
             let turns = match requirements {
                 OpinionRequirements::KnownMajor10Turns => 10,
