@@ -35,11 +35,19 @@ requirements, growth modifiers and blackboards, relationship modifiers, used
 city names, the logical territory-query identity counter and known GameSync/libc
 RNG. It reads native AFTER observations only after the simulated round returns.
 
-The development comparison uses public `93bf8228` and private `1aa277b8`, with
+The development and optimized comparisons use public `93bf8228` and private
+`1aa277b8`, with
 configuration
 `bf10b8daab2d07f586a2324a0c80ec35cc548c68175270eee74f146444a2435b`.
-Private `c6-re/evidence/linux/second-city-session-13-dev.json` records the exact
-target, rules, committed sources, canonical input hashes, command and result.
+Private `c6-re/evidence/linux/second-city-session-13-dev.json` and
+`second-city-session-14-release.json` record the exact target, rules, committed
+sources, canonical input hashes, commands, profiles and results.
+
+One optimized replay measured 11.10 ms for FoundCity and 19.33 ms for the
+ordinary-round requests. The round measurement includes applying recorded
+external orders and policy responses. These single observations exclude fixture
+import, provider setup, external policy selection latency, native AFTER
+comparison and output serialization; they are not full-game performance claims.
 
 Raw typed component differences remain recorded; the complete gameplay and RNG
 inventory is unfinished. This case does not qualify continent-specific or
