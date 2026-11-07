@@ -49,6 +49,12 @@ external orders and policy responses. These single observations exclude fixture
 import, provider setup, external policy selection latency, native AFTER
 comparison and output serialization; they are not full-game performance claims.
 
+The existing initial-capital FoundCity regression also passes through the
+retained Session on public `93bf8228` and private `9ae0dc3c`. Its three pending
+decisions remain external. Private
+`c6-re/evidence/linux/second-city-initial-founding-regression-release.json`
+retains that result and the preceding stale-adapter/input failures.
+
 Raw typed component differences remain recorded; the complete gameplay and RNG
 inventory is unfinished. This case does not qualify continent-specific or
 duplicate city-name candidates, exhausted-name fallback, artifact extraction,
