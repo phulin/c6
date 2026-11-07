@@ -1,6 +1,6 @@
 //! Reached GameSignals.RouteChanged History listener (Linux29eb070).
-//! Current first-city founding cannot connect two distinct owned cities. The
-//! History guards still execute in source order against the live manager.
+//! First-city and source-proven disconnected ordinary founding paths preserve
+//! History guards. A reachable route search/positive moment stays unsupported.
 use c6_core::{
     core_player::initialization::WireBinding, game_history::Moment, loaded_state::LoadedState,
     unit::PlotCoord,
@@ -63,6 +63,38 @@ fn next_moment(moments: &[Moment], owner: i32) -> Option<u32> {
 fn valid(location: PlotCoord, route: i32, owner: i32) -> bool {
     location.x > -9999 && location.y > -9999 && route != -1 && owner != -1
 }
+/// Exact negative branch of FindTwoCitiesConnectedByRoute2bce5f0: after
+/// visiting the root, every neighbor lacks a District and rejects the required
+/// route. Native only mutates its local visited set; no second City can be found.
+/// Potential City/District or matching-route neighbors need the full traversal.
+fn isolated_root(map: &c6_core::map::Map, location: PlotCoord, route: i32) -> Result<bool, Error> {
+    let h = &map.header;
+    if h.width <= 0 || h.height <= 0 {
+        return Err(Error::Missing("route search map extent"));
+    }
+    for neighbor in c6_core::improvement_movement::neighborhood(location)
+        .into_iter()
+        .skip(1)
+    {
+        let x = c6_core::movement_world::coord_range(neighbor.x, h.width, h.wrap_x);
+        let y = c6_core::movement_world::coord_range(neighbor.y, h.height, h.wrap_y);
+        if (x, y) == (location.x, location.y) {
+            continue;
+        }
+        let Some(plot) = map.plot_at(x, y) else {
+            continue;
+        };
+        if plot
+            .city_attributes
+            .as_ref()
+            .is_some_and(|a| a.district != u32::MAX)
+            || i32::from(plot.route_type) == route
+        {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
 /// Called synchronously after the source route-field/cache/report prefix.
 /// No receiver is silently discarded. Inputs are the caller's current ordered
 /// subscription projection; unknown recipients retain the caller's mutation.
@@ -121,6 +153,9 @@ pub fn route_changed(
                 // canonical City records proves false without any route flood.
                 // This is a pure local search: no gameplay writes/callbacks/RNG.
                 if player.cities.records.entries.len() < 2 {
+                    continue;
+                }
+                if isolated_root(state.world().map(), location, route_type)? {
                     continue;
                 }
                 return Err(Error::Connectivity {
