@@ -24,6 +24,26 @@ pub fn deactivate(state: &mut LoadedState, owner: i32) -> Result<(), Error> {
 pub fn deactivate_with_priority_signal(
     state: &mut LoadedState,
     owner: i32,
+    priority_signal: impl FnMut(&mut LoadedState, i32, i32) -> Result<(), Error>,
+) -> Result<(), Error> {
+    deactivate_with_callbacks(
+        state,
+        owner,
+        |_, _| {
+            Err(Error::Unsupported(
+                "Targets war-operation dispatch before human cleanup",
+            ))
+        },
+        priority_signal,
+    )
+}
+/// Continue the reached new-war Targets dispatch before the ordinary priority
+/// signal and controller cleanup. The callback must preserve gameplay and RNG;
+/// errors retain its completed prefix and leave the pending war flag set.
+pub fn deactivate_with_callbacks(
+    state: &mut LoadedState,
+    owner: i32,
+    mut war_dispatch: impl FnMut(&mut LoadedState, i32) -> Result<(), Error>,
     mut priority_signal: impl FnMut(&mut LoadedState, i32, i32) -> Result<(), Error>,
 ) -> Result<(), Error> {
     if state
@@ -46,10 +66,19 @@ pub fn deactivate_with_priority_signal(
         .as_ref()
         .ok_or(Error::Unsupported("current Targets"))?;
     if targets.new_war_started.0 != 0 {
-        return Err(Error::Unsupported(
-            "Targets war-operation dispatch before human cleanup",
-        ));
+        war_dispatch(state, owner)?;
+        state
+            .combat_ai_targets_mut(owner)
+            .map_err(|_| Error::Unsupported("current wartime Targets write"))?
+            .new_war_started
+            .0 = 0;
     }
+    let player = state
+        .retained
+        .players
+        .iter()
+        .find(|p| p.requested_owner == owner)
+        .ok_or(Error::Unsupported("current player control components"))?;
     let behavior = player
         .ai_behavior_tree
         .as_ref()
@@ -213,18 +242,76 @@ mod tests {
         player.ai_tactical.as_mut().unwrap().control_instance_id = u32::MAX;
         state.unit_mut(owner, ids[0]).unwrap().ai_controller = retained_controller;
         assert!(!super::super::human_activation::is_done_turn(&state, owner).unwrap());
+        state.retained.players[0]
+            .ai_targets
+            .as_mut()
+            .unwrap()
+            .new_war_started
+            .0 = 1;
+        let rejected = deactivate_with_callbacks(
+            &mut state,
+            owner,
+            |_, _| Err(Error::Unsupported("test war continuation")),
+            |_, _, _| panic!("priority signal before failed war continuation"),
+        );
+        assert!(matches!(
+            rejected,
+            Err(Error::Unsupported("test war continuation"))
+        ));
+        assert_eq!(
+            state.retained.players[0]
+                .ai_targets
+                .as_ref()
+                .unwrap()
+                .new_war_started
+                .0,
+            1
+        );
+        assert_eq!(
+            super::super::human_activation::current_priority(&state, owner).unwrap(),
+            4
+        );
+        let mut wars = 0;
         let mut signals = 0;
-        deactivate_with_priority_signal(&mut state, owner, |state, source_owner, priority| {
-            assert_eq!(source_owner, owner);
-            assert_eq!(priority, -1);
-            assert_eq!(
-                super::super::human_activation::current_priority(state, owner)?,
-                -1
-            );
-            signals += 1;
-            Ok(())
-        })
+        deactivate_with_callbacks(
+            &mut state,
+            owner,
+            |state, source_owner| {
+                assert_eq!(source_owner, owner);
+                assert_eq!(
+                    state.retained.players[0]
+                        .ai_targets
+                        .as_ref()
+                        .unwrap()
+                        .new_war_started
+                        .0,
+                    1
+                );
+                wars += 1;
+                Ok(())
+            },
+            |state, source_owner, priority| {
+                assert_eq!(
+                    state.retained.players[0]
+                        .ai_targets
+                        .as_ref()
+                        .unwrap()
+                        .new_war_started
+                        .0,
+                    0
+                );
+                assert_eq!(source_owner, owner);
+                assert_eq!(priority, -1);
+                assert_eq!(
+                    super::super::human_activation::current_priority(state, owner)?,
+                    -1
+                );
+                signals += 1;
+                Ok(())
+            },
+        )
         .unwrap();
+        assert_eq!(wars, 1);
         assert_eq!(signals, 1);
         assert_eq!(
             state
