@@ -470,7 +470,13 @@ impl<P> placement::Effects for Current<'_, '_, '_, '_, P> {
     ) -> Result<(), Error> {
         self.dispatcher
             .services
-            .constructed(state, plot, defs, self.dispatcher.gossip_history)
+            .constructed(
+                state,
+                plot,
+                defs,
+                self.dispatcher.gossip_history,
+                self.backend,
+            )
             .map_err(|e| err("constructed", e))
     }
     fn calculate_monopolies(&mut self, _: &mut LoadedState) -> Result<(), Error> {
@@ -578,5 +584,44 @@ impl<P> move_to::Movement<Runtime<'_, P>> for Dispatcher<'_, '_> {
         _: PlotCoord,
     ) -> Result<i32, Error> {
         Err(err("other queued handler", "IsValidLocation"))
+    }
+}
+
+impl<P> services::Effects for Runtime<'_, P> {
+    fn revealed_resource(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        plot: usize,
+    ) -> Result<u32, services::Error> {
+        self.improvement_revealed_resource(state, owner, plot)
+            .map_err(services::Error)
+    }
+    fn trigger_boost(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        index: usize,
+    ) -> Result<(), services::Error> {
+        self.action_research_boost(state, owner, index)
+            .map_err(|e| {
+                self.last_error = Some(format!("Farm research boost: {e:?}"));
+                services::Error("Farm canonical research boost; inspect backend.last_error")
+            })
+    }
+    fn change_owned_resource(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        resource: u32,
+        delta: i32,
+    ) -> Result<(), services::Error> {
+        crate::game_update_state::activation::cityless_managers::Effects::change_owned_resource(
+            self, state, owner, resource, delta,
+        )
+        .map_err(|e| {
+            self.last_error = Some(format!("Farm resource extraction: {e:?}"));
+            services::Error("Farm resource extraction; inspect backend.last_error")
+        })
     }
 }

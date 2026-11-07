@@ -60,6 +60,37 @@ pub struct State {
     pub unit_plot_dispatches: Vec<((i32, u32), u32)>,
 }
 impl<P> Runtime<'_, P> {
+    /// Current native GetRevealedResourceType layer, converted to wire identity.
+    pub(crate) fn improvement_revealed_resource(
+        &self,
+        state: &LoadedState,
+        owner: i32,
+        plot: usize,
+    ) -> Result<u32, &'static str> {
+        let binding = self
+            .resource_revelation
+            .as_ref()
+            .ok_or("Farm revealed resource binding")?;
+        let layer = state
+            .world()
+            .visibility(owner)
+            .and_then(|v| v.layers.get(binding.layer))
+            .ok_or("Farm revealed resource layer")?;
+        let index = *layer
+            .values
+            .get(plot)
+            .ok_or("Farm revealed resource cell")?;
+        if index == -1 {
+            return Ok(u32::MAX);
+        }
+        let definition = binding
+            .resources
+            .entries()
+            .get(usize::try_from(index).map_err(|_| "Farm revealed resource index")?)
+            .ok_or("Farm revealed resource definition")?;
+        Ok(crate::registry::linux_type_hash(&definition.type_name))
+    }
+
     /// `subscribers` is the complete current GameSignals+12c0 registration
     /// order. Unknown nonempty routes remain explicit after the layer write.
     pub fn bind_resource_revelation(

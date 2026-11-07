@@ -680,6 +680,7 @@ impl Session<'_, '_, c6_core::unit::OperationParameters> {
         ) {
             return Err(Error::PendingResearch);
         }
+        self.begin_action_research()?;
         // The session's current visibility history is the canonical Gossip
         // owner. Reborrow all other services instead of copying/replacing them.
         let mut current = crate::builder_improvement::stock::Dispatcher {
@@ -711,6 +712,7 @@ impl Session<'_, '_, c6_core::unit::OperationParameters> {
             &mut current,
             budget,
         );
+        self.end_action_research()?;
         self.retain(result, true)
     }
 }

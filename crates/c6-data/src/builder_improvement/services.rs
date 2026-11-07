@@ -1,5 +1,5 @@
 //! Reached ordinary Farm constructed subscribers, evaluated from current state.
-//! An actual positive boost or unsupported moment returns an error; no native
+//! Positive boosts and Wheat acquisition borrow canonical stock effects. No native
 //! callback results, count answers or AFTER state are accepted as inputs.
 use super::Definitions;
 use crate::{registry::linux_type_hash, Rules, SqlValue};
@@ -20,6 +20,7 @@ pub enum Subscriber {
 }
 struct Boost {
     row: i64,
+    index: usize,
     items: i32,
     improvement: Option<u32>,
     unit: Option<u32>,
@@ -44,6 +45,7 @@ pub struct Current {
     history_special: Vec<i32>,
     boosts: Vec<Boost>,
     yields: crate::registry::LinuxDefinitionRegistry,
+    visibility: crate::city_turn::resources::Definitions,
     modifier_improvements: Vec<u32>,
     resort_hash: Option<u32>,
     civilizations: Vec<(i32, String)>,
@@ -67,8 +69,10 @@ impl Current {
         };
         let boosts = table("Boosts")?
             .rows()
-            .map(|r| {
+            .enumerate()
+            .map(|(index, r)| {
                 Ok(Boost {
+                    index,
                     row: r.row_id().ok_or(Error("Boost row"))?.0,
                     items: r
                         .integer("NumItems")
@@ -116,6 +120,8 @@ impl Current {
             history_special,
             boosts,
             yields,
+            visibility: crate::city_turn::resources::Definitions::from_rules(rules)
+                .map_err(|_| Error("Farm resource visibility definitions"))?,
             modifier_improvements,
             resort_hash,
             civilizations,
@@ -152,12 +158,13 @@ impl Current {
         Ok(count)
     }
     /// Dispatch the retained live order, using current counts after owner sight.
-    pub fn constructed(
+    pub fn constructed<E: Effects>(
         &mut self,
         state: &mut LoadedState,
         plot: usize,
         defs: &Definitions,
         gossip_history: &[c6_core::city_power_activation::gossip_delivery::TurnVisibility],
+        effects: &mut E,
     ) -> Result<(), Error> {
         if state.binding() != &self.binding {
             return Err(Error("Farm constructed binding"));
@@ -229,12 +236,13 @@ impl Current {
                         .iter()
                         .find(|b| b.row == boost_row)
                         .ok_or(Error("Farm Boost row"))?;
-                    if boost.improvement == Some(defs.improvement_hash)
-                        && self.counts(state, owner, Some(defs.improvement_hash))? >= boost.items
-                        && (!boost.requires_resource || p.resource_hash != u32::MAX)
-                        && (!boost.resource_specific || boost.resource == Some(p.resource_hash))
-                    {
-                        return Err(Error("Farm reached improvement TriggerBoost"));
+                    if improvement_boost_matches(
+                        boost,
+                        defs.improvement_hash,
+                        effects.revealed_resource(state, owner, plot)?,
+                        self.counts(state, owner, Some(defs.improvement_hash))?,
+                    ) {
+                        effects.trigger_boost(state, owner, boost.index)?;
                     }
                 }
                 Subscriber::AirbaseForeignContinent
@@ -270,8 +278,28 @@ impl Current {
                         }
                     }
                 }
-                Subscriber::Resources { owner: receiver }
-                    if receiver != owner || p.resource_hash == u32::MAX => {}
+                Subscriber::Resources { owner: receiver } => {
+                    if receiver == owner && p.resource_hash != u32::MAX {
+                        if defs.kind != super::Kind::Farm
+                            || p.resource_hash != linux_type_hash(b"RESOURCE_WHEAT")
+                        {
+                            return Err(Error("Farm resource extraction outside Wheat"));
+                        }
+                        // Before first placement there was no improvement or
+                        // district, so NO_IMPROVEMENT extracts NO_RESOURCE.
+                        let resource = p.resource_hash;
+                        let count = i32::from(p.resource_count);
+                        if count > 0
+                            && self
+                                .visibility
+                                .visible_resource(state, owner, resource as i32)
+                                .map_err(|_| Error("Farm resource visibility"))?
+                                != -1
+                        {
+                            effects.change_owned_resource(state, owner, resource, count)?;
+                        }
+                    }
+                }
                 Subscriber::Barbarian
                     if state.retained().barbarian.flag_168_raw != 0
                         || defs.improvement_hash != state.retained().barbarian.improvement_hash => {
@@ -326,5 +354,68 @@ impl Current {
             return Err(Error("Farm positive monopoly recalculation"));
         }
         Ok(())
+    }
+}
+
+/// Synchronous continuations borrow the stock Session's canonical owners.
+pub trait Effects {
+    fn revealed_resource(&self, state: &LoadedState, owner: i32, plot: usize)
+        -> Result<u32, Error>;
+    fn trigger_boost(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        index: usize,
+    ) -> Result<(), Error>;
+    fn change_owned_resource(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        resource: u32,
+        delta: i32,
+    ) -> Result<(), Error>;
+}
+
+fn improvement_boost_matches(boost: &Boost, improvement: u32, resource: u32, count: i32) -> bool {
+    boost.improvement == Some(improvement)
+        && count >= boost.items
+        && (!boost.requires_resource || resource != u32::MAX)
+        && (!boost.resource_specific || boost.resource == Some(resource))
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn irrigation_requires_a_resource_on_the_constructed_farm() {
+        let farm = linux_type_hash(b"IMPROVEMENT_FARM");
+        let wheat = linux_type_hash(b"RESOURCE_WHEAT");
+        let mut boost = Boost {
+            row: 1,
+            index: 0,
+            items: 1,
+            improvement: Some(farm),
+            unit: None,
+            requires_resource: true,
+            resource: None,
+            resource_specific: false,
+        };
+        assert!(!improvement_boost_matches(&boost, farm, u32::MAX, 3));
+        assert!(!improvement_boost_matches(&boost, farm, wheat, 0));
+        assert!(improvement_boost_matches(&boost, farm, wheat, 1));
+        assert!(!improvement_boost_matches(
+            &boost,
+            linux_type_hash(b"IMPROVEMENT_MINE"),
+            wheat,
+            1
+        ));
+        boost.resource_specific = true;
+        boost.resource = Some(wheat);
+        assert!(improvement_boost_matches(&boost, farm, wheat, 1));
+        assert!(!improvement_boost_matches(
+            &boost,
+            farm,
+            linux_type_hash(b"RESOURCE_RICE"),
+            1
+        ));
     }
 }

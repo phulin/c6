@@ -289,6 +289,15 @@ impl<P> Runtime<'_, P> {
         owner: i32,
         definition: usize,
     ) -> Result<(), crate::city_turn::Error> {
+        self.action_research_boost(state, owner, definition)
+    }
+    /// Action subscribers borrow the same Session research owner and effects.
+    pub(crate) fn action_research_boost(
+        &mut self,
+        state: &mut LoadedState,
+        owner: i32,
+        definition: usize,
+    ) -> Result<(), crate::city_turn::Error> {
         use crate::city_turn::{religion_callbacks, Error as CityError};
         use crate::melee_attack::resolve::completion::boosts::{ResearchTrigger, Trigger};
         let inputs = self
@@ -296,12 +305,12 @@ impl<P> Runtime<'_, P> {
             .as_ref()
             .and_then(|input| input.research)
             .ok_or(CityError::Unsupported(
-                "population canonical research definitions",
+                "action canonical research definitions",
             ))?;
         let mut runtime = self
             .action_research
             .take()
-            .ok_or(CityError::Unsupported("population canonical research loan"))?;
+            .ok_or(CityError::Unsupported("action canonical research loan"))?;
         let result = {
             let mut effects = Effects::new(self, &mut runtime, inputs.choices, inputs.culture);
             ResearchTrigger {
@@ -311,7 +320,7 @@ impl<P> Runtime<'_, P> {
             .trigger(state, owner, definition)
             .map_err(|error| {
                 CityError::ReligionCallback(religion_callbacks::Error::BoostContinuation(format!(
-                    "population boost: {error:?}"
+                    "action boost: {error:?}"
                 )))
             })
         };

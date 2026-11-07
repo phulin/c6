@@ -13,6 +13,8 @@ use std::convert::Infallible;
 pub(super) struct Static {
     terrains: Vec<u32>,
     hills: Vec<u32>,
+    wheat: bool,
+    visibility: crate::city_turn::resources::Definitions,
 }
 impl Static {
     pub(super) fn from_rules(rules: &Rules, kind: Kind) -> Result<Self, Error<crate::Error>> {
@@ -108,7 +110,24 @@ impl Static {
                     })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self { terrains, hills })
+        let wheat = kind == Kind::Farm
+            && rules
+                .gameplay()
+                .table("Improvement_ValidResources")
+                .ok_or(Error::Missing("Improvement_ValidResources"))?
+                .rows()
+                .any(|r| {
+                    r.text("ImprovementType").ok() == Some(name)
+                        && r.text("ResourceType").ok() == Some("RESOURCE_WHEAT")
+                });
+        let visibility = crate::city_turn::resources::Definitions::from_rules(rules)
+            .map_err(|_| Error::Missing("improvement resource visibility definitions"))?;
+        Ok(Self {
+            terrains,
+            hills,
+            wheat,
+            visibility,
+        })
     }
 }
 /// Actual current climate/park owners borrowed across requests. These contain
@@ -240,12 +259,26 @@ pub fn can_start(
     }
     if defs.legality.hills.contains(&plot.terrain_hash) != (defs.kind == Kind::Mine)
         || plot.feature_hash != u32::MAX
-        || plot.resource_hash != u32::MAX
         || plot.improvement_hash != u32::MAX
     {
         return Err(Error::Unsupported(
             "Farm flat empty first-placement profile",
         ));
+    }
+    if plot.resource_hash != u32::MAX {
+        if plot.resource_hash != linux_type_hash(b"RESOURCE_WHEAT") || !defs.legality.wheat {
+            return Err(Error::Unsupported(
+                "improvement resource legality outside Wheat Farm",
+            ));
+        }
+        // CanHaveImprovement's matched ValidResource bypasses terrain when
+        // EnforceTerrain is false. This profile still excludes hills/features.
+        return Ok(defs
+            .legality
+            .visibility
+            .visible_resource(state, unit.e_owner, plot.resource_hash as i32)
+            .map_err(|_| Error::Missing("current Farm resource visibility"))?
+            != -1);
     }
     Ok(defs.legality.terrains.contains(&plot.terrain_hash))
 }
