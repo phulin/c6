@@ -518,31 +518,9 @@ impl<P> npc_activation::Leaves<P> for Leaves<'_, P> {
                 if targets.new_war_started.0 != 0 {
                     return Err(Error::Unsupported("NPC Targets pending new war"));
                 }
-                for war in &targets.knowledge_base.war_knowledge {
-                    // CivKnowledge::IncrementTurn 20009f0..20009fb skips the
-                    // unassigned record before consulting current relations.
-                    if war.opponent == -1 {
-                        continue;
-                    }
-                    if war.is_active.0 != 0
-                        || state
-                            .game_relations()
-                            .map_err(|_| Error::Unsupported("NPC Targets current relations"))?
-                            .is_at_war(owner, war.opponent)
-                            .map_err(|error| {
-                                backend.last_error = Some(format!(
-                                    "NPC Targets current war {owner}/{}: {error:?}",
-                                    war.opponent
-                                ));
-                                Error::Unsupported("NPC Targets current war")
-                            })?
-                    {
-                        return Err(Error::Unsupported("NPC Targets war knowledge decay"));
-                    }
-                }
                 // 21aaeb0 increments knowledge before observing current plots.
-                // The shared observer requires empty historical City/barbarian/
-                // UnitInfo stores, so their aging loops have no retained work.
+                // The shared observer retains historical aging and consults
+                // current relations before decaying former-war scores.
                 // Player/yield/trade estimates and CollectTargets are policy
                 // analyses in this no-added-planning-consumers scope.
                 knowledge::observe_visible_units(

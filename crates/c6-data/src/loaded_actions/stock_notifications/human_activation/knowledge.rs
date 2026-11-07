@@ -102,16 +102,24 @@ pub fn observe_visible_units(
             }),
         );
     }
-    // Player victory-progress and yield-error estimates are native policy
-    // caches. War scores also feed gameplay and require their own decay path.
-    if targets
+    // IncrementTurn20009f0..2000a24 checks current relations, independently
+    // of the historical is_active byte. Only scores for wars now at peace age.
+    let decay_wars = targets
         .knowledge_base
         .war_knowledge
         .iter()
-        .any(|w| w.opponent != -1)
-    {
-        return Err(Error::Unsupported("current war knowledge decay"));
-    }
+        .map(|war| {
+            if war.opponent == -1 {
+                return Ok(false);
+            }
+            state
+                .game_relations()
+                .map_err(|_| Error::Unsupported("current knowledge relations"))?
+                .is_at_war(observer, war.opponent)
+                .map(|at_war| !at_war)
+                .map_err(|_| Error::Unsupported("current knowledge war relation"))
+        })
+        .collect::<Result<Vec<_>, Error>>()?;
     let targets = state
         .combat_ai_targets_mut(observer)
         .map_err(|_| Error::Unsupported("current knowledge owner"))?;
@@ -124,6 +132,16 @@ pub fn observe_visible_units(
                     old < 21
                 });
             }
+        }
+    }
+    for (war, decay) in targets
+        .knowledge_base
+        .war_knowledge
+        .iter_mut()
+        .zip(decay_wars)
+    {
+        if decay {
+            war.current_tally_q8 = decay_war_tally(war.current_tally_q8);
         }
     }
     let mut index = 0;
@@ -358,4 +376,43 @@ fn observe_camp(
         .barbarians[index]
         .guard_hash = guard;
     Ok(())
+}
+
+/// WarKnowledge::DecayScore1fff5b0 changes only the tally. FixedPoint Abs
+/// wraps at MIN, and IsPositive includes zero. There are no callbacks or RNG.
+fn decay_war_tally(tally: i32) -> i32 {
+    let step = if tally.wrapping_abs() > 1000 * 256 {
+        100 * 256
+    } else {
+        10 * 256
+    };
+    if tally >= 0 {
+        tally.wrapping_sub(step).max(0)
+    } else {
+        tally.wrapping_add(step).min(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::decay_war_tally;
+
+    #[test]
+    fn war_decay_clamps_and_uses_strict_threshold_in_raw_q8() {
+        for (input, expected) in [
+            (0, 0),
+            (1, 0),
+            (-1, 0),
+            (10 * 256, 0),
+            (-10 * 256, 0),
+            (1000 * 256, 990 * 256),
+            (1000 * 256 + 1, 900 * 256 + 1),
+            (-1000 * 256, -990 * 256),
+            (-1000 * 256 - 1, -900 * 256 - 1),
+            (i32::MIN, i32::MIN + 10 * 256),
+            (i32::MAX, i32::MAX - 100 * 256),
+        ] {
+            assert_eq!(decay_war_tally(input), expected, "input {input}");
+        }
+    }
 }
