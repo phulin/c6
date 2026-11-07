@@ -62,7 +62,10 @@ fn xp_recipe(rules: &Rules, id: Option<u32>) -> Result<(Vec<u8>, i32), String> {
         ("OwnerStackLimit", 0),
         ("SubjectStackLimit", 0),
     ] {
-        if integer(row, flag).map_err(|e| format!("{e:?}"))? != expected {
+        let value =
+            crate::game_parameters::sql_integer(row.get(flag).map_err(|e| format!("{e:?}"))?)
+                .ok_or_else(|| format!("goody modifier integer {flag}"))?;
+        if value != expected {
             return Err(format!("goody modifier flag {flag}"));
         }
     }
@@ -612,14 +615,10 @@ impl State<'_> {
         if human {
             if backend.promotion_class(state, actor)? == Some("PROMOTION_CLASS_RECON") {
                 let modifier = backend.experience_modifier(state, actor)?;
-                let amount = ((i64::from(modifier)
-                    * i64::from(
-                        self.inputs
-                            .definitions
-                            .exploration_experience
-                            .wrapping_shl(8),
-                    ))
-                    >> 16) as i32;
+                let amount = c6_core::unit_sight::experience_amount(
+                    self.inputs.definitions.exploration_experience,
+                    modifier,
+                );
                 backend.change_experience(state, sight, actor, amount)?;
             }
             // CheckPromoteNotification is also called after the exploration

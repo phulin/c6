@@ -127,7 +127,7 @@ fn entry<C: SightContext>(
 
 /// FixedPointT<8> multiplication and AsInt: signed i64 product, logical shift,
 /// then native low32 storage and a second arithmetic shift for whole experience.
-fn experience_amount(base: i32, modifier: i32) -> i32 {
+pub fn experience_amount(base: i32, modifier: i32) -> i32 {
     (((i64::from(base.wrapping_shl(8)) * i64::from(modifier)) as u64) >> 8) as i32 >> 8
 }
 
