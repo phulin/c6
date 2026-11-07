@@ -12,6 +12,39 @@ pub(crate) struct CombatLifecycleOwners {
 }
 
 impl<P> Runtime<'_, P> {
+    /// Loan the current creation collections during synchronous combat death.
+    /// Combat collections remain on LoadedState; each logical identity keeps
+    /// its one owner. Restore the same mutated sidecar on every ordinary result.
+    pub fn with_combat_collections<T>(
+        &mut self,
+        state: &mut LoadedState,
+        apply: impl FnOnce(
+            &mut Self,
+            &mut LoadedState,
+            &mut c6_core::melee_attack::proposals::collections::Runtime,
+        ) -> T,
+    ) -> Result<T, movement::Error> {
+        self.check(state)
+            .map_err(|_| movement::Error::Missing("combat collection World"))?;
+        let combat = self
+            .combat
+            .as_mut()
+            .ok_or(movement::Error::Missing("combat lifecycle owner"))?;
+        if !combat.origin.same_instance(state.action_stamp()) || self.modifier_owners.is_some() {
+            return Err(movement::Error::Missing("combat collection loan scope"));
+        }
+        let mut sidecar = combat
+            .capture_owners
+            .take()
+            .ok_or(movement::Error::Missing("combat lifecycle sidecar"))?;
+        let result = apply(self, state, &mut sidecar.collections);
+        self.combat
+            .as_mut()
+            .expect("combat lifecycle retained during death")
+            .capture_owners = Some(sidecar);
+        Ok(result)
+    }
+
     /// Loan the SAME four owners to a nested capture lifecycle. The caller
     /// consumes its backend before this entry and rebuilds it from the returned
     /// effect/requirement owners before propagating either result.

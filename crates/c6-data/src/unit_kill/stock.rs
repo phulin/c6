@@ -705,6 +705,15 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
             )
             .map_err(|e| kill::Error::Effect(Error::Requirements(e)))?;
         }
+        // DynamicModifier releases the requirement, concrete effect, then the
+        // collection handle; a final collection release can run its destructor.
+        let effect = match retained {
+            Retained::Combat(modifier) => modifier.effect,
+            Retained::Unit(modifier) => modifier.effect,
+        };
+        self.effects
+            .retire_effect(state, effect)
+            .map_err(kill::Error::CleanupQuery)?;
         if let Some(collection) = collection {
             let factory_owned = self
                 .collections
@@ -724,16 +733,6 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                     .map_err(|e|kill::Error::Effect(Error::Collection(e)))?;
             }
         }
-        // Both DynamicModifier variants own their concrete effect. Combat
-        // registration removal above must release that effect too, after all
-        // collection and requirement subscriptions have been destroyed.
-        let effect = match retained {
-            Retained::Combat(modifier) => modifier.effect,
-            Retained::Unit(modifier) => modifier.effect,
-        };
-        self.effects
-            .retire_effect(state, effect)
-            .map_err(kill::Error::CleanupQuery)?;
         Ok(())
     }
     fn unsubscribe_unit_requirement(

@@ -73,6 +73,80 @@ where
     }
 }
 
+/// Retained stock death composition using the canonical creation collections and
+/// live default-defeat requirements alongside the combat modifier owner.
+pub struct RetainedDamage<'a, 'd> {
+    pub damage: Damage<'a>,
+    pub default_defeat: &'a [crate::unit_kill::stock::default_defeat::Binding],
+    pub movement: &'a crate::formation_movement_cost::Definitions<'d>,
+}
+impl DamageProvider<Runtime<'_>, melee::backend::requirements::Runtime> for RetainedDamage<'_, '_> {
+    type Error = Error;
+    fn apply(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &mut sight::Runtime,
+        effects: &mut Runtime<'_>,
+        runtime: &mut melee::backend::EffectRuntime,
+        requirements: &mut melee::backend::requirements::Runtime,
+        definitions: &placement::Definitions<'_, '_>,
+        queries: &placement::Queries<'_>,
+        formation: &crate::formation_rules::Definitions,
+        pending: melee::execution::RequiresResolve,
+    ) -> Result<melee::resolve::RequiresExperience, Error> {
+        let unit_types = self
+            .damage
+            .metadata
+            .death_listeners
+            .iter()
+            .filter_map(|listener| {
+                if let crate::unit_kill::stock::Listener::DefaultDefeatFilter {
+                    receiver,
+                    unit_type,
+                    ..
+                } = *listener
+                {
+                    Some((receiver, unit_type as u32))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        effects
+            .with_combat_collections(state, |effects, state, collections| {
+                let mut requirements = crate::unit_kill::stock::default_defeat::OwnerWithUnits {
+                    runtime: requirements,
+                    bindings: self.default_defeat,
+                    unit_types: &unit_types,
+                    movement: self.movement,
+                };
+                let mut callbacks = crate::unit_kill::stock::Stock::new(
+                    runtime,
+                    &mut requirements,
+                    self.damage.definitions,
+                    self.damage.metadata,
+                )
+                .map_err(|e| error("retained stock death", e))?
+                .with_collections(collections)
+                .with_unit_definitions(self.damage.units)
+                .with_sight_definitions(definitions.sight)
+                .with_influence(self.damage.influence);
+                melee::resolve::apply_damage_with_continuations(
+                    state,
+                    sight,
+                    effects,
+                    &mut callbacks,
+                    definitions,
+                    queries,
+                    formation,
+                    pending,
+                )
+                .map_err(|e| error("retained stock death", e))
+            })
+            .map_err(|e| error("retained death collections", e))?
+    }
+}
+
 /// Pure current-state movement queries retained by the combat owner.
 pub trait MovementQueries {
     fn cost(
