@@ -72,11 +72,12 @@ impl Effect {
         )
     }
 
-    /// Bushido overrides SimpleEffect's stored name with this fixed text key
-    /// (Linux GetEffectNameTextKey2433d30).
+    /// Concrete GetEffectNameTextKey overrides SimpleEffect's stored name.
+    /// Linux Bushido2433d30 and NewWarmonger2438a70 are fixed-key returns.
     pub fn effect_name(&self) -> Option<&'static [u8]> {
         match self {
             Self::Bushido { .. } => Some(b"LOC_TOOLTIP_SAMPLE_DIPLOMACY_BUSHIDO"),
+            Self::Warmonger { .. } => Some(b"LOC_TOOLTIP_SAMPLE_DIPLOMACY_GRIEVANCES"),
             _ => None,
         }
     }
