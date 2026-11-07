@@ -1281,12 +1281,30 @@ fn update<E: Effects, M: Movement<E>>(
     if modifiers & 0x10 != 0 || node.push_turn == state.retained().core.current_turn {
         let processing = state.processing_automation().map_err(Error::State)?;
         let u = unit(state, actor)?;
-        if processing == u.e_owner || u.e_automation != -1 {
-            return Err(Error::Unsupported("MoveTo automation attack branch"));
-        }
+        let automation = processing == u.e_owner || u.e_automation != -1;
+        let owner = u.e_owner;
         if c6_core::movement_world::plot_at(state.world().map(), destination).is_err() {
+            if automation {
+                return Err(Error::Unsupported("MoveTo automation missing target"));
+            }
             data.delete = true;
             return Ok(());
+        }
+        // 2da44c3..450d tests the SAME supplied target, not an AI-selected
+        // attack destination. A false canonical predicate continues normal
+        // movement. Positive processing/stop behavior is a separate branch.
+        if automation && visible(state, runtime, owner, destination)? {
+            let attack = movement
+                .test_attack_into(state, runtime.visibility, actor, destination, effects)
+                .map_err(Error::Movement)?
+                .ok_or(Error::Unsupported(
+                    "MoveTo automation TestAttackInto composition",
+                ))?;
+            if attack {
+                return Err(Error::Unsupported(
+                    "MoveTo positive automation attack continuation",
+                ));
+            }
         }
         // Stock Tutorial.OnUnitMoveTo 0x2c11e20 is the fixed zero-return leaf.
         let current_formation = formation_id(state, actor)?;
@@ -1559,6 +1577,7 @@ pub enum ComputedError<E> {
     Path(crate::formation_path_state::Error),
     Step(crate::formation_move_to::Error<E, crate::formation_move_to::PlacementError<E>>),
     Placement(crate::movement_placement_state::Error),
+    Attack(crate::melee_attack::Error),
     Alert(loaded_upkeep::Error<&'static str>),
     Unsupported(&'static str),
 }
@@ -1568,6 +1587,38 @@ where
         + loaded_upkeep::FormationRestoreEffects<Error = crate::unit_placement_state::EffectsError<E>>,
 {
     type Error = ComputedError<crate::unit_placement_state::EffectsError<E>>;
+    fn test_attack_into(
+        &mut self,
+        state: &mut LoadedState,
+        _: &unit_sight_state::Runtime,
+        actor: (i32, u32),
+        destination: PlotCoord,
+        _: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        let placement = self
+            .queries
+            .placement_context(state, self.placement.placement)
+            .map_err(ComputedError::Placement)?
+            .with_combat_definitions(&self.path.formation);
+        let actor = UnitReference::from_component_id(ComponentId {
+            owner: actor.0 as i16,
+            component_type: 1,
+            id: actor.1,
+        });
+        match crate::melee_attack::test_attack_into_prefix_with_placement(
+            &self.path.formation,
+            &placement,
+            actor,
+            destination,
+        )
+        .map_err(ComputedError::Attack)?
+        {
+            crate::melee_attack::Prefix::Rejected(_) => Ok(Some(false)),
+            crate::melee_attack::Prefix::RequiresTargetSelection(_) => Err(
+                ComputedError::Unsupported("MoveTo positive TestAttackInto target selection"),
+            ),
+        }
+    }
     fn fortify_turn_max(&self) -> i32 {
         self.path.fortify_turn_max
     }

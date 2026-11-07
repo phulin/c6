@@ -465,6 +465,24 @@ where
         }
         Ok(Some(()))
     }
+    fn test_attack_into(
+        &mut self,
+        state: &mut LoadedState,
+        sight: &unit_sight_state::Runtime,
+        actor: (i32, u32),
+        destination: PlotCoord,
+        effects: &E,
+    ) -> Result<Option<bool>, Self::Error> {
+        <queued::ComputedMovement<'_, '_> as queued::Movement<E>>::test_attack_into(
+            self.movement,
+            state,
+            sight,
+            actor,
+            destination,
+            effects,
+        )
+        .map_err(Failure::Movement)
+    }
     fn fortify_turn_max(&self) -> i32 {
         <queued::ComputedMovement<'_, '_> as queued::Movement<E>>::fortify_turn_max(self.movement)
     }
