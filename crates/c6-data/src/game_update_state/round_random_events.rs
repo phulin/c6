@@ -627,11 +627,9 @@ fn volcano_status_draw(
         .checked_div(divisor)
         .ok_or(Error::Requires("volcano status native division trap"))?;
     let total = normal.wrapping_add(wonders) as u32;
-    let percent = if total == 0 {
-        100
-    } else {
-        ((active.wrapping_add(wonders).wrapping_mul(100) as u32) / total) as i32
-    };
+    let percent = (active.wrapping_add(wonders).wrapping_mul(100) as u32)
+        .checked_div(total)
+        .unwrap_or(100) as i32;
     let activate = percent < target_percent;
     if activate {
         if named <= active {
