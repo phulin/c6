@@ -299,7 +299,9 @@ impl<P> visibility_contents::Context for Contents<'_, '_, P> {
             Notification::NaturalWonder(feature) => self
                 .backend
                 .notify_wonder_discovered(self.state, player, plot, feature),
-            _ => Err(Error::Missing("positive sight discovery notification")),
+            _ => Err(Error::Requirement(format!(
+                "positive sight discovery notification {kind:?} at plot {plot} for player {player}"
+            ))),
         }
     }
     fn natural_wonder_relic_count(&mut self, player: i32) -> Result<i32, Self::Error> {
