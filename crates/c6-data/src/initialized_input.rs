@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeSet, sync::Arc};
 
-pub mod common;
 pub mod resources;
 pub mod script;
 
