@@ -29,6 +29,10 @@ extends discovery through an explicitly selected promotion, ordinary upkeep and
 hill movement that demonstrates the earned effect. The [tribal-village profile](docs/linux-tribal-village-reward.md)
 continues that Scout into an original village, retains its randomly selected
 experience reward and completes the following ordinary round on the same Session.
+The [random research-boost profile](docs/linux-village-research-boost.md) covers
+original technology and civic rewards, unchanged research queues and their following
+rounds. These sequences also reach a surviving flood-damaged Scout and a targetless
+drought attempt.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
