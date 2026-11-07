@@ -143,7 +143,13 @@ pub fn set<C: Context>(
     destination: PlotCoord,
     validation_flags: u32,
 ) -> Result<i32, Error<E<C>>> {
-    set_impl(c, destination, validation_flags, false, |_, _, _| Ok(()))
+    set_impl(
+        c,
+        destination,
+        validation_flags,
+        Mode::Movement,
+        |_, _, _| Ok(()),
+    )
 }
 /// Source flags1 and invalid old location, retaining the complete shared tail.
 pub fn set_initial<C: InitialContext>(
@@ -155,7 +161,7 @@ pub fn set_initial<C: InitialContext>(
         c,
         destination,
         validation_flags,
-        true,
+        Mode::Initial,
         |c, membership, maximum| {
             let team_visible = if c.definition_team_visibility().map_err(Error::Context)? {
                 let observer = InitialContext::local_observer(c).map_err(Error::Context)?;
@@ -180,16 +186,32 @@ pub fn set_initial<C: InitialContext>(
         },
     )
 }
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Mode {
+    Movement,
+    Initial,
+    Relocation,
+}
+/// Placement.Set flags0: skip validation and adjacent-movement animation, while
+/// preserving membership, coordinate reporting, sight and all gameplay tails.
+/// The caller must supply a current valid old location and selected destination.
+pub fn set_relocation<C: Context>(c: &mut C, destination: PlotCoord) -> Result<i32, Error<E<C>>> {
+    set_impl(c, destination, 0, Mode::Relocation, |_, _, _| Ok(()))
+}
 fn set_impl<C: Context>(
     c: &mut C,
     destination: PlotCoord,
     validation_flags: u32,
-    initial: bool,
+    mode: Mode,
     mut initial_report: impl FnMut(&mut C, &PlacementMembership, i32) -> Result<(), Error<E<C>>>,
 ) -> Result<i32, Error<E<C>>> {
-    let validation = c
-        .validate_location(destination, validation_flags)
-        .map_err(Error::Context)?;
+    let initial = mode == Mode::Initial;
+    let validation = if mode == Mode::Relocation {
+        Validation::Exact
+    } else {
+        c.validate_location(destination, validation_flags)
+            .map_err(Error::Context)?
+    };
     let (destination, result) = match validation {
         Validation::Rejected => return Ok(0),
         Validation::Exact => (destination, 1),
@@ -255,7 +277,7 @@ fn set_impl<C: Context>(
     })
     .map_err(Error::State)?;
     let air = PlacementMembershipContext::domain(c).map_err(Error::Context)? == 1;
-    if !initial
+    if mode == Mode::Movement
         && (air
             || c.plot_distance(m.old_location, unit(c)?.k_location)
                 .map_err(Error::Context)?

@@ -90,17 +90,14 @@ where
     let Some(destination) = selected.filter(|at| *at != current) else {
         return Ok(());
     };
-    placement::set(
+    placement::set_relocation(
         state,
         definitions,
         queries,
         sight,
         effects,
-        placement::Request {
-            actor,
-            destination,
-            validation_flags: 0,
-        },
+        actor,
+        destination,
     )
     .map_err(|e| format!("Trade relocation Placement: {e:?}"))?;
     loaded_upkeep::clear_removed_trade_operations(state, actor.0, actor.1, movement, effects)

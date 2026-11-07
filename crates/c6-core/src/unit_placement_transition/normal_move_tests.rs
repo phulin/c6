@@ -20,6 +20,11 @@ impl PlacementStateContext for Context {
         Ok(())
     }
     fn send_placement_report(&mut self, r: PlacementReport) -> NormalTestResult<()> {
+        if r.event_hash == 0x9deb82e7 {
+            assert_eq!(r.payload, PlacementPayload::Coordinate(NEW));
+            self.calls.push("relocation coordinate report failure");
+            return Err("relocation coordinate report failed");
+        }
         assert_eq!(r.event_hash, 0xbe121408);
         assert_eq!(
             r.identity,
@@ -227,4 +232,27 @@ fn normal_movement_report_failure_retains_membership_and_completion_prefix() {
     );
     assert_eq!(c.world.plot_units(0, 1).unwrap()[0].id, 9);
     assert_eq!(c.calls.last(), Some(&"normal report failure"));
+}
+
+#[test]
+fn relocation_skips_validation_and_reports_coordinate_without_movement_animation() {
+    let mut c = Context::new();
+    c.unit.b_needs_movement_completion = false;
+    // The validator above only accepts flags0x108: an unintended validation
+    // call on this native flags0 path fails the test before membership changes.
+    assert_eq!(
+        normal_move::set_relocation(&mut c, NEW),
+        Err(normal_move::Error::Context(
+            "relocation coordinate report failed"
+        ))
+    );
+    assert_eq!(c.unit.k_location, NEW);
+    assert_eq!(c.formation_location, NEW);
+    assert!(!c.unit.b_needs_movement_completion);
+    assert_eq!(c.world.map().plots[0].unit_count, 0);
+    assert_eq!(c.world.map().plots[1].unit_count, 1);
+    assert_eq!(
+        c.calls.last(),
+        Some(&"relocation coordinate report failure")
+    );
 }

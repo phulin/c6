@@ -252,6 +252,35 @@ pub fn set<E: Effects>(
     .map_err(|e| Error::Transition(Box::new(e)))
 }
 
+/// Native Placement.Set flags0, used by Trade.RelocateTrader. The selected
+/// location is not passed through IsValidLocation and reports coordinates even
+/// when adjacent. All ordinary sight/gameplay subscribers remain required.
+pub fn set_relocation<E: Effects>(
+    state: &mut LoadedState,
+    definitions: &Definitions<'_, '_>,
+    queries: &Queries<'_>,
+    runtime: &mut sight::Runtime,
+    effects: &mut E,
+    actor: (i32, u32),
+    destination: PlotCoord,
+) -> Result<i32, Error<EffectsError<E>>> {
+    definitions.validate_binding(state).map_err(Error::Query)?;
+    let mut context = Context {
+        sight: sight::Context {
+            state,
+            runtime,
+            effects,
+            sight_definitions: definitions.sight,
+            actor,
+        },
+        definitions,
+        queries,
+        creation_tags: None,
+    };
+    c6_core::unit_placement_transition::normal_move::set_relocation(&mut context, destination)
+        .map_err(|e| Error::Transition(Box::new(e)))
+}
+
 /// Shared Unit::ChangeDamage setter/report/Clear sequence. Manager dead checking
 /// and Kill follow separately against the same current state.
 #[allow(clippy::too_many_arguments)]
