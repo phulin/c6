@@ -25,8 +25,9 @@ use c6_core::{
     },
 };
 pub use operations::{
-    clear_current_formation_path, clear_unit_operations, complete_unit_movement,
-    pop_front_expired_trade_route, pop_front_operation, set_unit_activity, OperationReports,
+    clear_current_formation_path, clear_removed_trade_operations, clear_unit_operations,
+    complete_unit_movement, pop_front_expired_trade_route, pop_front_operation, set_unit_activity,
+    OperationReports,
 };
 
 /// Identity of a retained collection slot, independent of mutable Unit ID/owner.

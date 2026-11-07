@@ -522,3 +522,61 @@ where
         c6_core::unit::MAKE_TRADE_ROUTE_HASH,
     )
 }
+
+/// Manager.Clear after Trade.RelocateTrader has already removed every affected
+/// graph edge. Trade Deactivate still finishes movement before slot deletion.
+pub fn clear_removed_trade_operations<E>(
+    state: &mut LoadedState,
+    owner: i32,
+    id: u32,
+    inputs: &Inputs<'_>,
+    effects: &mut E,
+) -> Result<(), Error<<E as Effects>::Error>>
+where
+    E: Effects + OperationReports<Error = <E as Effects>::Error>,
+{
+    struct Trade<'s, 'i, 'd, E> {
+        base: Base<'s, E>,
+        inputs: &'i Inputs<'d>,
+    }
+    impl<E> unit_operations_clear::ClearOperationsContext for Trade<'_, '_, '_, E>
+    where
+        E: Effects + OperationReports<Error = <E as Effects>::Error>,
+    {
+        type Error = Error<<E as Effects>::Error>;
+        fn unit(&self) -> Result<&Unit, Self::Error> {
+            unit_operations_clear::ClearOperationsContext::unit(&self.base)
+        }
+        fn deactivate_operations(&mut self) -> Result<(), Self::Error> {
+            unit_operations_clear::ClearOperationsContext::deactivate_operations(&mut self.base)
+        }
+        fn pop_front_operation(&mut self) -> Result<(), Self::Error> {
+            if self.unit()?.k_operations.nodes[0].operation_hash
+                == c6_core::unit::MAKE_TRADE_ROUTE_HASH
+            {
+                pop_front_expired_trade_route(
+                    self.base.state,
+                    self.base.actor.owner,
+                    self.base.actor.id,
+                    self.inputs,
+                    self.base.effects,
+                )
+            } else {
+                unit_operations_clear::ClearOperationsContext::pop_front_operation(&mut self.base)
+            }
+        }
+        fn clear_current_formation_path(&mut self) -> Result<(), Self::Error> {
+            unit_operations_clear::ClearOperationsContext::clear_current_formation_path(
+                &mut self.base,
+            )
+        }
+    }
+    unit_operations_clear::clear_operations(&mut Trade {
+        base: Base {
+            state,
+            actor: UnitHandle { owner, id },
+            effects,
+        },
+        inputs,
+    })
+}

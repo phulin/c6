@@ -11,6 +11,7 @@ pub mod ending_stock;
 pub mod lifetime;
 pub mod path;
 pub mod post_history;
+pub mod relocation;
 pub mod stock;
 pub mod yields;
 use crate::{game_update_state::round_trade, registry::linux_type_hash, Rules};

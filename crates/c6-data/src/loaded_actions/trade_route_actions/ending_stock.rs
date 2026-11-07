@@ -31,6 +31,12 @@ pub enum Report {
         owner: i32,
         other: i32,
     },
+    /// Execute normal Placement, operation clearing and FinishMoves only if
+    /// source-selected relocation differs from the current location.
+    RelocateTrader {
+        trader: ComponentId,
+        preferred: c6_core::unit::PlotCoord,
+    },
     ManagerEnded {
         origin: ComponentId,
         destination: ComponentId,
@@ -79,6 +85,7 @@ struct Current<'s, 'a, 'r, P> {
     backend: &'s mut stock_notifications::Runtime<'r, P>,
     inputs: &'s Inputs<'a>,
     reports: &'s mut dyn Reports<P>,
+    completed: bool,
 }
 impl<P> completion::Effects for Current<'_, '_, '_, P> {
     type Error = String;
@@ -249,14 +256,21 @@ impl<P> completion::Effects for Current<'_, '_, '_, P> {
                 y: target.location_y,
             };
             if current != target {
-                return Err("Trade completed Trader relocation from another location".into());
+                self.reports.report(
+                    state,
+                    self.backend,
+                    Report::RelocateTrader {
+                        trader: route.trader_unit,
+                        preferred: target,
+                    },
+                )?;
             }
             // RelocateTrader2c07800 selects the origin at distance0, then its
             // final location-equality guard omits Placement and moved effects.
         }
         for subscriber in self.inputs.route_ended {
             match *subscriber {
-                RouteEnded::Eras => {
+                RouteEnded::Eras if self.completed => {
                     let rate = state
                         .game_era_trade_completion_rate(i32::from(origin.owner))
                         .map_err(|e| format!("{e:?}"))?;
@@ -264,6 +278,7 @@ impl<P> completion::Effects for Current<'_, '_, '_, P> {
                         return Err("Trade completed-route positive era-score continuation".into());
                     }
                 }
+                RouteEnded::Eras => {}
                 RouteEnded::Diplomacy { owner } if owner == i32::from(origin.owner) => {
                     research::diplomacy::recheck(
                         state,
@@ -320,7 +335,89 @@ pub fn expire<P>(
             backend,
             inputs,
             reports,
+            completed: true,
         },
     )
     .map_err(|e| format!("Trade expiry: {e:?}"))
+}
+
+/// Trade.Manager.OnWarDeclared2c0c690: remove both directed player pairs before
+/// any cleanup subscriber. Cancellation never constructs posts or dispatches a
+/// successful-completion Eras callback. The shared edge-removal count still
+/// increments, as it does in the original RemoveCurrentRoute leaf.
+///
+/// Native hash-table ordering for multiple edges in one direction is currently
+/// unavailable. Reject that branch before any graph writes, rather than choose
+/// wire order. One route in each direction has unambiguous source order.
+pub fn interrupt_for_war<P>(
+    state: &mut LoadedState,
+    backend: &mut stock_notifications::Runtime<'_, P>,
+    inputs: &Inputs<'_>,
+    reports: &mut dyn Reports<P>,
+    issuer: i32,
+    target: i32,
+) -> Result<(), String> {
+    if inputs.binding != *state.binding() || inputs.research.binding() != state.binding() {
+        return Err("Trade war interruption binding".into());
+    }
+    let graph = state.trade_graph().map_err(|e| format!("{e:?}"))?.graph();
+    let mut pairs = Vec::new();
+    for (owner, other) in [(issuer, target), (target, issuer)] {
+        let mut direction = Vec::new();
+        for origin in graph.origins() {
+            for destination in &origin.destinations {
+                let edge = &destination.edge;
+                if !edge.has_active_route
+                    || edge.from_vertex.kind != 0
+                    || edge.to_vertex.kind != 0
+                    || edge.from_vertex.data1 != owner
+                    || edge.to_vertex.data1 != other
+                {
+                    continue;
+                }
+                direction.push((
+                    ComponentId {
+                        owner: owner as i16,
+                        component_type: 2,
+                        id: edge.from_vertex.data2 as u32,
+                    },
+                    ComponentId {
+                        owner: other as i16,
+                        component_type: 2,
+                        id: edge.to_vertex.data2 as u32,
+                    },
+                ));
+            }
+        }
+        if direction.len() > 1 {
+            return Err("Trade war interruption multiple-edge native cleanup order".into());
+        }
+        pairs.extend(direction);
+    }
+    let mut removed = Vec::new();
+    for (origin, destination) in pairs {
+        if let Some(route) = state
+            .trade_graph_mut()
+            .map_err(|e| format!("{e:?}"))?
+            .remove_route_by_city_pair(origin, destination)
+        {
+            removed.push((origin, destination, route));
+        }
+    }
+    let mut current = Current {
+        backend,
+        inputs,
+        reports,
+        completed: false,
+    };
+    for (origin, destination, route) in removed {
+        completion::Effects::cleanup_removed_route(
+            &mut current,
+            state,
+            &route,
+            origin,
+            destination,
+        )?;
+    }
+    Ok(())
 }
