@@ -18,10 +18,11 @@ pub mod attached_modifiers;
 pub mod barbarian;
 mod city_tourism;
 mod culture_turn;
-mod policy_upkeep;
 pub mod diplomacy;
 pub mod districts;
 pub mod policy;
+mod policy_upkeep;
+mod random_boost;
 pub mod units;
 mod yields;
 #[derive(Debug)]
@@ -105,7 +106,11 @@ pub enum Effect {
         kind: Kind,
         index: i32,
     },
-    PolicyObsoleted { owner: i32, policy: i32, hash: u32 },
+    PolicyObsoleted {
+        owner: i32,
+        policy: i32,
+        hash: u32,
+    },
     GovernmentNotifications(i32),
     BoostLog {
         player: i32,
@@ -121,7 +126,10 @@ pub enum Effect {
 }
 #[derive(Clone, Copy, Debug)]
 pub enum Query {
-    PolicyUnlocked { owner: i32, hash: u32 },
+    PolicyUnlocked {
+        owner: i32,
+        hash: u32,
+    },
     CityYield {
         city: c6_core::unit::ComponentId,
         yield_index: i32,
@@ -767,9 +775,11 @@ impl Definitions {
         Ok(chronology(era).ok_or("research history era")?
             > chronology(start).ok_or("research history start era")?)
     }
-    pub fn binding(&self) -> &c6_core::core_player::initialization::WireBinding { &self.binding }
+    pub fn binding(&self) -> &c6_core::core_player::initialization::WireBinding {
+        &self.binding
+    }
     pub(crate) fn policy_index(&self, hash: u32) -> Option<i32> {
-        self.policies.find_index(hash).map(|i|i as i32)
+        self.policies.find_index(hash).map(|i| i as i32)
     }
     pub fn diplomatic_visibility(&self) -> &diplomacy::Definitions {
         &self.diplomatic_visibility

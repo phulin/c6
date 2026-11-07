@@ -16,6 +16,12 @@ pub enum Effect {
     /// AdjustUnitGrantExperience is a permanent one-shot; native Remove has
     /// no inverse and returns false. Apply requires the retained XP callbacks.
     GrantedExperience(i32),
+    /// Permanent one-shot village award through the context IPlayer interface.
+    RandomResearchBoost {
+        kind: crate::research::Kind,
+        amount: i32,
+        source: i32,
+    },
     DiploVisibilityCombat {
         amount: i32,
         higher: bool,
@@ -101,7 +107,7 @@ pub fn remove_fields<C, P>(
         Effect::Unsupported(_) => {
             return Err(Error::Missing("unimplemented Unit effect Remove class"))
         }
-        Effect::GrantedExperience(_) => {
+        Effect::GrantedExperience(_) | Effect::RandomResearchBoost { .. } => {
             return Ok(FieldRemoval {
                 success: false,
                 ability_lost: None,

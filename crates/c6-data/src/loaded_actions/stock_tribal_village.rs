@@ -25,7 +25,10 @@ fn reference(row: crate::Row<'_>, column: &str) -> Result<Option<u32>, Error> {
         _ => Err(missing("village reference type")),
     }
 }
-fn xp_recipe(rules: &Rules, id: Option<u32>) -> Result<(Vec<u8>, i32), String> {
+fn reward_recipe(
+    rules: &Rules,
+    id: Option<u32>,
+) -> Result<(Vec<u8>, crate::unit_kill::effects::Effect), String> {
     let row = rules
         .gameplay()
         .table("Modifiers")
@@ -49,9 +52,7 @@ fn xp_recipe(rules: &Rules, id: Option<u32>) -> Result<(Vec<u8>, i32), String> {
         .rows()
         .find(|r| r.text("ModifierType").ok() == row.text("ModifierType").ok())
         .ok_or("goody DynamicModifier")?;
-    if dynamic.text("CollectionType").ok() != Some("COLLECTION_OWNER")
-        || dynamic.text("EffectType").ok() != Some("EFFECT_ADJUST_UNIT_GRANT_EXPERIENCE")
-    {
+    if dynamic.text("CollectionType").ok() != Some("COLLECTION_OWNER") {
         return Err("selected village effect is not supported".into());
     }
     for (flag, expected) in [
@@ -74,7 +75,18 @@ fn xp_recipe(rules: &Rules, id: Option<u32>) -> Result<(Vec<u8>, i32), String> {
             return Err(format!("goody modifier requirement {key}"));
         }
     }
+    let kind = match dynamic.text("EffectType").ok() {
+        Some("EFFECT_ADJUST_UNIT_GRANT_EXPERIENCE") => None,
+        Some("EFFECT_ADJUST_PLAYER_RANDOM_TECHNOLOGY_BOOST_GOODY_HUT") => {
+            Some(crate::research::Kind::Technology)
+        }
+        Some("EFFECT_ADJUST_PLAYER_RANDOM_CIVIC_BOOST_GOODY_HUT") => {
+            Some(crate::research::Kind::Civic)
+        }
+        _ => return Err("selected village effect is not supported".into()),
+    };
     let mut amount = 0;
+    let mut source = 1;
     for arg in rules
         .gameplay()
         .table("ModifierArguments")
@@ -82,10 +94,19 @@ fn xp_recipe(rules: &Rules, id: Option<u32>) -> Result<(Vec<u8>, i32), String> {
         .rows()
         .filter(|r| r.text("ModifierId").ok().map(str::as_bytes) == Some(name.as_slice()))
     {
-        if arg.text("Name").ok() != Some("Amount")
-            || arg.text("Type").ok() != Some("ARGTYPE_IDENTITY")
-        {
+        if arg.text("Type").ok() != Some("ARGTYPE_IDENTITY") {
             return Err("dynamic goody experience argument".into());
+        }
+        if kind.is_some() && arg.text("Name").ok() == Some("Source") {
+            source = if arg.text("Value").ok() == Some("CAPTURED_CITY") {
+                7
+            } else {
+                1
+            };
+            continue;
+        }
+        if arg.text("Name").ok() != Some("Amount") {
+            return Err("unsupported village modifier argument".into());
         }
         amount = arg
             .text("Value")
@@ -93,15 +114,23 @@ fn xp_recipe(rules: &Rules, id: Option<u32>) -> Result<(Vec<u8>, i32), String> {
             .parse()
             .map_err(|_| "goody experience Amount")?;
     }
-    if amount < 0 {
+    if kind.is_none() && amount < 0 {
         return Err("negative village experience amount continuation".into());
     }
-    Ok((name, amount))
+    let effect = match kind {
+        None => crate::unit_kill::effects::Effect::GrantedExperience(amount),
+        Some(kind) => crate::unit_kill::effects::Effect::RandomResearchBoost {
+            kind,
+            amount,
+            source,
+        },
+    };
+    Ok((name, effect))
 }
 struct Reward {
     hash: u32,
     show_moment: bool,
-    modifier: Result<(Vec<u8>, i32), String>,
+    modifier: Result<(Vec<u8>, crate::unit_kill::effects::Effect), String>,
     turn: i32,
     city: bool,
     upgrade: bool,
@@ -172,7 +201,7 @@ impl Definitions {
                         .ok_or(missing("village family Moment"))?;
                     integer(family, "ShowMoment")? != 0
                 },
-                modifier: xp_recipe(rules, reference(row, "ModifierID")?),
+                modifier: reward_recipe(rules, reference(row, "ModifierID")?),
                 turn: integer(row, "Turn")?,
                 city: integer(row, "MinOneCity")? != 0,
                 upgrade: integer(row, "UpgradeUnit")? != 0,
@@ -533,12 +562,12 @@ impl State<'_> {
         for &subscriber in &self.inputs.subscribers {
             match subscriber {
                 Subscriber::AttachGameEffects => {
-                    let (definition, amount) = reward.modifier.as_ref().map_err(error)?;
-                    backend.attach_village_experience(
+                    let (definition, effect) = reward.modifier.as_ref().map_err(error)?;
+                    backend.attach_village_reward(
                         state,
                         actor,
                         definition,
-                        *amount,
+                        *effect,
                         self.inputs.definitions,
                         sight,
                     )?;
@@ -651,12 +680,12 @@ impl State<'_> {
 }
 
 impl<P> Runtime<'_, P> {
-    fn attach_village_experience(
+    fn attach_village_reward(
         &mut self,
         state: &mut LoadedState,
         actor: (i32, u32),
         definition: &[u8],
-        amount: i32,
+        reward: crate::unit_kill::effects::Effect,
         definitions: &Definitions,
         sight: &mut crate::unit_sight_state::Runtime,
     ) -> Result<(), Error> {
@@ -689,11 +718,7 @@ impl<P> Runtime<'_, P> {
                 .map_err(error)?;
             owner
                 .effects
-                .register_unit_effect(
-                    state,
-                    effect,
-                    crate::unit_kill::effects::Effect::GrantedExperience(amount),
-                )
+                .register_unit_effect(state, effect, reward)
                 .map_err(error)?;
             owner
                 .effects
@@ -749,6 +774,42 @@ impl<P> Runtime<'_, P> {
             });
             modifier.applied.push(context);
         }
+        if let crate::unit_kill::effects::Effect::RandomResearchBoost {
+            kind,
+            amount,
+            source,
+        } = reward
+        {
+            let inputs = self
+                .unit_creation
+                .as_ref()
+                .and_then(|input| input.research)
+                .ok_or(missing("village canonical research definitions"))?;
+            let mut runtime = self
+                .action_research
+                .take()
+                .ok_or(missing("village canonical research loan"))?;
+            let result = {
+                let mut effects = crate::loaded_actions::research::Effects::new(
+                    self,
+                    &mut runtime,
+                    inputs.choices,
+                    inputs.culture,
+                );
+                crate::research::Context {
+                    state,
+                    definitions: inputs.definitions,
+                    effects: &mut effects,
+                }
+                .grant_random_boost_goody_hut(actor.0, kind, amount, source)
+                .map_err(error)
+            };
+            self.action_research = Some(runtime);
+            return result;
+        }
+        let crate::unit_kill::effects::Effect::GrantedExperience(amount) = reward else {
+            return Err(missing("village attached effect"));
+        };
         let actor_unit = state
             .world()
             .player(actor.0)
