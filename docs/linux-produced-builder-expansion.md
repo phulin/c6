@@ -74,3 +74,7 @@ mismatch and the missing Farm query callback remain preserved.
 Private `c6-re/evidence/linux/produced-builder-expansion-session-5-dev.json`,
 `produced-builder-expansion-session-6-release.json` and
 `produced-builder-expansion-settler-regression-1-release.json` retain those results.
+
+The [owned Wheat Farm and Irrigation profile](linux-resource-farm-irrigation.md)
+extends this retained Session sequence with rule-compatible resource acquisition,
+the research boost and the following ordinary round.
