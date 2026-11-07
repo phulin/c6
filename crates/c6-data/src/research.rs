@@ -28,6 +28,7 @@ mod yields;
 #[derive(Debug)]
 pub enum Error<E> {
     State(c6_core::loaded_state::Error),
+    Random(c6_core::loaded_state::game_sync::AccessError),
     Graph(c6_core::game_techs::Error),
     Relations(c6_core::game_diplomatic_relations::Error),
     World(c6_core::world::MissingInput),

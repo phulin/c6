@@ -135,7 +135,7 @@ impl<E: Effects> Context<'_, E> {
             let roll = self
                 .state
                 .game_sync_rand(candidates.len() as u16)
-                .map_err(Error::State)
+                .map_err(Error::Random)
                 .map_err(Failed)?;
             let index = candidates.remove(usize::from(roll));
             if !self
