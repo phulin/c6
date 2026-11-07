@@ -406,9 +406,11 @@ impl<'a, E: Effects<'a>> c6_core::found_city::creation::Context for Start<'_, '_
                 &naming.leader,
             ) {
                 Ok(name) => Ok(name),
-                Err(crate::found_city::names::Error::FallbackRequired) => {
-                    self.effects.generate_later_name(self.state, city, location)
-                }
+                Err(
+                    crate::found_city::names::Error::FallbackRequired
+                    | crate::found_city::names::Error::ContinentNamesUnsupported
+                    | crate::found_city::names::Error::DuplicateCandidates,
+                ) => self.effects.generate_later_name(self.state, city, location),
                 Err(error) => Err(text(error)),
             }
         }
