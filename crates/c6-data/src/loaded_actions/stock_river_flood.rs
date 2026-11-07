@@ -15,14 +15,21 @@ pub enum PlayerDamageConsumer {
     Emergency,
     Achievements,
 }
-pub struct Inputs {
+#[derive(Clone, Copy)]
+pub struct DamageInputs<'a> {
+    pub definitions: &'a crate::unit_placement_state::Definitions<'a, 'a>,
+    pub queries: &'a crate::unit_placement_state::Queries<'a>,
+    pub visibility: &'a std::cell::RefCell<crate::unit_sight_state::Runtime>,
+}
+pub struct Inputs<'a> {
     binding: WireBinding,
     whole: Vec<WholeDamageConsumer>,
     player: Vec<PlayerDamageConsumer>,
     ever_alive: Vec<i32>,
     aid_threshold: i32,
+    damage: Option<DamageInputs<'a>>,
 }
-impl Inputs {
+impl<'a> Inputs<'a> {
     /// The caller supplies the actual ordered GameSignals+c30/c48 listeners,
     /// ever-alive IDs and rules threshold. It must qualify the stock Terrain,
     /// General and YieldMonitor cache consumers and queued-only host reports.
@@ -42,14 +49,19 @@ impl Inputs {
             player,
             ever_alive,
             aid_threshold,
+            damage: None,
         })
     }
+    pub fn with_damage(mut self, damage: DamageInputs<'a>) -> Self {
+        self.damage = Some(damage);
+        self
+    }
 }
-impl<P> Runtime<'_, P> {
+impl<'a, P> Runtime<'a, P> {
     pub fn bind_river_flood_reports(
         &mut self,
         state: &LoadedState,
-        inputs: Inputs,
+        inputs: Inputs<'a>,
     ) -> Result<(), Error> {
         self.check(state)
             .map_err(|_| Error::Requires("river flood backend binding"))?;
@@ -162,5 +174,66 @@ impl<P> Runtime<'_, P> {
             }
         }
         Ok(())
+    }
+    pub(crate) fn river_flood_maximum_damage(
+        &self,
+        state: &LoadedState,
+        actor: (i32, u32),
+    ) -> Result<i32, String> {
+        let inputs = self
+            .river_flood
+            .as_ref()
+            .and_then(|i| i.damage)
+            .ok_or("river flood damage providers")?;
+        let unit = state
+            .world()
+            .player(actor.0)
+            .map_err(|e| format!("{e:?}"))?
+            .unit(actor.1)
+            .map_err(|e| format!("{e:?}"))?
+            .ok_or("river flood current unit")?
+            .record;
+        inputs
+            .definitions
+            .movement
+            .maximum_damage(unit)
+            .map_err(|e| format!("{e:?}"))
+    }
+    pub(crate) fn river_flood_change_damage(
+        &mut self,
+        state: &mut LoadedState,
+        actor: (i32, u32),
+        delta: i32,
+    ) -> Result<(), String> {
+        let inputs = self
+            .river_flood
+            .as_ref()
+            .and_then(|i| i.damage)
+            .ok_or("river flood damage providers")?;
+        let mut sight = inputs
+            .visibility
+            .try_borrow_mut()
+            .map_err(|e| format!("river flood sight: {e:?}"))?;
+        crate::unit_placement_state::change_damage(
+            state,
+            inputs.definitions,
+            inputs.queries,
+            &mut sight,
+            self,
+            actor,
+            delta,
+        )
+        .map(|_| ())
+        .map_err(|e| format!("river flood ChangeDamage: {e:?}"))
+    }
+    pub(crate) fn river_flood_wake_unit(
+        &mut self,
+        state: &mut LoadedState,
+        actor: (i32, u32),
+    ) -> Result<(), String> {
+        crate::loaded_upkeep::clear_unit_operations(state, actor.0, actor.1, self)
+            .map_err(|e| format!("river flood Clear: {e:?}"))?;
+        crate::loaded_upkeep::set_unit_activity(state, actor.0, actor.1, self, 0x6b25012e)
+            .map_err(|e| format!("river flood Awake: {e:?}"))
     }
 }

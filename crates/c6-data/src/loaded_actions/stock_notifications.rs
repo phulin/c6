@@ -222,7 +222,7 @@ pub struct Runtime<'a, P = c6_core::unit::OperationParameters> {
     gold_signals: Option<gold::Signals>,
     camp_clear: Option<camp_clear::State<'a>>,
     tribal_village: Option<tribal_village::State<'a>>,
-    river_flood: Option<river_flood::Inputs>,
+    river_flood: Option<river_flood::Inputs<'a>>,
     pub(crate) action_research: Option<crate::research::Runtime>,
     pub(super) research_resource_amount: Option<(
         &'a super::upgrade_actions::resources::Definitions,
