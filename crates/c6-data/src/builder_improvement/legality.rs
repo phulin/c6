@@ -265,30 +265,29 @@ pub fn can_start(
     if plot.flags.get(PlotFlag::Impassable) {
         return Ok(false);
     }
-    if defs.legality.hills.contains(&plot.terrain_hash) != (defs.kind == Kind::Mine)
-        || plot.feature_hash != u32::MAX
-        || plot.improvement_hash != u32::MAX
-    {
+    if plot.feature_hash != u32::MAX || plot.improvement_hash != u32::MAX {
         return Err(Error::Unsupported(
             "Farm flat empty first-placement profile",
         ));
     }
     if plot.resource_hash != u32::MAX {
-        if !matches!(defs.kind, Kind::Farm | Kind::Plantation)
-            || !defs.legality.resources.contains(&plot.resource_hash)
-        {
+        if !defs.legality.resources.contains(&plot.resource_hash) {
             return Err(Error::Unsupported(
                 "improvement resource legality outside supported rules",
             ));
         }
         // CanHaveImprovement's matched ValidResource bypasses terrain when
-        // EnforceTerrain is false. This profile still excludes hills/features.
+        // EnforceTerrain is false. This includes flat Iron Mines; feature
+        // removal and replacement still require their own supported effects.
         return Ok(defs
             .legality
             .visibility
             .visible_resource(state, unit.e_owner, plot.resource_hash as i32)
             .map_err(|_| Error::Missing("current Farm resource visibility"))?
             != -1);
+    }
+    if defs.legality.hills.contains(&plot.terrain_hash) != (defs.kind == Kind::Mine) {
+        return Err(Error::Unsupported("ordinary improvement terrain profile"));
     }
     Ok(defs.legality.terrains.contains(&plot.terrain_hash))
 }

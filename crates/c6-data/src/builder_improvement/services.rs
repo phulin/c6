@@ -298,9 +298,7 @@ impl Current {
                 }
                 Subscriber::Resources { owner: receiver } => {
                     if receiver == owner && p.resource_hash != u32::MAX {
-                        if !matches!(defs.kind, super::Kind::Farm | super::Kind::Plantation)
-                            || !defs.legality.resources.contains(&p.resource_hash)
-                        {
+                        if !defs.legality.resources.contains(&p.resource_hash) {
                             return Err(Error(
                                 "improvement resource extraction outside supported rules",
                             ));
@@ -406,6 +404,41 @@ fn improvement_boost_matches(boost: &Boost, improvement: u32, resource: u32, cou
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn iron_mine_distinguishes_resource_revelation_and_improvement_count_boosts() {
+        let mine = linux_type_hash(b"IMPROVEMENT_MINE");
+        let iron = linux_type_hash(b"RESOURCE_IRON");
+        let mut boost = Boost {
+            row: 60,
+            index: 0,
+            items: 0,
+            improvement: Some(mine),
+            unit: None,
+            requires_resource: false,
+            resource: Some(iron),
+            resource_specific: true,
+        };
+        assert!(improvement_boost_matches(&boost, mine, iron, 1));
+        assert!(!improvement_boost_matches(&boost, mine, u32::MAX, 1));
+        assert!(!improvement_boost_matches(
+            &boost,
+            mine,
+            linux_type_hash(b"RESOURCE_NITER"),
+            1
+        ));
+        // The Wheel requires any revealed resource; Apprenticeship requires
+        // three Mines regardless of their resource. TriggerBoost owns once-only
+        // acquisition, so these predicates do not mutate boost/progress state.
+        boost.resource_specific = false;
+        boost.requires_resource = true;
+        boost.items = 1;
+        assert!(improvement_boost_matches(&boost, mine, iron, 1));
+        assert!(!improvement_boost_matches(&boost, mine, u32::MAX, 1));
+        boost.requires_resource = false;
+        boost.items = 3;
+        assert!(!improvement_boost_matches(&boost, mine, iron, 2));
+        assert!(improvement_boost_matches(&boost, mine, u32::MAX, 3));
+    }
     #[test]
     fn irrigation_requires_a_resource_on_the_constructed_farm() {
         let farm = linux_type_hash(b"IMPROVEMENT_FARM");
