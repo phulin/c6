@@ -4,11 +4,22 @@ use super::{movement::Error, Runtime};
 use crate::unit_sight_state::PlotVisibilityChanged;
 use c6_core::{geographic_names as kernel, loaded_state::LoadedState, map::Component};
 
+#[derive(Clone, Copy, Debug)]
+pub enum UnitVolcanoSubscriber {
+    /// StartupGame::$_49, OnUnitDiscoveredVolcano28fb070. Only the
+    /// non-Toa early return is supported; the platform unlock path is explicit.
+    Achievement,
+    Unavailable {
+        receiver: u64,
+    },
+}
 pub struct Geography {
     definitions: crate::geographic_names::Definitions,
     civilizations: Vec<(i32, u32)>,
     ever_alive_major_civilizations: Vec<u32>,
     pub callbacks: Vec<PlotVisibilityChanged>,
+    unit_volcano_subscribers: Option<Vec<UnitVolcanoSubscriber>>,
+    toa_index: Option<u32>,
 }
 impl<P> Runtime<'_, P> {
     /// Current configuration civilizations and the actual WasEverAlive major
@@ -50,7 +61,36 @@ impl<P> Runtime<'_, P> {
             civilizations,
             ever_alive_major_civilizations,
             callbacks: Vec::new(),
+            unit_volcano_subscribers: None,
+            toa_index: crate::unit_initialization_definitions::collection(
+                rules, "Units", "UnitType",
+            )
+            .map_err(|e| Error::Requirement(format!("{e:?}")))?
+            .find_index(crate::registry::linux_type_hash(b"UNIT_MAORI_TOA"))
+            .map(|v| v as u32),
         });
+        Ok(())
+    }
+    /// Complete current GameSignals+1488 registration order. An empty ring
+    /// permits dispatch without callbacks. The known achievement observer has
+    /// a read-only preamble and returns before platform output for non-Toa
+    /// Units. Unknown callbacks and its positive unlock path remain explicit.
+    pub fn bind_sight_unit_volcano_discovery(
+        &mut self,
+        state: &LoadedState,
+        subscribers: Vec<UnitVolcanoSubscriber>,
+    ) -> Result<(), Error> {
+        self.check(state)
+            .map_err(|_| Error::Missing("UnitVolcanoDiscovery identity"))?;
+        let geography = self
+            .resource_revelation
+            .as_mut()
+            .and_then(|v| v.geography.as_mut())
+            .ok_or(Error::Missing("current sight geographic discovery"))?;
+        if geography.unit_volcano_subscribers.is_some() {
+            return Err(Error::Missing("UnitVolcanoDiscovery already bound"));
+        }
+        geography.unit_volcano_subscribers = Some(subscribers);
         Ok(())
     }
     pub fn sight_discovery_callbacks(&self) -> &[PlotVisibilityChanged] {
@@ -101,7 +141,7 @@ impl<P> Runtime<'_, P> {
                 .world()
                 .unit(c6_core::map::UnitReference::from_component_id(event.source))
                 .map_err(Error::World)?
-                .map(|v| (v.record.e_owner, v.record.id))
+                .map(|v| v.record.e_type_index)
         } else {
             None
         };
@@ -150,7 +190,29 @@ impl<P> Runtime<'_, P> {
                     )
                     .map_err(|e| Error::Requirement(format!("{e:?}")))?;
                     if source.is_some() {
-                        return Err(Error::Missing("current UnitVolcanoDiscovery signal"));
+                        let subscribers = geography
+                            .unit_volcano_subscribers
+                            .as_ref()
+                            .ok_or(Error::Missing("current UnitVolcanoDiscovery signal"))?;
+                        for subscriber in subscribers {
+                            match subscriber {
+                                // 28fb070 eligibility and named-volcano getters
+                                // are read-only. 28fb0f4..105 returns for a Unit
+                                // whose current type differs from UNIT_MAORI_TOA.
+                                UnitVolcanoSubscriber::Achievement
+                                    if geography.toa_index != source => {}
+                                UnitVolcanoSubscriber::Achievement => {
+                                    return Err(Error::Missing(
+                                        "UnitVolcanoDiscovery Toa achievement path",
+                                    ));
+                                }
+                                UnitVolcanoSubscriber::Unavailable { .. } => {
+                                    return Err(Error::Missing(
+                                        "current UnitVolcanoDiscovery subscriber",
+                                    ));
+                                }
+                            }
+                        }
                     }
                 }
                 if river {
