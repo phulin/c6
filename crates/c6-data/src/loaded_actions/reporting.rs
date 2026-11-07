@@ -7,6 +7,8 @@ pub mod hold_cycling;
 #[path = "yield_monitor.rs"]
 pub mod yield_monitor;
 
+#[path = "reporting_attacks.rs"]
+pub mod attacks;
 #[path = "reporting_damage.rs"]
 pub mod damage;
 use super::{arena::ActorRecords, Error, IdentityReport, Reports};
@@ -441,6 +443,8 @@ pub struct Provider<'a> {
     fortify_handler: Option<i32>,
     trade_route_handler: Option<i32>,
     damage_changed_bound: bool,
+    attacks_changed_bound: bool,
+    pub attack_changes: Vec<c6_core::unit_turn_upkeep::AttacksRemainingReport>,
     pub damage_changes: Vec<c6_core::unit_healing::DamageChangedReport>,
     snapshots: Vec<SnapshotObservation>,
     moved_publications: Vec<MovedPublication>,
@@ -479,6 +483,8 @@ impl<'a> Provider<'a> {
             fortify_handler: None,
             trade_route_handler: None,
             damage_changed_bound: false,
+            attacks_changed_bound: false,
+            attack_changes: Vec::new(),
             damage_changes: Vec::new(),
             snapshots: Vec::new(),
             moved_publications: Vec::new(),

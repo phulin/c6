@@ -8,15 +8,36 @@ use c6_core::{
 };
 impl<P> loaded_upkeep::AttacksReports for Runtime<'_, P> {
     type Error = Error;
-    fn preflight_attacks_report(&self, _: &LoadedState, _: UnitHandle) -> Result<(), Error> {
-        Err(Error::Missing("attack-count changed synchronous consumers"))
+    fn preflight_attacks_report(
+        &self,
+        state: &LoadedState,
+        actor: UnitHandle,
+    ) -> Result<(), Error> {
+        if self.binding != *state.binding() {
+            return Err(Error::Missing("activation attacks state identity"));
+        }
+        actor.get(state).map_err(Error::World)?;
+        if self.movement()?.reporting_suspended {
+            return Ok(());
+        }
+        self.reporting
+            .preflight_attacks_changed(state)
+            .map_err(Error::Rules)
     }
     fn attacks_report(
         &mut self,
-        _: &mut LoadedState,
-        _: AttacksRemainingReport,
+        state: &mut LoadedState,
+        report: AttacksRemainingReport,
     ) -> Result<(), Error> {
-        Err(Error::Missing("attack-count changed synchronous consumers"))
+        if self.binding != *state.binding() {
+            return Err(Error::Missing("activation attacks state identity"));
+        }
+        if self.movement()?.reporting_suspended {
+            return Ok(());
+        }
+        self.reporting
+            .attacks_changed(state, report)
+            .map_err(Error::Rules)
     }
 }
 impl<P> loaded_upkeep::AlertVisibility for Runtime<'_, P> {
