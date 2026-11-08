@@ -1564,7 +1564,10 @@ impl ScriptEventRegistry {
     pub fn supply_absent_name(&mut self, name: &str) -> Result<(), RegistryError> {
         if name.as_bytes().contains(&0)
             || self.cache.contains_key(name)
-            || self.names.contains_key(name)
+            || self
+                .names
+                .get(name)
+                .is_some_and(|entry| *entry != KnownNameEntry::Absent)
         {
             return Err(RegistryError::InvalidSeed("conflicting event-name absence"));
         }
@@ -3314,6 +3317,12 @@ mod semantic_empty_call_tests {
         registry
             .supply_absent_name("OnTechnologyResearched")
             .unwrap();
+        // Two BEFORE providers may observe the same absent name. Their join
+        // must not create an event or replace its eventual logical identity.
+        registry
+            .supply_absent_name("OnTechnologyResearched")
+            .unwrap();
+        assert!(registry.cached_event("OnTechnologyResearched").is_none());
         registry
             .call_empty("OnTechnologyResearched", &[0, 0])
             .unwrap();
