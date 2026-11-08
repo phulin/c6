@@ -300,6 +300,9 @@ pub struct EffectRuntime {
     effects: Vec<(u64, EffectState)>,
     objects: Vec<(u64, Object)>,
     unit_modifiers: Option<Vec<c6_core::unit_kill::objects::Modifier>>,
+    // Immutable destructor handles created by the supported Unit factory.
+    // Mutable modifier state remains in unit_modifiers above.
+    created_unit_modifier_cleanup: Vec<crate::unit_kill::stock::ModifierCleanup>,
     city_creation: Option<city_creation::Creation>,
     allocations: allocation::State,
     pantheons: Vec<pantheon::Attachment>,
@@ -354,6 +357,7 @@ impl EffectRuntime {
             effects,
             objects,
             unit_modifiers: None,
+            created_unit_modifier_cleanup: Vec::new(),
             city_creation: None,
             allocations: allocation::State::from_initial(state),
             pantheons: Vec::new(),
@@ -528,6 +532,54 @@ impl EffectRuntime {
         }
         records.push(modifier);
         Ok(())
+    }
+    /// Retain the COLLECTION_OWNER recipe's lifetime handles at construction.
+    /// Its owner requirement and separate collection subscriptions are absent;
+    /// tracked/applied state is read from the canonical modifier at destruction.
+    pub(crate) fn retain_created_unit_modifier_cleanup(
+        &mut self,
+        state: &LoadedState,
+        receiver: u64,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        let current = self.unit_modifier(receiver)?;
+        if current.owner_requirement_set.is_some() {
+            return Err(QueryError::Missing(
+                "created owner-only modifier requirement",
+            ));
+        }
+        let instance = current.instance;
+        if self
+            .created_unit_modifier_cleanup
+            .iter()
+            .any(|r| r.instance == instance || r.receiver == receiver)
+        {
+            return Err(QueryError::DuplicateModifierInstance(instance));
+        }
+        self.created_unit_modifier_cleanup
+            .push(crate::unit_kill::stock::ModifierCleanup {
+                instance,
+                receiver,
+                owner_requirement: None,
+                requirement_subscription: false,
+                collection: None,
+                collection_changed_subscription: false,
+                collection_added_subscription: false,
+                collection_lifecycle_ret: false,
+            });
+        Ok(())
+    }
+    pub(crate) fn created_unit_modifier_cleanup(
+        &self,
+        instance: i32,
+    ) -> Option<&crate::unit_kill::stock::ModifierCleanup> {
+        self.created_unit_modifier_cleanup
+            .iter()
+            .find(|r| r.instance == instance)
+    }
+    pub(crate) fn retire_created_unit_modifier_cleanup(&mut self, instance: i32) {
+        self.created_unit_modifier_cleanup
+            .retain(|r| r.instance != instance);
     }
     pub fn register_city_effect(
         &mut self,

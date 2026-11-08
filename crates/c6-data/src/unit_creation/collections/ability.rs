@@ -352,6 +352,10 @@ fn attach_recipes<E: Effects>(
             .destroyed
             .subscribe(Callback::OwnerDestroyed(receiver))
             .map_err(Error::Ring)?;
+        owners
+            .effects
+            .retain_created_unit_modifier_cleanup(owners.state, receiver)
+            .map_err(Error::Query)?;
         runtime.definitions.push(Definition {
             receiver,
             subject_requirements: recipe.subject,

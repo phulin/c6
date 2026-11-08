@@ -551,6 +551,8 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
             .modifiers
             .iter()
             .find(|r| r.instance == instance)
+            .or_else(|| self.effects.created_unit_modifier_cleanup(instance))
+            .cloned()
             .ok_or(kill::Error::Missing("owned modifier current instance"))?;
         let receiver = row.receiver;
         // Keep the removed registration alive through its source destructor.
@@ -733,6 +735,7 @@ impl<P: Providers + normal::Effects, R: RequirementOwner> objects::Services<P> f
                     .map_err(|e|kill::Error::Effect(Error::Collection(e)))?;
             }
         }
+        self.effects.retire_created_unit_modifier_cleanup(instance);
         Ok(())
     }
     fn unsubscribe_unit_requirement(
