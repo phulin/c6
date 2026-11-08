@@ -50,9 +50,9 @@ melee profile also pass with this source. In one optimized replay, the melee
 request took 1.44 ms; recorded round requests across all 23 retained rounds
 totaled 520.06 ms. Attack timing includes synchronous gameplay callbacks and
 mandatory aftermath. Round timing covers recorded advance/resume/research and
-handoff requests. These measurements exclude fixture import, rule/provider
-setup, explicit unit orders, comparison, external policy selection and JSON
-serialization; they do not measure complete arbitrary turns.
+handoff requests. Both exclude fixture import, rule/provider setup, comparison,
+external policy selection and JSON serialization. Round timing additionally
+excludes explicit SkipTurn orders. These do not measure complete arbitrary turns.
 
 This qualifies one surviving original Scout-versus-barbarian Scout attack and
 its reached ordinary upkeep in this retained profile. It does not qualify a
