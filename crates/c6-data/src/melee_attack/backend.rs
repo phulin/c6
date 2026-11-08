@@ -508,6 +508,33 @@ impl EffectRuntime {
             .push((identity, EffectState::Player { context, effect }));
         Ok(())
     }
+    /// Qualify a retained cleanup entry as the same stock Player strength
+    /// effect. The caller supplies decoded parameters from the same initial
+    /// observation; this preserves its identity and does not apply the effect.
+    /// Other unsupported families and already typed effects are rejected.
+    pub fn qualify_current_player_strength_effect(
+        &mut self,
+        state: &LoadedState,
+        identity: u64,
+        context: u64,
+        effect: player_strength::Effect,
+    ) -> Result<(), QueryError> {
+        self.current_owner(state)?;
+        self.object(context)?;
+        let current = self
+            .effects
+            .iter_mut()
+            .find(|row| row.0 == identity)
+            .ok_or(QueryError::MissingEffect(identity))?;
+        if !matches!(
+            current.1,
+            EffectState::Unit(crate::unit_kill::effects::Effect::Unsupported(0x3a3f988))
+        ) {
+            return Err(QueryError::DuplicateEffect(identity));
+        }
+        current.1 = EffectState::Player { context, effect };
+        Ok(())
+    }
     pub fn register_unit_modifier(
         &mut self,
         state: &LoadedState,
