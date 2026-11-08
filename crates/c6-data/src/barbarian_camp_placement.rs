@@ -355,7 +355,12 @@ fn initialize(
         raided_cities: Vec::new(),
         raiding_score: 0,
         turns_in_enemy_territory: 0,
-        properties: None,
+        // Instance::Instance28255d0 constructs the live +b8 property domain;
+        // both native dynamic-property accessors return that same container.
+        properties: Some(c6_core::unit::variants::TypedVariantMap {
+            header: c6_core::unit::variants::KeyedHeader::Count,
+            entries: Vec::new(),
+        }),
         clan_tech_hashes: Some(Vec::new()),
         tech_steal_turns_cooldown: -1,
         conversion_points: 0,
@@ -698,6 +703,12 @@ mod tests {
             instance.player_bribe_turns_remaining.as_ref().unwrap(),
             &[0; 64]
         );
+        let properties = instance.properties.as_ref().unwrap();
+        assert_eq!(
+            properties.header,
+            c6_core::unit::variants::KeyedHeader::Count
+        );
+        assert!(properties.entries.is_empty());
         let stats = instance.clan_player_stats.as_ref().unwrap();
         assert_eq!(stats.len(), 64);
         assert!(stats.iter().all(|s| s.last_turn_raided == -1
