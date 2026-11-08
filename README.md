@@ -34,7 +34,9 @@ original technology and civic rewards, unchanged research queues and their follo
 rounds. These sequences also reach a surviving flood-damaged Scout and a targetless
 drought attempt. The [flood-expiry continuation](docs/linux-flood-expiry.md) advances
 the technology case through one more ordinary round on the same Session, preserving
-flood history and the surviving unit through turn 6.
+flood history and the surviving unit through turn 6. The [first-city continuation](docs/linux-exploration-first-city.md)
+then uses the original Settler at its actual site, selects Monument externally and
+completes an ordinary city-upkeep round through turn 7 on that same Session.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
