@@ -32,7 +32,9 @@ experience reward and completes the following ordinary round on the same Session
 The [random research-boost profile](docs/linux-village-research-boost.md) covers
 original technology and civic rewards, unchanged research queues and their following
 rounds. These sequences also reach a surviving flood-damaged Scout and a targetless
-drought attempt.
+drought attempt. The [flood-expiry continuation](docs/linux-flood-expiry.md) advances
+the technology case through one more ordinary round on the same Session, preserving
+flood history and the surviving unit through turn 6.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
