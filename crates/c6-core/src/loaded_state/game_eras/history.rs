@@ -74,6 +74,16 @@ impl LoadedState {
             .pride = Some((extra, minimum));
         Ok(())
     }
+    /// Raw current pride vectors shared by independently captured input aliases.
+    /// These are gameplay inputs; an uninitialized owner remains unavailable.
+    pub fn game_era_pride_vectors(&self) -> Result<(&[i32], &[i32]), AccessError> {
+        let (extra, minimum) = self
+            .game_eras()?
+            .pride
+            .as_ref()
+            .ok_or(AccessError::Unavailable("Era pride score vectors"))?;
+        Ok((extra, minimum))
+    }
     /// History.GetEraScore29da5d0: optional base presence is handled by caller.
     /// Minimum is queried only for a positive extra; missing domains stay unknown.
     pub fn game_era_pride_score(&self, owner: i32, base: i32) -> Result<i32, AccessError> {
