@@ -34,6 +34,14 @@ Civ VI saves. See the
 | Supporting components | Explicit RNG records/streams, numerical helpers, typed wire codecs, owned component state and registered SQLite rules profiles | Schema/profile-specific; wire transport is distinct from complete save import or live-world reconstruction |
 | Small `Engine` / C ABI | Snapshot transport, RNG actions and coordinate helpers | General gameplay actions and EndTurn remain unsupported here; use the Rust Session for the supported gameplay slice |
 
+The [retained exploration city-development profile](linux-exploration-city-development.md)
+continues the first city through ordinary culture expansion, population growth,
+Pottery and Monument completion, Code of Laws, external Discipline and Urban
+Planning choices and their following round at turn 21. Granary selection, active
+policy effects, full City/District state, represented requirements and all
+nineteen complete player research checkpoints match the native trajectory.
+Captured GameSync ends at 778 calls, seed 2566472039, with zero resets.
+
 These are bounded capabilities, not declarations that each named subsystem is
 complete. Representative native comparisons cover their recorded affected gameplay
 state, callbacks and tracked RNG. They do not establish every reachable branch,

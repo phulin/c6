@@ -37,6 +37,10 @@ the technology case through one more ordinary round on the same Session, preserv
 flood history and the surviving unit through turn 6. The [first-city continuation](docs/linux-exploration-first-city.md)
 then uses the original Settler at its actual site, selects Monument externally and
 completes an ordinary city-upkeep round through turn 7 on that same Session.
+The [city-development continuation](docs/linux-exploration-city-development.md)
+retains ordinary culture expansion, growth, Pottery and Monument completion,
+Code of Laws, external Discipline/Urban Planning choices and their following
+round through turn 21, with a legally selected Granary still in production.
 A separate bounded Linux case covers nonhuman major activation with a city and
 Warrior, an external Pantheon choice, and deactivation to the next player's decision.
 Coverage remains
